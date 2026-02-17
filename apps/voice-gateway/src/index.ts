@@ -105,11 +105,27 @@ class VoiceGateway {
     // TODO: Fetch agent details from API using agentId
     // TODO: Get system prompt from agent
     // TODO: Get tool definitions from agent
+    // TODO: Handle tool calls and stream results back to client
     
-    const systemPrompt = "You are a helpful AI assistant.";
+    const systemPrompt = "You are a helpful AI assistant with access to various tools.";
     
     try {
+      // For now, process without tools. Phase 4.5 will integrate tool definitions and execution
       return await geminiVoiceClient.processAudio(audioData, systemPrompt);
+      
+      // Future: Tool execution flow
+      // const toolDefs = await fetchToolDefinitions(agentId);
+      // const geminiResponse = await geminiVoiceClient.processAudio(audioData, systemPrompt, toolDefs);
+      // if (geminiResponse.toolCalls?.length > 0) {
+      //   const toolResults = await geminiVoiceClient.executeToolCalls(geminiResponse.toolCalls, {
+      //     agentId,
+      //     userId: client.userId,
+      //     tenantId: client.tenantId,
+      //     sessionId: client.sessionId,
+      //   });
+      //   // Send tool results back to Gemini for follow-up response
+      //   // return await geminiVoiceClient.processWithToolResults(toolResults, ...);
+      // }
     } catch (err) {
       logger.error({ err, agentId }, "Gemini processing failed");
       // Return stub response on error

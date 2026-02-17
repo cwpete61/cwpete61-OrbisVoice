@@ -1,5 +1,6 @@
 import { env } from "../env";
 import { logger } from "../logger";
+import { toolExecutor, ToolContext } from "../tools/executor";
 
 export interface GeminiConfig {
   apiKey: string;
@@ -163,6 +164,30 @@ class GeminiVoiceClient {
       logger.error({ err }, "Failed to process audio with Gemini");
       throw err;
     }
+  }
+
+  async executeToolCalls(
+    toolCalls: Array<{ name: string; args: Record<string, any> }>,
+    context: ToolContext
+  ): Promise<
+    Array<{
+      name: string;
+      result: any;
+    }>
+  > {
+    const results = [];
+
+    for (const toolCall of toolCalls) {
+      logger.info({ toolName: toolCall.name, userId: context.userId }, "Executing tool call from Gemini");
+
+      const result = await toolExecutor.execute(toolCall.name, toolCall.args, context);
+      results.push({
+        name: toolCall.name,
+        result,
+      });
+    }
+
+    return results;
   }
 
   async synthesizeSpeech(text: string, voiceConfig?: any): Promise<string> {

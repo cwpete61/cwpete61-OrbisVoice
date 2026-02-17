@@ -7,7 +7,10 @@ import { authRoutes } from "./routes/auth";
 import { agentRoutes } from "./routes/agents";
 import { apiKeyRoutes } from "./routes/api-keys";
 import { transcriptRoutes } from "./routes/transcripts";
+import { statsRoutes } from "./routes/stats";
+import { referralRoutes } from "./routes/referrals";
 import { sessionManager } from "./services/session";
+import { registerToolHandlers } from "./tools/handlers";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }),
@@ -37,15 +40,22 @@ fastify.get("/api", async (request, reply) => {
 // Register route groups
 fastify.register(authRoutes);
 fastify.register(transcriptRoutes);
+fastify.register(statsRoutes);
+fastify.register(referralRoutes);
 fastify.register(agentRoutes);
 fastify.register(apiKeyRoutes);
 
 // Start server
 const start = async () => {
-  tr// Initialize session manager
+  try {
+    // Initialize session manager
     await sessionManager.initialize(env.REDIS_URL);
+    logger.info("Session manager initialized");
 
-    y {
+    // Register tool handlers
+    registerToolHandlers();
+    logger.info("Tool handlers registered");
+
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });
     logger.info(`Server running at http://0.0.0.0:${env.PORT}`);
   } catch (err) {
