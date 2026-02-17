@@ -9,6 +9,7 @@ import { apiKeyRoutes } from "./routes/api-keys";
 import { transcriptRoutes } from "./routes/transcripts";
 import { statsRoutes } from "./routes/stats";
 import { referralRoutes } from "./routes/referrals";
+import { auditRoutes } from "./routes/audit";
 import { sessionManager } from "./services/session";
 import { registerToolHandlers } from "./tools/handlers";
 
@@ -42,6 +43,7 @@ fastify.register(authRoutes);
 fastify.register(transcriptRoutes);
 fastify.register(statsRoutes);
 fastify.register(referralRoutes);
+fastify.register(auditRoutes);
 fastify.register(agentRoutes);
 fastify.register(apiKeyRoutes);
 

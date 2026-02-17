@@ -8,6 +8,23 @@ const envSchema = z.object({
   JWT_SECRET: z.string().default("dev-secret-change-in-prod"),
   CORS_ORIGINS: z.string().default("http://localhost:3001"),
   GEMINI_API_KEY: z.string().optional(),
+  // Gmail API
+  GMAIL_CLIENT_ID: z.string().optional(),
+  GMAIL_CLIENT_SECRET: z.string().optional(),
+  GMAIL_REDIRECT_URI: z.string().optional(),
+  GMAIL_TEST_TOKEN: z.string().optional(),
+  // Google Calendar API
+  GOOGLE_CALENDAR_CLIENT_ID: z.string().optional(),
+  GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CALENDAR_REDIRECT_URI: z.string().optional(),
+  GOOGLE_CALENDAR_TEST_TOKEN: z.string().optional(),
+  // Stripe API
+  STRIPE_API_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // Twilio API
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_PHONE_NUMBER: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

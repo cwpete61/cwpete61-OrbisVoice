@@ -1,4 +1,5 @@
 import { logger } from "../logger";
+import { toolAuditLogger } from "../services/audit";
 
 export interface ToolInput {
   [key: string]: any;
@@ -29,9 +30,19 @@ class ToolExecutor {
 
   async execute(toolName: string, input: ToolInput, context: ToolContext): Promise<ToolResult> {
     const handler = this.handlers.get(toolName);
+    const startTime = Date.now();
 
     if (!handler) {
       logger.warn({ toolName }, "Unknown tool requested");
+      await toolAuditLogger.log({
+        agentId: context.agentId,
+        userId: context.userId,
+        toolName,
+        toolInput: input,
+        status: "failed",
+        errorMessage: `Unknown tool: ${toolName}`,
+        executionTimeMs: Date.now() - startTime,
+      });
       return {
         success: false,
         error: `Unknown tool: ${toolName}`,
@@ -41,10 +52,37 @@ class ToolExecutor {
     try {
       logger.info({ toolName, userId: context.userId }, "Executing tool");
       const result = await handler(input, context);
-      logger.info({ toolName, success: result.success }, "Tool execution completed");
+      
+      const executionTime = Date.now() - startTime;
+      logger.info({ toolName, success: result.success, executionTimeMs: executionTime }, "Tool execution completed");
+      
+      // Log to audit
+      await toolAuditLogger.log({
+        agentId: context.agentId,
+        userId: context.userId,
+        toolName,
+        toolInput: input,
+        toolOutput: result.data,
+        status: result.success ? "success" : "failed",
+        errorMessage: result.error,
+        executionTimeMs: executionTime,
+      });
+      
       return result;
     } catch (err) {
+      const executionTime = Date.now() - startTime;
       logger.error({ err, toolName }, "Tool execution failed");
+      
+      await toolAuditLogger.log({
+        agentId: context.agentId,
+        userId: context.userId,
+        toolName,
+        toolInput: input,
+        status: "failed",
+        errorMessage: `Tool execution failed: ${String(err)}`,
+        executionTimeMs: executionTime,
+      });
+      
       return {
         success: false,
         error: `Tool execution failed: ${String(err)}`,
