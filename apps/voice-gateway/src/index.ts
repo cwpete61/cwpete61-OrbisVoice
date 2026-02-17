@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { env } from "./env";
 import { logger } from "./logger";
 import { GatewayClient, AudioMessage, GeminiResponse } from "./types";
+import { geminiVoiceClient } from "./services/gemini-client";
 
 class VoiceGateway {
   private wss: WebSocket.Server;
@@ -48,29 +49,75 @@ class VoiceGateway {
       if (message.data === "init") {
         const client: GatewayClient = {
           sessionId,
-          userId: "test-user", // TODO: extract from JWT
-          agentId: "test-agent", // TODO: extract from client
+          userId: "test-user", // TODO: extract from JWT header
+          agentId: "test-agent", // TODO: extract from message
           connectedAt: new Date(),
         };
         this.clients.set(sessionId, client);
-        ws.send(JSON.stringify({ ok: true, message: "Session initialized" }));
+        logger.info({ client }, "Client initialized");
+        ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
       }
     } else if (message.type === "audio") {
-      // Forward to Gemini API
-      const response = await this.forwardToGemini(message.data);
-      ws.send(JSON.stringify({ type: "audio", data: response.outputAudio?.data }));
+      const client = this.clients.get(sessionId);
+      if (!client) {
+        ws.send(JSON.stringify({ error: "Session not initialized" }));
+        return;
+      }
+
+      try {
+        // Forward to Gemini API
+        const response = await this.forwardToGemini(message.data, client.agentId);
+        
+        // Send response back to client
+        ws.send(JSON.stringify({
+          type: "audio",
+          data: response.outputAudio?.data || "",
+          text: response.text,
+        }));
+      } catch (err) {
+        logger.error({ err }, "Failed to process audio");
+        ws.send(JSON.stringify({ error: "Failed to process audio", details: String(err) }));
+      }
+    } else if (message.type === "text") {
+      const client = this.clients.get(sessionId);
+      if (!client) {
+        ws.send(JSON.stringify({ error: "Session not initialized" }));
+        return;
+      }
+
+      try {
+        // For text input, synthesize to audio then process
+        const response = await geminiVoiceClient.processText(message.data, client.agentId);
+        
+        ws.send(JSON.stringify({
+          type: "text",
+          data: response.text,
+          audioData: response.audioData,
+        }));
+      } catch (err) {
+        logger.error({ err }, "Failed to process text");
+        ws.send(JSON.stringify({ error: "Failed to process text", details: String(err) }));
+      }
     }
   }
 
-  private async forwardToGemini(audioData: string): Promise<GeminiResponse> {
-    // TODO: Implement actual Gemini Voice API call
-    // For now, return stub response
-    logger.debug("Forwarding to Gemini API");
-    return {
-      outputAudio: {
-        data: audioData, // Echo for testing
-      },
-    };
+  private async forwardToGemini(audioData: string, agentId: string): Promise<GeminiResponse> {
+    // TODO: Fetch agent details from API using agentId
+    // TODO: Get system prompt from agent
+    // TODO: Get tool definitions from agent
+    
+    const systemPrompt = "You are a helpful AI assistant.";
+    
+    try {
+      return await geminiVoiceClient.processAudio(audioData, systemPrompt);
+    } catch (err) {
+      logger.error({ err, agentId }, "Gemini processing failed");
+      // Return stub response on error
+      return {
+        outputAudio: { data: audioData }, // Echo for testing
+        text: "I encountered an error processing your message.",
+      };
+    }
   }
 
   start() {
@@ -80,3 +127,4 @@ class VoiceGateway {
 
 const gateway = new VoiceGateway(env.PORT);
 gateway.start();
+

@@ -9,10 +9,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<any>(null);
+  const [stats, setStats] = useState({ totalAgents: 0, totalConversations: 0, avgDuration: 0 });
 
   useEffect(() => {
     fetchAgents();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    // TODO: Create stats endpoint in API
+    // For now, use placeholder
+    setStats({
+      totalAgents: agents.length,
+      totalConversations: 0,
+      avgDuration: 0,
+    });
+  };
 
   const fetchAgents = async () => {
     try {
@@ -49,6 +61,7 @@ export default function DashboardPage() {
   };
 
   const handleUpdateAgent = async (data: any) => {
+    if (!editingAgent) return;
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${editingAgent.id}`, {
         method: "PUT",
@@ -110,6 +123,22 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <section className="max-w-7xl mx-auto px-6 py-12">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-slate/20 border border-slate rounded-lg p-4">
+            <p className="text-slate text-sm">Total Agents</p>
+            <p className="text-3xl font-bold text-signal-cyan">{agents.length}</p>
+          </div>
+          <div className="bg-slate/20 border border-slate rounded-lg p-4">
+            <p className="text-slate text-sm">Total Conversations</p>
+            <p className="text-3xl font-bold text-aurora-green">{stats.totalConversations}</p>
+          </div>
+          <div className="bg-slate/20 border border-slate rounded-lg p-4">
+            <p className="text-slate text-sm">Avg Duration</p>
+            <p className="text-3xl font-bold text-plasma-orange">{stats.avgDuration}m</p>
+          </div>
+        </div>
+
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-mist">Voice Agents</h1>
           <button
@@ -168,7 +197,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="space-x-2 boundary">
+                <div className="space-x-2">
+                  <Link
+                    href={`/agents/${agent.id}/conversations`}
+                    className="text-aurora-green hover:text-signal-cyan text-sm font-semibold transition"
+                  >
+                    Conversations
+                  </Link>
                   <button
                     onClick={() => {
                       setEditingAgent(agent);
@@ -183,9 +218,6 @@ export default function DashboardPage() {
                     className="text-plasma-orange hover:text-aurora-green text-sm font-semibold transition"
                   >
                     Delete
-                  </button>
-                  <button className="text-aurora-green hover:text-signal-cyan text-sm font-semibold transition">
-                    Deploy
                   </button>
                 </div>
               </div>

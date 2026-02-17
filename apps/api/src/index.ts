@@ -6,6 +6,8 @@ import { logger } from "./logger";
 import { authRoutes } from "./routes/auth";
 import { agentRoutes } from "./routes/agents";
 import { apiKeyRoutes } from "./routes/api-keys";
+import { transcriptRoutes } from "./routes/transcripts";
+import { sessionManager } from "./services/session";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }),
@@ -34,12 +36,16 @@ fastify.get("/api", async (request, reply) => {
 
 // Register route groups
 fastify.register(authRoutes);
+fastify.register(transcriptRoutes);
 fastify.register(agentRoutes);
 fastify.register(apiKeyRoutes);
 
 // Start server
 const start = async () => {
-  try {
+  tr// Initialize session manager
+    await sessionManager.initialize(env.REDIS_URL);
+
+    y {
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });
     logger.info(`Server running at http://0.0.0.0:${env.PORT}`);
   } catch (err) {

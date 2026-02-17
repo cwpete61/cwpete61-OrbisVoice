@@ -2,7 +2,7 @@ export interface AudioMessage {
   type: "audio" | "text" | "control";
   data: string;
   timestamp: number;
-  sessionId: string;
+  sessionId?: string;
 }
 
 export interface GatewayClient {
@@ -10,12 +10,6 @@ export interface GatewayClient {
   userId: string;
   agentId: string;
   connectedAt: Date;
-}
-
-export interface GeminiRequest {
-  inputAudio: {
-    data: string; // base64 encoded
-  };
 }
 
 export interface GeminiResponse {
