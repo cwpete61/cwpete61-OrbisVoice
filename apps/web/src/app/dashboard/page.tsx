@@ -108,6 +108,12 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-2xl font-bold text-signal-cyan">Dashboard</div>
           <div className="space-x-4">
+            <Link href="/stats" className="text-slate hover:text-signal-cyan transition">
+              Stats
+            </Link>
+            <Link href="/referrals" className="text-slate hover:text-aurora-green transition">
+              Referrals
+            </Link>
             <Link href="/settings" className="text-slate hover:text-signal-cyan transition">
               Settings
             </Link>
