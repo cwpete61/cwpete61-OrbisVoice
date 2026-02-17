@@ -5,6 +5,7 @@ import { env } from "./env";
 import { logger } from "./logger";
 import { authRoutes } from "./routes/auth";
 import { agentRoutes } from "./routes/agents";
+import { apiKeyRoutes } from "./routes/api-keys";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }),
@@ -34,6 +35,7 @@ fastify.get("/api", async (request, reply) => {
 // Register route groups
 fastify.register(authRoutes);
 fastify.register(agentRoutes);
+fastify.register(apiKeyRoutes);
 
 // Start server
 const start = async () => {
