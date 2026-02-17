@@ -1,0 +1,42 @@
+{
+  "name": "orbisvoice-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "@fastify/cors": "^8.4.2",
+    "@fastify/jwt": "^7.0.2",
+    "prisma": "^5.7.0",
+    "@prisma/client": "^5.7.0",
+    "zod": "^3.22.4",
+    "pino": "^8.16.2",
+    "pino-pretty": "^10.2.3",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^20.10.5",
+    "@types/bcryptjs": "^2.4.6",
+    "tsx": "^4.7.0",
+    "vitest": "^1.0.4",
+    "@vitest/ui": "^1.0.4",
+    "supertest": "^6.3.3",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "prettier": "^3.1.1"
+  }
+}
