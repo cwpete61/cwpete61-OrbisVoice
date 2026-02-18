@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import AgentForm from "@/components/AgentForm";
+import AgentForm from "../../components/AgentForm";
+import DashboardShell from "../components/DashboardShell";
 
 export default function DashboardPage() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -102,135 +103,135 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orbit-blue via-void to-slate">
-      {/* Header */}
-      <nav className="border-b border-slate px-6 py-4 bg-orbit-blue/50">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="text-2xl font-bold text-signal-cyan">Dashboard</div>
-          <div className="space-x-4">
-            <Link href="/stats" className="text-slate hover:text-signal-cyan transition">
-              Stats
-            </Link>
-            <Link href="/referrals" className="text-slate hover:text-aurora-green transition">
-              Referrals
-            </Link>
-            <Link href="/settings" className="text-slate hover:text-signal-cyan transition">
-              Settings
-            </Link>
-            <Link href="/test" className="text-slate hover:text-signal-cyan transition">
-              Test
-            </Link>
-            <Link href="/" className="text-slate hover:text-signal-cyan transition">
-              Logout
-            </Link>
+    <DashboardShell>
+      <div className="px-8 py-8">
+        {/* Page header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-[#f0f4fa]">Voice Agents</h1>
+            <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">
+              Manage and monitor your deployed agents
+            </p>
           </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <section className="max-w-7xl mx-auto px-6 py-12">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-slate/20 border border-slate rounded-lg p-4">
-            <p className="text-slate text-sm">Total Agents</p>
-            <p className="text-3xl font-bold text-signal-cyan">{agents.length}</p>
-          </div>
-          <div className="bg-slate/20 border border-slate rounded-lg p-4">
-            <p className="text-slate text-sm">Total Conversations</p>
-            <p className="text-3xl font-bold text-aurora-green">{stats.totalConversations}</p>
-          </div>
-          <div className="bg-slate/20 border border-slate rounded-lg p-4">
-            <p className="text-slate text-sm">Avg Duration</p>
-            <p className="text-3xl font-bold text-plasma-orange">{stats.avgDuration}m</p>
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-mist">Voice Agents</h1>
           <button
-            onClick={() => {
-              setEditingAgent(null);
-              setShowForm(true);
-            }}
-            className="bg-signal-cyan text-orbit-blue px-6 py-2 rounded font-semibold hover:bg-aurora-green transition"
+            onClick={() => { setEditingAgent(null); setShowForm(true); }}
+            className="btn-primary text-sm"
           >
-            + Create Agent
+            + New Agent
           </button>
         </div>
 
-        {/* Agent Form Modal */}
+        {/* Stat strip */}
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[
+            { label: "Total Agents", value: agents.length, color: "#14b8a6" },
+            { label: "Conversations", value: stats.totalConversations, color: "#f0f4fa" },
+            { label: "Avg Duration", value: `${stats.avgDuration}m`, color: "#f97316" },
+          ].map((s) => (
+            <div key={s.label} className="rounded-xl border border-white/[0.07] bg-[#0c111d] p-5">
+              <p className="text-xs text-[rgba(240,244,250,0.45)]">{s.label}</p>
+              <p className="mt-2 text-3xl font-bold" style={{ color: s.color }}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Modal */}
         {showForm && (
-          <AgentForm
-            agent={editingAgent}
-            onSubmit={editingAgent ? handleUpdateAgent : handleCreateAgent}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingAgent(null);
-            }}
-          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0c111d] p-8 shadow-2xl">
+              <h2 className="mb-6 text-lg font-bold text-[#f0f4fa]">
+                {editingAgent ? "Edit Agent" : "Create Agent"}
+              </h2>
+              <AgentForm
+                agent={editingAgent}
+                onSubmit={editingAgent ? handleUpdateAgent : handleCreateAgent}
+                onCancel={() => { setShowForm(false); setEditingAgent(null); }}
+              />
+            </div>
+          </div>
         )}
 
-        {/* Agents Grid */}
+        {/* Agent grid */}
         {loading ? (
-          <p className="text-slate">Loading agents...</p>
+          <div className="flex items-center gap-2 text-sm text-[rgba(240,244,250,0.4)]">
+            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            Loading agents…
+          </div>
         ) : agents.length === 0 ? (
-          <div className="bg-slate/20 border border-slate rounded-lg p-12 text-center">
-            <p className="text-slate mb-4">No agents created yet</p>
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/[0.1] py-24 text-center">
+            <div className="mb-4 h-12 w-12 rounded-xl bg-[#14b8a6]/10 flex items-center justify-center">
+              <svg width="24" height="24" fill="none" stroke="#14b8a6" strokeWidth="1.5" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-[#f0f4fa]">No agents yet</p>
+            <p className="mt-1 text-xs text-[rgba(240,244,250,0.4)]">Create your first voice agent to get started</p>
             <button
               onClick={() => setShowForm(true)}
-              className="bg-plasma-orange text-white px-6 py-2 rounded hover:bg-aurora-green transition"
+              className="btn-primary mt-6 text-sm"
             >
               Create Your First Agent
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {agents.map((agent: any) => (
               <div
                 key={agent.id}
-                className="bg-slate/20 border border-slate rounded-lg p-6 hover:border-signal-cyan transition group"
+                className="group rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition hover:border-[#14b8a6]/40"
               >
-                <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-signal-cyan mb-2 group-hover:text-aurora-green transition">
-                    {agent.name}
-                  </h3>
-                  <p className="text-slate text-sm line-clamp-3 mb-3">{agent.systemPrompt}</p>
-                  <div className="flex items-center gap-2 text-xs text-slate">
-                    <span className="px-2 py-1 bg-orbit-blue/50 rounded">{agent.voiceModel || "default"}</span>
-                    <span className="px-2 py-1 bg-orbit-blue/50 rounded">
-                      {new Date(agent.createdAt).toLocaleDateString()}
-                    </span>
+                {/* Agent header */}
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#14b8a6]/10 text-[#14b8a6]">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
                   </div>
+                  <span className="rounded-md bg-[#14b8a6]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#14b8a6]">
+                    {agent.voiceModel || "default"}
+                  </span>
                 </div>
 
-                <div className="space-x-2">
-                  <Link
-                    href={`/agents/${agent.id}/conversations`}
-                    className="text-aurora-green hover:text-signal-cyan text-sm font-semibold transition"
-                  >
-                    Conversations
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setEditingAgent(agent);
-                      setShowForm(true);
-                    }}
-                    className="text-signal-cyan hover:text-aurora-green text-sm font-semibold transition"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteAgent(agent.id)}
-                    className="text-plasma-orange hover:text-aurora-green text-sm font-semibold transition"
-                  >
-                    Delete
-                  </button>
+                <h3 className="mb-1.5 font-semibold text-[#f0f4fa] group-hover:text-[#14b8a6] transition">
+                  {agent.name}
+                </h3>
+                <p className="mb-4 line-clamp-3 text-xs leading-relaxed text-[rgba(240,244,250,0.45)]">
+                  {agent.systemPrompt}
+                </p>
+
+                <div className="flex items-center justify-between border-t border-white/[0.05] pt-4 text-xs">
+                  <span className="text-[rgba(240,244,250,0.3)]">
+                    {new Date(agent.createdAt).toLocaleDateString()}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/agents/${agent.id}/conversations`}
+                      className="text-[#14b8a6] hover:underline"
+                    >
+                      Conversations
+                    </Link>
+                    <button
+                      onClick={() => { setEditingAgent(agent); setShowForm(true); }}
+                      className="text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa] transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAgent(agent.id)}
+                      className="text-[#f97316]/70 hover:text-[#f97316] transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </section>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

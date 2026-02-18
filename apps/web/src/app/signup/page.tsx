@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PublicNav from "../components/PublicNav";
+import Footer from "../components/Footer";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -33,49 +35,71 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orbit-blue via-void to-slate flex items-center justify-center">
-      <div className="bg-slate/20 border border-slate rounded-lg p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-signal-cyan mb-6 text-center">Create Account</h1>
-        <form onSubmit={handleSignup} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-orbit-blue border border-slate px-4 py-2 rounded text-mist placeholder-slate focus:outline-none focus:border-signal-cyan"
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-orbit-blue border border-slate px-4 py-2 rounded text-mist placeholder-slate focus:outline-none focus:border-signal-cyan"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-orbit-blue border border-slate px-4 py-2 rounded text-mist placeholder-slate focus:outline-none focus:border-signal-cyan"
-            required
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-signal-cyan text-orbit-blue py-2 rounded font-semibold hover:bg-aurora-green transition disabled:opacity-50"
-          >
-            {loading ? "Creating account..." : "Sign Up"}
-          </button>
-        </form>
-        <p className="text-center text-slate mt-4">
-          Already have an account?{" "}
-          <Link href="/login" className="text-signal-cyan hover:text-aurora-green">
-            Sign in
-          </Link>
-        </p>
+    <div className="min-h-screen bg-[#05080f]">
+      <PublicNav />
+      <div className="flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6]">
+              <div className="h-5 w-5 rounded-sm bg-[#05080f]" />
+            </div>
+            <h1 className="text-2xl font-bold text-[#f0f4fa]">Create your account</h1>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Deploy your first AI voice agent free</p>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8">
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Full name</label>
+                <input
+                  type="text"
+                  placeholder="Jane Smith"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Work email</label>
+                <input
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Password</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary mt-2 w-full py-2.5"
+              >
+                {loading ? "Creating account…" : "Create Account — Free"}
+              </button>
+            </form>
+            <p className="mt-4 text-center text-xs text-[rgba(240,244,250,0.3)]">No credit card required</p>
+          </div>
+
+          <p className="mt-5 text-center text-sm text-[rgba(240,244,250,0.4)]">
+            Already have an account?{" "}
+            <Link href="/login" className="text-[#14b8a6] hover:underline">Sign in</Link>
+          </p>
+        </div>
       </div>
+      <Footer />
     </div>
   );
 }

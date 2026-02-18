@@ -1,5 +1,5 @@
 // Embedded widget loader script
-// Add this to any website: <script src="https://app.orbisvoice.com/widget.js" data-agent-id="agent-123"></script>
+// Add this to any website: <script src="https://app.myorbisvoice.com/widget.js" data-agent-id="agent-123"></script>
 
 (function () {
   const script = document.currentScript;
@@ -8,7 +8,7 @@
   const position = script?.getAttribute("data-position") || "bottom-right";
 
   if (!agentId) {
-    console.warn("[OrbisVoice] data-agent-id attribute is required");
+    console.warn("[MyOrbisVoice] data-agent-id attribute is required");
     return;
   }
 
@@ -73,9 +73,9 @@
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        console.log("[OrbisVoice] Microphone access granted");
+        console.log("[MyOrbisVoice] Microphone access granted");
       } catch (err) {
-        console.error("[OrbisVoice] Microphone access denied:", err);
+        console.error("[MyOrbisVoice] Microphone access denied:", err);
         icon.innerHTML = `<div style="text-align: center; color: white; font-size: 12px;">Microphone<br/>access denied</div>`;
       }
     } else {
@@ -115,5 +115,5 @@
   document.body.appendChild(widgetContainer);
 
   // Log initialization
-  console.log(`[OrbisVoice] Widget initialized for agent: ${agentId}`);
+  console.log(`[MyOrbisVoice] Widget initialized for agent: ${agentId}`);
 })();

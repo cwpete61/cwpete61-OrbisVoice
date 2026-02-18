@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import PublicNav from "../components/PublicNav";
+import Footer from "../components/Footer";
 
 export default function TestPage() {
   const [connected, setConnected] = useState(false);
@@ -73,8 +75,9 @@ export default function TestPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orbit-blue via-void to-slate p-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#05080f] text-[#f0f4fa]">
+      <PublicNav />
+      <div className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold text-mist mb-6">WebSocket Test Console</h1>
 
         {/* Connection Status */}
@@ -150,6 +153,7 @@ export default function TestPage() {
           will be echoed back (for testing only).
         </p>
       </div>
+      <Footer />
     </div>
   );
 }

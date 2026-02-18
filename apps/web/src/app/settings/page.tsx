@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import DashboardShell from "../components/DashboardShell";
 
 export default function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
@@ -66,107 +67,92 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orbit-blue via-void to-slate">
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold text-mist mb-8">Settings</h1>
+    <DashboardShell>
+      <div className="px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-xl font-bold text-[#f0f4fa]">Settings</h1>
+          <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">Manage API keys and integrations</p>
+        </div>
 
-        {/* API Keys Section */}
-        <div className="bg-slate/20 border border-slate rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold text-signal-cyan mb-6">API Keys</h2>
-
-          {showNewKey && (
-            <div className="bg-aurora-green/20 border border-aurora-green rounded-lg p-4 mb-6">
-              <p className="text-mist mb-2">Your new API key has been created. Copy it now - you won't see it again:</p>
-              <div className="bg-orbit-blue p-3 rounded border border-aurora-green break-all font-mono text-sm text-signal-cyan">
-                {showNewKey}
-              </div>
+        {/* New key banner */}
+        {showNewKey && (
+          <div className="mb-6 rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/10 p-5">
+            <p className="mb-3 text-sm text-[#f0f4fa]">Your new API key — copy it now, you won't see it again:</p>
+            <div className="mb-4 rounded-lg border border-white/[0.08] bg-[#05080f] p-4 font-mono text-sm break-all text-[#14b8a6]">
+              {showNewKey}
+            </div>
+            <div className="flex gap-3">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(showNewKey);
-                  alert("Copied to clipboard!");
-                }}
-                className="mt-3 bg-aurora-green text-orbit-blue px-4 py-2 rounded font-semibold hover:bg-signal-cyan transition"
+                onClick={() => { navigator.clipboard.writeText(showNewKey); }}
+                className="btn-primary text-sm"
               >
                 Copy to Clipboard
               </button>
-              <button
-                onClick={() => setShowNewKey(null)}
-                className="mt-3 ml-2 bg-slate/50 text-mist px-4 py-2 rounded font-semibold hover:bg-slate/70 transition"
-              >
-                Done
-              </button>
+              <button onClick={() => setShowNewKey(null)} className="btn-secondary text-sm">Done</button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Create New Key Form */}
-          <form onSubmit={handleCreateKey} className="bg-orbit-blue/30 border border-slate rounded-lg p-4 mb-6">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Key name (e.g., 'Production API', 'Mobile App')"
-                className="flex-1 bg-orbit-blue border border-slate px-4 py-2 rounded text-mist placeholder-slate focus:outline-none focus:border-signal-cyan"
-              />
-              <button
-                type="submit"
-                disabled={loading || !newKeyName}
-                className="bg-signal-cyan text-orbit-blue px-6 py-2 rounded font-semibold hover:bg-aurora-green transition disabled:opacity-50"
-              >
-                {loading ? "Creating..." : "Create Key"}
-              </button>
-            </div>
+        {/* API Keys Section */}
+        <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+          <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">API Keys</h2>
+
+          <form onSubmit={handleCreateKey} className="mb-5 flex gap-3">
+            <input
+              type="text"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              placeholder="Key name (e.g. Production API)"
+              className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+            />
+            <button
+              type="submit"
+              disabled={loading || !newKeyName}
+              className="btn-primary text-sm disabled:opacity-50"
+            >
+              {loading ? "Creating…" : "Create Key"}
+            </button>
           </form>
 
-          {/* API Keys List */}
           <div className="space-y-3">
             {apiKeys.length === 0 ? (
-              <p className="text-slate">No API keys yet</p>
-            ) : (
-              apiKeys.map((key: any) => (
-                <div
-                  key={key.id}
-                  className="flex justify-between items-center bg-orbit-blue/50 border border-slate p-4 rounded"
-                >
-                  <div>
-                    <p className="text-mist font-semibold">{key.name}</p>
-                    <p className="text-slate text-sm">
-                      Created: {new Date(key.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleRevokeKey(key.id)}
-                    className="bg-plasma-orange/20 text-plasma-orange px-4 py-2 rounded text-sm hover:bg-plasma-orange/40 transition"
-                  >
-                    Revoke
-                  </button>
+              <p className="text-sm text-[rgba(240,244,250,0.4)]">No API keys yet.</p>
+            ) : apiKeys.map((key: any) => (
+              <div
+                key={key.id}
+                className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-[#f0f4fa]">{key.name}</p>
+                  <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
+                    Created {new Date(key.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
-              ))
-            )}
+                <button
+                  onClick={() => handleRevokeKey(key.id)}
+                  className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-3 py-1.5 text-xs text-[#f97316] transition hover:bg-[#f97316]/25"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Widget Embed Section */}
-        <div className="bg-slate/20 border border-slate rounded-lg p-6">
-          <h2 className="text-2xl font-bold text-signal-cyan mb-4">Embedded Widget</h2>
-          <p className="text-slate mb-4">
-            Add this script tag to any website to embed the OrbisVoice widget:
-          </p>
-          <div className="bg-orbit-blue p-4 rounded border border-slate overflow-auto">
-            <code className="text-signal-cyan text-sm font-mono break-all">
-              &lt;script src=&quot;https://app.orbisvoice.com/widget.js&quot;
-              <br />
-              data-agent-id=&quot;YOUR_AGENT_ID&quot;
-              <br />
-              data-api-key=&quot;YOUR_API_KEY&quot;&gt;&lt;/script&gt;
-            </code>
+        {/* Widget embed */}
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+          <h2 className="mb-3 text-sm font-semibold text-[#f0f4fa]">Embedded Widget</h2>
+          <p className="mb-4 text-sm text-[rgba(240,244,250,0.45)]">Add this script tag to any website to embed the MyOrbisVoice widget:</p>
+          <div className="overflow-auto rounded-xl border border-white/[0.07] bg-[#05080f] p-4 font-mono text-sm text-[#14b8a6]">
+            {`<script src="https://app.myorbisvoice.com/widget.js"`}<br />
+            {`  data-agent-id="YOUR_AGENT_ID"`}<br />
+            {`  data-api-key="YOUR_API_KEY"></script>`}
           </div>
-          <p className="text-slate text-sm mt-3">
-            Replace YOUR_AGENT_ID and YOUR_API_KEY with your values. Optional: add
-            `data-position="bottom-left"` to change widget position.
+          <p className="mt-3 text-xs text-[rgba(240,244,250,0.35)]">
+            Replace YOUR_AGENT_ID and YOUR_API_KEY with your values. Add <code className="text-[#14b8a6]">data-position="bottom-left"</code> to change widget position.
           </p>
         </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 }
