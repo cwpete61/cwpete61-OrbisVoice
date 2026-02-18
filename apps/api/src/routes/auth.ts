@@ -8,6 +8,7 @@ import { ApiResponse } from "../types";
 const SignupSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
+  username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
 });
 
@@ -35,6 +36,17 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
+        // Check if username exists
+        const existingUsername = await prisma.user.findUnique({
+          where: { username: body.username } as any,
+        });
+        if (existingUsername) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Username already taken",
+          } as ApiResponse);
+        }
+
         // Hash password
         const hashedPassword = await bcrypt.hash(body.password, 10);
 
@@ -42,7 +54,6 @@ export async function authRoutes(fastify: FastifyInstance) {
         const tenant = await prisma.tenant.create({
           data: {
             name: `${body.name}'s Workspace`,
-            subdomain: `tenant-${Date.now()}`,
           },
         });
 
@@ -51,9 +62,10 @@ export async function authRoutes(fastify: FastifyInstance) {
           data: {
             email: body.email,
             name: body.name,
+            username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
-          },
+          } as any,
         });
 
         // Generate JWT
@@ -66,7 +78,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(201).send({
           ok: true,
           message: "Signup successful",
-          data: { token, user: { id: user.id, email: user.email, name: user.name } },
+          data: { token, user: { id: user.id, email: user.email, name: user.name, username: (user as any).username } },
         } as ApiResponse);
       } catch (err) {
         if (err instanceof z.ZodError) {
@@ -103,6 +115,13 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
+        if (!user.passwordHash) {
+          return reply.code(401).send({
+            ok: false,
+            message: "Account uses Google login",
+          } as ApiResponse);
+        }
+
         // Verify password
         const valid = await bcrypt.compare(body.password, user.passwordHash);
         if (!valid) {
@@ -122,7 +141,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(200).send({
           ok: true,
           message: "Login successful",
-          data: { token, user: { id: user.id, email: user.email, name: user.name } },
+          data: { token, user: { id: user.id, email: user.email, name: user.name, username: (user as any).username } },
         } as ApiResponse);
       } catch (err) {
         if (err instanceof z.ZodError) {

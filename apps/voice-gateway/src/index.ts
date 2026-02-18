@@ -1,4 +1,5 @@
 import * as WebSocket from "ws";
+// @ts-ignore - uuid types
 import { v4 as uuidv4 } from "uuid";
 import { env } from "./env";
 import { logger } from "./logger";

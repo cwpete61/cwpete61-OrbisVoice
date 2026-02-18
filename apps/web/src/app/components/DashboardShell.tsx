@@ -1,6 +1,9 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import ProfileMenu from "./ProfileMenu";
+import UserInfoCard from "./UserInfoCard";
 
 const NAV = [
   {
@@ -50,10 +53,39 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    href: "/users",
+    label: "Users",
+    icon: (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+        <path d="M16 3.13a4 4 0 010 7.75" />
+      </svg>
+    ),
+  },
+  {
+    href: "/affiliates",
+    label: "Affiliates",
+    icon: (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M16 8l3-3m-3 11l3 3m-11-3l-3 3m3-11L5 5" />
+      </svg>
+    ),
+  },
 ];
 
-export default function DashboardShell({ children }: { children: React.ReactNode }) {
+export default function DashboardShell({ children, tokenLoaded = true }: { children: React.ReactNode; tokenLoaded?: boolean }) {
   const path = usePathname();
+  const router = useRouter();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/");
+  };
 
   return (
     <div className="flex min-h-screen bg-[#05080f] text-[#f0f4fa]">
@@ -87,16 +119,17 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         </nav>
 
         {/* Logout */}
-        <div className="border-t border-white/[0.06] px-3 py-4">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[rgba(240,244,250,0.4)] hover:text-[rgba(240,244,250,0.7)] transition"
+        <div className="border-t border-white/[0.06] px-3 py-2">
+          <UserInfoCard onProfileClick={() => setShowProfileMenu(true)} tokenLoaded={tokenLoaded} />
+          <button
+            onClick={handleLogout}
+            className="mt-3 flex items-center gap-3 rounded-lg px-3 py-2.5 w-full text-xs text-[rgba(240,244,250,0.4)] hover:text-[rgba(240,244,250,0.7)] hover:bg-white/[0.02] transition"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
             </svg>
-            Log out
-          </Link>
+            <span>Log out</span>
+          </button>
         </div>
       </aside>
 
@@ -104,6 +137,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       <div className="flex flex-1 flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+
+      {/* Profile Menu Modal */}
+      {showProfileMenu && (
+        <ProfileMenu onClose={() => setShowProfileMenu(false)} />
+      )}
     </div>
   );
 }

@@ -2,12 +2,12 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
-import { authenticate } from "../middleware/auth";
+import { requireNotBlocked } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 
 export async function statsRoutes(fastify: FastifyInstance) {
   // Get dashboard stats for tenant
-  fastify.get("/stats/dashboard", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
+  fastify.get("/stats/dashboard", { onRequest: [requireNotBlocked] }, async (request: FastifyRequest, reply) => {
     try {
       const tenantId = (request as any).user.tenantId;
 
@@ -74,7 +74,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
   // Get agent-specific stats
   fastify.get<{ Params: { agentId: string } }>(
     "/stats/agents/:agentId",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { agentId } = request.params as { agentId: string };

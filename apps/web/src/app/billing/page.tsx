@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import DashboardShell from "../components/DashboardShell";
+import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
 interface TierInfo {
   conversations: number;
@@ -41,10 +43,15 @@ export default function BillingPage() {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [billingEmail, setBillingEmail] = useState("");
 
+  // Extract token from URL if present (from OAuth callback)
+  const tokenLoaded = useTokenFromUrl();
+
   useEffect(() => {
-    fetchSubscription();
-    fetchAvailableTiers();
-  }, []);
+    if (tokenLoaded) {
+      fetchSubscription();
+      fetchAvailableTiers();
+    }
+  }, [tokenLoaded]);
 
   const fetchSubscription = async () => {
     try {
@@ -136,25 +143,37 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-base p-6">
-        <div className="ov-container pt-8">
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="px-8 py-8">
           <div className="text-center py-12">
-            <p className="text-text-secondary">Loading billing information...</p>
+            <p className="text-[rgba(240,244,250,0.5)]">Loading billing information...</p>
           </div>
         </div>
-      </div>
+      </DashboardShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="px-8 py-8">
+          <div className="text-center py-12">
+            <p className="text-red-500">{error}</p>
+          </div>
+        </div>
+      </DashboardShell>
     );
   }
 
   if (!subscription || !availableTiers) {
     return (
-      <div className="min-h-screen bg-base p-6">
-        <div className="ov-container pt-8">
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="px-8 py-8">
           <div className="text-center py-12">
-            <p className="text-red-500">{error || "Failed to load billing information"}</p>
+            <p className="text-[rgba(240,244,250,0.5)]">Loading billing information...</p>
           </div>
         </div>
-      </div>
+      </DashboardShell>
     );
   }
 
@@ -163,102 +182,73 @@ export default function BillingPage() {
   const isOverLimit = usagePercent >= 100;
 
   return (
-    <div className="min-h-screen bg-base">
-      {/* Navigation */}
-      <nav className="border-b border-border bg-surface">
-        <div className="ov-container py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-text-primary">Billing & Usage</h1>
-              <p className="text-sm text-text-secondary mt-1">
-                Manage your subscription and monitor usage
-              </p>
-            </div>
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="btn-secondary"
-            >
-              ← Dashboard
-            </button>
-          </div>
+    <DashboardShell tokenLoaded={tokenLoaded}>
+      <div className="px-8 py-8">
+        {/* Page header */}
+        <div className="mb-8">
+          <h1 className="text-xl font-bold text-[#f0f4fa]">Billing & Usage</h1>
+          <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">
+            Manage your subscription and monitor usage
+          </p>
         </div>
-      </nav>
-
-      <div className="ov-container py-8 space-y-8">
-        {error && (
-          <div className="ov-card p-4 border-l-4 border-red-500">
-            <p className="text-red-500">{error}</p>
-          </div>
-        )}
 
         {/* Current Subscription */}
-        <section className="ov-card p-6">
-          <h2 className="text-lg font-bold text-text-primary mb-4">Current Subscription</h2>
+        <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 mb-8">
+          <h2 className="text-lg font-bold text-[#f0f4fa] mb-4">Current Subscription</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <p className="text-sm text-text-dim mb-1">Plan</p>
-              <p className="text-2xl font-bold text-teal capitalize">{currentTier}</p>
-              <p className="text-sm text-text-secondary mt-1">
+              <p className="text-sm text-[rgba(240,244,250,0.4)] mb-1">Plan</p>
+              <p className="text-2xl font-bold text-[#14b8a6] capitalize">{currentTier}</p>
+              <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
                 ${availableTiers[currentTier].price}/month
               </p>
             </div>
             <div>
-              <p className="text-sm text-text-dim mb-1">Status</p>
-              <p className="text-lg font-semibold text-text-primary capitalize">
+              <p className="text-sm text-[rgba(240,244,250,0.4)] mb-1">Status</p>
+              <p className="text-lg font-semibold text-[#f0f4fa] capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
               {subscription.subscriptionEnds && (
-                <p className="text-sm text-text-secondary mt-1">
+                <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
                   Renews {new Date(subscription.subscriptionEnds).toLocaleDateString()}
                 </p>
               )}
             </div>
             <div>
-              <p className="text-sm text-text-dim mb-1">Billing Email</p>
-              <p className="text-text-primary">{subscription.billingEmail || "Not set"}</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Usage Stats */}
-        <section className="ov-card p-6">
-          <h2 className="text-lg font-bold text-text-primary mb-4">Usage This Month</h2>
-          
-          <div className="space-y-4">
-            <div>
+              <p className="text-sm text-[rgba(240,244,250,0.4)] mb-1">Usage</p>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-text-secondary">Conversations</span>
-                <span className={isOverLimit ? "text-red-500 font-bold" : "text-text-primary"}>
+                <span className="text-[rgba(240,244,250,0.5)]">Conversations</span>
+                <span className={isOverLimit ? "text-red-500 font-bold" : "text-[#f0f4fa]"}>
                   {subscription.usageCount} / {subscription.usageLimit}
                 </span>
               </div>
-              <div className="h-3 bg-surface-2 rounded-full overflow-hidden">
+              <div className="h-3 bg-[#080c16] rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all ${
-                    isOverLimit ? "bg-red-500" : "bg-teal"
+                    isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
                   }`}
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-text-dim mt-1">
+              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-1">
                 Resets on {new Date(subscription.usageResetAt).toLocaleDateString()}
               </p>
             </div>
-
-            {isOverLimit && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                <p className="text-red-500 font-semibold">⚠️ Usage Limit Exceeded</p>
-                <p className="text-sm text-text-secondary mt-1">
-                  Upgrade your plan to continue creating conversations
-                </p>
-              </div>
-            )}
           </div>
+
+          {isOverLimit && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
+              <p className="text-red-500 font-semibold">⚠️ Usage Limit Exceeded</p>
+              <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
+                Upgrade your plan to continue creating conversations
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Available Plans */}
         <section>
-          <h2 className="text-lg font-bold text-text-primary mb-4">Available Plans</h2>
+          <h2 className="text-lg font-bold text-[#f0f4fa] mb-4">Available Plans</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.entries(availableTiers).map(([tier, info]) => {
               const isCurrent = tier === currentTier;
@@ -267,25 +257,25 @@ export default function BillingPage() {
               return (
                 <div
                   key={tier}
-                  className={`ov-card p-6 ${
-                    isCurrent ? "border-2 border-teal" : ""
+                  className={`rounded-2xl border bg-[#0c111d] p-6 ${
+                    isCurrent ? "border-[#14b8a6]" : "border-white/[0.07]"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-bold text-text-primary capitalize">{tier}</h3>
+                    <h3 className="text-lg font-bold text-[#f0f4fa] capitalize">{tier}</h3>
                     {isCurrent && (
-                      <span className="label text-xs">Current</span>
+                      <span className="px-2 py-0.5 text-xs rounded-md bg-[#14b8a6]/10 text-[#14b8a6] border border-[#14b8a6]/20">Current</span>
                     )}
                   </div>
-                  <p className="text-3xl font-bold text-teal mb-2">${info.price}</p>
-                  <p className="text-sm text-text-dim mb-4">per month</p>
-                  <p className="text-text-secondary mb-6">
+                  <p className="text-3xl font-bold text-[#14b8a6] mb-2">${info.price}</p>
+                  <p className="text-sm text-[rgba(240,244,250,0.4)] mb-4">per month</p>
+                  <p className="text-[rgba(240,244,250,0.5)] mb-6">
                     {info.conversations.toLocaleString()} conversations/month
                   </p>
                   {!isCurrent && (
                     <button
                       onClick={() => setSelectedTier(tier)}
-                      className={isUpgrade ? "btn-primary w-full" : "btn-secondary w-full"}
+                      className={isUpgrade ? "btn-primary w-full" : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
                     >
                       {isUpgrade ? "Upgrade" : "Downgrade"}
                     </button>
@@ -293,7 +283,7 @@ export default function BillingPage() {
                   {isCurrent && subscription.subscriptionStatus === "active" && tier !== "free" && (
                     <button
                       onClick={handleCancel}
-                      className="btn-secondary w-full"
+                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"
                     >
                       Cancel Plan
                     </button>
@@ -307,22 +297,22 @@ export default function BillingPage() {
         {/* Upgrade Modal */}
         {selectedTier && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="ov-card p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold text-text-primary mb-4">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 max-w-md w-full">
+              <h3 className="text-lg font-bold text-[#f0f4fa] mb-4">
                 Change to {selectedTier} Plan
               </h3>
               <div className="space-y-4">
                 <div>
-                  <label className="label block mb-2">Billing Email</label>
+                  <label className="text-xs font-medium text-[rgba(240,244,250,0.5)] uppercase tracking-wide block mb-2">Billing Email</label>
                   <input
                     type="email"
                     value={billingEmail}
                     onChange={(e) => setBillingEmail(e.target.value)}
-                    className="w-full px-4 py-2 bg-surface-2 border border-border rounded-lg text-text-primary focus:outline-none focus:border-teal"
+                    className="w-full px-4 py-2 bg-[#080c16] border border-white/[0.07] rounded-lg text-[#f0f4fa] focus:outline-none focus:border-[#14b8a6]"
                     placeholder="billing@company.com"
                   />
                 </div>
-                <p className="text-sm text-text-secondary">
+                <p className="text-sm text-[rgba(240,244,250,0.5)]">
                   You'll be charged ${availableTiers[selectedTier as keyof TierLimits].price}/month
                 </p>
                 <div className="flex gap-3">
@@ -334,7 +324,7 @@ export default function BillingPage() {
                   </button>
                   <button
                     onClick={() => setSelectedTier(null)}
-                    className="btn-secondary flex-1"
+                    className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex-1"
                   >
                     Cancel
                   </button>
@@ -344,6 +334,6 @@ export default function BillingPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

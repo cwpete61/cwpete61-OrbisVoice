@@ -11,7 +11,10 @@ export interface User {
   tenantId: string;
   email: string;
   name: string;
-  passwordHash: string;
+  username?: string;
+  passwordHash?: string | null;
+  isAdmin?: boolean;
+  role?: "ADMIN" | "USER";
   createdAt: Date;
   updatedAt: Date;
 }

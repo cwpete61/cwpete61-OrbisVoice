@@ -3,14 +3,14 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
-import { authenticate } from "../middleware/auth";
+import { requireNotBlocked } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 
 export async function transcriptRoutes(fastify: FastifyInstance) {
   // Get conversation history for agent
   fastify.get<{ Params: { agentId: string }; Querystring: { limit?: string; offset?: string } }>(
     "/agents/:agentId/transcripts",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { agentId } = request.params as { agentId: string };
@@ -64,7 +64,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
   // Get transcript details
   fastify.get<{ Params: { transcriptId: string } }>(
     "/transcripts/:transcriptId",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { transcriptId } = request.params as { transcriptId: string };
@@ -107,10 +107,10 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
   // Create transcript (internal use)
   fastify.post<{ Body: { agentId: string; userId?: string; content: string; duration: number } }>(
     "/transcripts",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
-        const body = request.body;
+        const body = request.body as any;
         const tenantId = (request as any).user.tenantId;
         const userId = (request as any).user.userId;
 
@@ -152,7 +152,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
   // Delete transcript
   fastify.delete<{ Params: { transcriptId: string } }>(
     "/transcripts/:transcriptId",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { transcriptId } = request.params as { transcriptId: string };

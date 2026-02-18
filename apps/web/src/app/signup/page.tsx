@@ -9,28 +9,48 @@ import Footer from "../components/Footer";
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, password }),
+        body: JSON.stringify({ email, name, username, password }),
       });
+      const data = await res.json();
       if (res.ok) {
+        localStorage.setItem("token", data.data.token);
         router.push("/dashboard");
       } else {
-        alert("Signup failed");
+        setError(data.message || "Signup failed");
       }
     } catch (err) {
-      alert("Error: " + String(err));
+      setError("Error: " + String(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    setError("");
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/url`);
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = data.data.url;
+      } else {
+        setError(data.message || "Google sign-up unavailable");
+      }
+    } catch (err) {
+      setError("Error: " + String(err));
     }
   };
 
@@ -49,6 +69,24 @@ export default function SignupPage() {
 
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8">
             <form onSubmit={handleSignup} className="space-y-4">
+              {error && (
+                <div className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 p-3 text-sm text-[#f97316]">
+                  {error}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleGoogleSignup}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition"
+              >
+                <span className="text-base">G</span>
+                Continue with Google
+              </button>
+              <div className="flex items-center gap-3 text-xs text-[rgba(240,244,250,0.35)]">
+                <div className="h-px flex-1 bg-white/[0.06]" />
+                or
+                <div className="h-px flex-1 bg-white/[0.06]" />
+              </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Full name</label>
                 <input
@@ -59,6 +97,19 @@ export default function SignupPage() {
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
                   required
                 />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Username</label>
+                <input
+                  type="text"
+                  placeholder="jane_smith"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
+                  minLength={3}
+                  required
+                />
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">3+ characters, letters, numbers, underscore, hyphen</p>
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Work email</label>

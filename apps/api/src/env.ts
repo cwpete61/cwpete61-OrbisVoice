@@ -1,8 +1,8 @@
 import { z } from "zod";
 import dotenv from "dotenv";
 
-// Load .env.local file
-dotenv.config({ path: ".env.local" });
+// Load .env file
+dotenv.config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -29,6 +29,10 @@ const envSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_PHONE_NUMBER: z.string().optional(),
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_REDIRECT_URI: z.string().optional(),
 });
 
 const parsed = envSchema.parse(process.env);

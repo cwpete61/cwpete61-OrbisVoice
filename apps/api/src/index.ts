@@ -11,11 +11,13 @@ import { statsRoutes } from "./routes/stats";
 import { referralRoutes } from "./routes/referrals";
 import { auditRoutes } from "./routes/audit";
 import billingRoutes from "./routes/billing";
+import userRoutes from "./routes/users";
+import googleAuthRoutes from "./routes/google-auth";
 import { sessionManager } from "./services/session";
 import { registerToolHandlers } from "./tools/handlers";
 
 const fastify = Fastify({
-  logger: logger.child({ context: "fastify" }),
+  logger: logger.child({ context: "fastify" }) as any,
 });
 
 // Register CORS
@@ -48,13 +50,19 @@ fastify.register(auditRoutes);
 fastify.register(agentRoutes);
 fastify.register(apiKeyRoutes);
 fastify.register(billingRoutes);
+fastify.register(userRoutes);
+fastify.register(googleAuthRoutes);
 
 // Start server
 const start = async () => {
   try {
-    // Initialize session manager
-    await sessionManager.initialize(env.REDIS_URL);
-    logger.info("Session manager initialized");
+    // Initialize session manager (optional - continue if unavailable)
+    try {
+      await sessionManager.initialize(env.REDIS_URL);
+      logger.info("Session manager initialized");
+    } catch (err) {
+      logger.warn({ err }, "Session manager unavailable - continuing without Redis");
+    }
 
     // Register tool handlers
     registerToolHandlers();

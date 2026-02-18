@@ -3,14 +3,8 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
-import { authenticate } from "../middleware/auth";
+import { requireNotBlocked } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
-
-declare module "fastify" {
-  interface FastifyRequest {
-    user?: { userId: string; tenantId: string; email: string };
-  }
-}
 
 const CreateAgentSchema = z.object({
   name: z.string().min(1),
@@ -22,7 +16,7 @@ const UpdateAgentSchema = CreateAgentSchema.partial();
 
 export async function agentRoutes(fastify: FastifyInstance) {
   // List agents for tenant
-  fastify.get("/agents", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
+  fastify.get("/agents", { onRequest: [requireNotBlocked] }, async (request: FastifyRequest, reply) => {
     try {
       const tenantId = (request as any).user.tenantId;
       const agents = await prisma.agent.findMany({
@@ -45,7 +39,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
   // Create agent
   fastify.post<{ Body: z.infer<typeof CreateAgentSchema> }>(
     "/agents",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const body = CreateAgentSchema.parse(request.body);
@@ -55,10 +49,9 @@ export async function agentRoutes(fastify: FastifyInstance) {
         const agent = await prisma.agent.create({
           data: {
             tenantId,
-            createdBy: userId,
             name: body.name,
             systemPrompt: body.systemPrompt,
-            voiceModel: body.voiceModel || "default",
+            voiceId: body.voiceModel || "default",
           },
         });
 
@@ -88,7 +81,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
   // Get agent by ID
   fastify.get<{ Params: { id: string } }>(
     "/agents/:id",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
@@ -122,7 +115,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
   // Update agent
   fastify.put<{ Params: { id: string }; Body: z.infer<typeof UpdateAgentSchema> }>(
     "/agents/:id",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
@@ -167,7 +160,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
   // Delete agent
   fastify.delete<{ Params: { id: string } }>(
     "/agents/:id",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };

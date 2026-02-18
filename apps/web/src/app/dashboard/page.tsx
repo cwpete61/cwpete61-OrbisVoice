@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import AgentForm from "../../components/AgentForm";
 import DashboardShell from "../components/DashboardShell";
+import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
 export default function DashboardPage() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -12,10 +13,21 @@ export default function DashboardPage() {
   const [editingAgent, setEditingAgent] = useState<any>(null);
   const [stats, setStats] = useState({ totalAgents: 0, totalConversations: 0, avgDuration: 0 });
 
+  // Extract token from URL if present (from OAuth callback)
+  const tokenLoaded = useTokenFromUrl();
+
+  const getAuthHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem("token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   useEffect(() => {
-    fetchAgents();
-    fetchStats();
-  }, []);
+    // Only fetch data after token has been processed
+    if (tokenLoaded) {
+      fetchAgents();
+      fetchStats();
+    }
+  }, [tokenLoaded]);
 
   const fetchStats = async () => {
     // TODO: Create stats endpoint in API
@@ -29,7 +41,11 @@ export default function DashboardPage() {
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setAgents(data.data || []);
@@ -45,7 +61,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(data),
       });
 
@@ -66,7 +82,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${editingAgent.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(data),
       });
 
@@ -89,6 +105,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
         method: "DELETE",
+        headers: { ...getAuthHeaders() },
       });
 
       if (res.ok) {
@@ -103,7 +120,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <DashboardShell>
+    <DashboardShell tokenLoaded={tokenLoaded}>
       <div className="px-8 py-8">
         {/* Page header */}
         <div className="mb-8 flex items-center justify-between">

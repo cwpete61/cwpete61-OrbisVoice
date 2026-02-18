@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
-import { authenticate } from "../middleware/auth";
+import { requireNotBlocked } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 import { toolAuditLogger } from "../services/audit";
 import { prisma } from "../db";
@@ -10,7 +10,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
   // Get audit logs for an agent
   fastify.get<{ Params: { agentId: string } }>(
     "/agents/:agentId/audit-logs",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { agentId } = request.params as { agentId: string };
@@ -53,7 +53,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
   // Get tool execution stats for an agent
   fastify.get<{ Params: { agentId: string } }>(
     "/agents/:agentId/tool-stats",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { agentId } = request.params as { agentId: string };
@@ -94,7 +94,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
   // Get a specific audit log entry
   fastify.get<{ Params: { logId: string } }>(
     "/audit-logs/:logId",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const { logId } = request.params as { logId: string };
@@ -141,7 +141,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
   // Get tenant-wide tool execution summary
   fastify.get(
     "/audit-summary",
-    { onRequest: [authenticate] },
+    { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
         const tenantId = (request as any).user.tenantId;

@@ -10,10 +10,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
@@ -21,15 +23,32 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      const data = await res.json();
       if (res.ok) {
+        localStorage.setItem("token", data.data.token);
         router.push("/dashboard");
       } else {
-        alert("Login failed");
+        setError(data.message || "Login failed");
       }
     } catch (err) {
-      alert("Error: " + String(err));
+      setError("Error: " + String(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError("");
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/url`);
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = data.data.url;
+      } else {
+        setError(data.message || "Google sign-in unavailable");
+      }
+    } catch (err) {
+      setError("Error: " + String(err));
     }
   };
 
@@ -48,6 +67,24 @@ export default function LoginPage() {
 
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8">
             <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <div className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 p-3 text-sm text-[#f97316]">
+                  {error}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition"
+              >
+                <span className="text-base">G</span>
+                Continue with Google
+              </button>
+              <div className="flex items-center gap-3 text-xs text-[rgba(240,244,250,0.35)]">
+                <div className="h-px flex-1 bg-white/[0.06]" />
+                or
+                <div className="h-px flex-1 bg-white/[0.06]" />
+              </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Email</label>
                 <input
