@@ -95,7 +95,7 @@ const sendMessageHandler: ToolHandler = async (input, context) => {
 
         const messageId = await gmail.sendEmail(accessToken, {
           to: input.to || context.userId,
-          subject: input.subject || "Message from OrbisVoice",
+          subject: input.subject || "Message from MyOrbisVoice",
           body: input.message,
         });
 

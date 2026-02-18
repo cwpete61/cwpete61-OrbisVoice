@@ -8,6 +8,7 @@ import { PhoneTonesAgent } from "./PhoneTonesAgent";
 import { ProductAgent } from "./ProductAgent";
 import { StripeAgent } from "./StripeAgent";
 import { TwilioAgent } from "./TwilioAgent";
+import { UXUIAgent } from "./UXUIAgent";
 
 export const createAgents = (): Agent[] => [
   new CommunicationAgent(),
@@ -19,4 +20,5 @@ export const createAgents = (): Agent[] => [
   new StripeAgent(),
   new PhoneTonesAgent(),
   new TwilioAgent(),
+  new UXUIAgent(),
 ];

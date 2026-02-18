@@ -21,7 +21,7 @@ export async function referralRoutes(fastify: FastifyInstance) {
         message: "Referral code retrieved",
         data: {
           code,
-          shareUrl: `https://orbisvoice.com/?ref=${code}`,
+          shareUrl: `https://myorbisvoice.com/?ref=${code}`,
         },
       } as ApiResponse);
     } catch (err) {

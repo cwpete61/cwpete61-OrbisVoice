@@ -1,4 +1,8 @@
 import { z } from "zod";
+import dotenv from "dotenv";
+
+// Load .env.local file
+dotenv.config({ path: ".env.local" });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -27,4 +31,10 @@ const envSchema = z.object({
   TWILIO_PHONE_NUMBER: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+const parsed = envSchema.parse(process.env);
+
+// Parse CORS_ORIGINS into an array
+export const env = {
+  ...parsed,
+  CORS_ORIGINS: parsed.CORS_ORIGINS.split(',').map(o => o.trim()),
+};
