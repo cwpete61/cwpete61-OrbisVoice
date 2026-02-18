@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { db } from "../db";
-import { requireAuth } from "../middleware/auth";
+import { prisma } from "../db";
+import { authenticate } from "../middleware/auth";
 import { z } from "zod";
 
 // Subscription tier pricing
@@ -26,11 +26,11 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // Get tenant subscription info
   fastify.get(
     "/billing/subscription",
-    { preHandler: [requireAuth] },
+    { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
 
-      const tenant = await db.tenant.findUnique({
+      const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
           id: true,
@@ -72,7 +72,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // Create or upgrade subscription
   fastify.post(
     "/billing/subscription",
-    { preHandler: [requireAuth] },
+    { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
       
@@ -93,7 +93,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-      const updated = await db.tenant.update({
+      const updated = await prisma.tenant.update({
         where: { id: tenantId },
         data: {
           subscriptionTier: tier,
@@ -115,12 +115,12 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // Cancel subscription
   fastify.delete(
     "/billing/subscription",
-    { preHandler: [requireAuth] },
+    { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
 
       // In production, this would cancel the Stripe subscription
-      const updated = await db.tenant.update({
+      const updated = await prisma.tenant.update({
         where: { id: tenantId },
         data: {
           subscriptionStatus: "canceled",
@@ -138,7 +138,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // Track usage (called when a conversation is created)
   fastify.post(
     "/billing/usage",
-    { preHandler: [requireAuth] },
+    { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
       
@@ -152,7 +152,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
       const { count } = validation.data;
 
-      const tenant = await db.tenant.findUnique({
+      const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
           usageCount: true,
@@ -190,7 +190,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
         };
       }
 
-      const updated = await db.tenant.update({
+      const updated = await prisma.tenant.update({
         where: { id: tenantId },
         data: resetData,
       });
@@ -208,7 +208,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
   // Get usage history (last 30 days)
   fastify.get(
     "/billing/usage/history",
-    { preHandler: [requireAuth] },
+    { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
 
@@ -216,7 +216,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const transcripts = await db.transcript.groupBy({
+      const transcripts = await prisma.transcript.groupBy({
         by: ["createdAt"],
         where: {
           agent: {
@@ -231,7 +231,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
       // Group by date
       const usageByDay: Record<string, number> = {};
-      transcripts.forEach((record) => {
+      transcripts.forEach((record: any) => {
         const date = record.createdAt.toISOString().split("T")[0];
         usageByDay[date] = (usageByDay[date] || 0) + record._count;
       });
