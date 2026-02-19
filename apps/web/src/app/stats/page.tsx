@@ -39,22 +39,33 @@ export default function StatsPage() {
   async function fetchStats() {
     try {
       setLoading(true);
+      setError("");
       const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stats/dashboard`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      if (res.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+
       if (!res.ok) {
-        throw new Error("Failed to fetch stats");
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to fetch stats");
       }
 
       const data = await res.json();
       setDashboardStats(data.data);
-    } catch (err) {
-      setError("Failed to load statistics");
-      console.error(err);
+    } catch (err: any) {
+      setError(err.message || "Failed to load statistics");
+      console.error("Stats fetch error:", err);
     } finally {
       setLoading(false);
     }

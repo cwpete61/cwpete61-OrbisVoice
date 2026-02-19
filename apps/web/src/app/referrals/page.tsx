@@ -33,15 +33,28 @@ export default function ReferralsPage() {
   async function fetchReferralData() {
     try {
       setLoading(true);
+      setError("");
       const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
+
       const headers = { Authorization: `Bearer ${token}` };
       const [codeRes, statsRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-code`, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-stats`, { headers }),
       ]);
 
+      if (codeRes.status === 401 || statsRes.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+
       if (!codeRes.ok || !statsRes.ok) {
-        throw new Error("Failed to fetch referral data");
+        const codeError = !codeRes.ok ? await codeRes.json() : null;
+        const statsError = !statsRes.ok ? await statsRes.json() : null;
+        const errorMsg = codeError?.message || statsError?.message || "Failed to fetch referral data";
+        throw new Error(errorMsg);
       }
 
       const codeData = await codeRes.json();
@@ -49,9 +62,9 @@ export default function ReferralsPage() {
 
       setReferralData(codeData.data);
       setStats(statsData.data);
-    } catch (err) {
-      setError("Failed to load referral data");
-      console.error(err);
+    } catch (err: any) {
+      setError(err.message || "Failed to load referral data");
+      console.error("Referral fetch error:", err);
     } finally {
       setLoading(false);
     }

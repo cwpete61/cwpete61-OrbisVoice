@@ -10,7 +10,7 @@ export async function referralRoutes(fastify: FastifyInstance) {
   // Get referral code for user
   fastify.get("/users/me/referral-code", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
     try {
-      const userId = (request as any).user.id;
+      const userId = (request as any).user.userId;
 
       // TODO: Check if user already has a referral code
       // For now, generate a new one
@@ -36,7 +36,7 @@ export async function referralRoutes(fastify: FastifyInstance) {
   // Get referral stats
   fastify.get("/users/me/referral-stats", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
     try {
-      const userId = (request as any).user.id;
+      const userId = (request as any).user.userId;
 
       const stats = await referralManager.getReferralStats(userId);
 
@@ -60,7 +60,7 @@ export async function referralRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.id;
+        const userId = (request as any).user.userId;
         const { referralCode } = request.body as { referralCode: string };
 
         if (!referralCode || referralCode.trim() === "") {
