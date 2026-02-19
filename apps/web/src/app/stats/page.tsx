@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
+import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
 interface DashboardStats {
   totalAgents: number;
@@ -27,15 +28,23 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const tokenLoaded = useTokenFromUrl();
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (tokenLoaded) {
+      fetchStats();
+    }
+  }, [tokenLoaded]);
 
   async function fetchStats() {
     try {
       setLoading(true);
-      const res = await fetch("/api/stats/dashboard");
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stats/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!res.ok) {
         throw new Error("Failed to fetch stats");
@@ -52,11 +61,19 @@ export default function StatsPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-12">Loading statistics...</div>;
+    return (
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="px-8 py-8">
+          <div className="text-center py-12">
+            <p className="text-[rgba(240,244,250,0.5)]">Loading statistics...</p>
+          </div>
+        </div>
+      </DashboardShell>
+    );
   }
 
   return (
-    <DashboardShell>
+    <DashboardShell tokenLoaded={tokenLoaded}>
       <div className="px-8 py-8">
         <div className="mb-8">
           <h1 className="text-xl font-bold text-[#f0f4fa]">Analytics</h1>

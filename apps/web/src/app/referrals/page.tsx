@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
+import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
 interface ReferralData {
   code: string;
@@ -21,17 +22,22 @@ export default function ReferralsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const tokenLoaded = useTokenFromUrl();
 
   useEffect(() => {
-    fetchReferralData();
-  }, []);
+    if (tokenLoaded) {
+      fetchReferralData();
+    }
+  }, [tokenLoaded]);
 
   async function fetchReferralData() {
     try {
       setLoading(true);
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
       const [codeRes, statsRes] = await Promise.all([
-        fetch("/api/users/me/referral-code"),
-        fetch("/api/users/me/referral-stats"),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-code`, { headers }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-stats`, { headers }),
       ]);
 
       if (!codeRes.ok || !statsRes.ok) {
@@ -58,7 +64,7 @@ export default function ReferralsPage() {
   }
 
   return (
-    <DashboardShell>
+    <DashboardShell tokenLoaded={tokenLoaded}>
       <div className="px-8 py-8">
 
         <div className="mb-8">
