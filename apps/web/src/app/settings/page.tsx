@@ -25,6 +25,13 @@ export default function SettingsPage() {
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarConnectUrl, setCalendarConnectUrl] = useState<string | null>(null);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailEmail, setGmailEmail] = useState<string | null>(null);
+  const [gmailVerified, setGmailVerified] = useState(false);
+  const [gmailConnectUrl, setGmailConnectUrl] = useState<string | null>(null);
+  const [gmailTesting, setGmailTesting] = useState(false);
+  const [gmailTestResult, setGmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -38,6 +45,7 @@ export default function SettingsPage() {
     fetchApiKeys();
     fetchProfile();
     checkCalendarConnection();
+    checkGmailConnection();
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -224,6 +232,104 @@ export default function SettingsPage() {
     }
   };
 
+  const checkGmailConnection = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGmailConnected(!!data.data?.connected);
+        setGmailEmail(data.data?.gmailEmail || null);
+        setGmailVerified(data.data?.verified || false);
+      }
+    } catch (err) {
+      console.error("Failed to check Gmail connection:", err);
+    }
+  };
+
+  const handleConnectGmail = async () => {
+    try {
+      setGmailLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/gmail-url`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data?.url) {
+          setGmailConnectUrl(data.data.url);
+          // Redirect to Google OAuth for Gmail access
+          window.location.href = data.data.url;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to get Gmail connect URL:", err);
+    } finally {
+      setGmailLoading(false);
+    }
+  };
+
+  const handleVerifyGmail = async () => {
+    setGmailTesting(true);
+    setGmailTestResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/verify`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setGmailTestResult({
+          success: true,
+          message: `Gmail connection verified! Email: ${data.data?.gmailEmail}`,
+        });
+        setGmailVerified(true);
+        setGmailEmail(data.data?.gmailEmail);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        setGmailTestResult({
+          success: false,
+          message: errorData.message || "Verification failed",
+        });
+      }
+    } catch (err: any) {
+      setGmailTestResult({
+        success: false,
+        message: `Verification failed: ${err.message || "Unknown error"}`,
+      });
+    } finally {
+      setGmailTesting(false);
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    if (!confirm("Are you sure you want to disconnect your Gmail account?")) return;
+    
+    try {
+      setGmailLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setGmailConnected(false);
+        setGmailEmail(null);
+        setGmailVerified(false);
+      }
+    } catch (err) {
+      console.error("Failed to disconnect Gmail:", err);
+    } finally {
+      setGmailLoading(false);
+    }
+  };
+
 
 
   const handleCreateKey = async (e: React.FormEvent) => {
@@ -315,6 +421,19 @@ export default function SettingsPage() {
             }`}
           >
             Calendar
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("gmail");
+              checkGmailConnection();
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "gmail"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
+          >
+            Gmail
           </button>
         </div>
 
@@ -539,6 +658,94 @@ export default function SettingsPage() {
                 <li className="flex items-start gap-2">
                   <span className="text-[#14b8a6] mt-1">✓</span>
                   <span>Prevents double-booking by checking real-time availability</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Gmail Connection */}
+        {activeTab === "gmail" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Gmail Account</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Connect your Gmail account to enable voice automation to send emails and manage your inbox.
+            </p>
+
+            <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5 mb-6">
+              {gmailConnected ? (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`h-3 w-3 rounded-full ${gmailVerified ? "bg-[#14b8a6]" : "bg-[#f59e0b]"}`} />
+                      <span className="text-sm text-[rgba(240,244,250,0.75)]">
+                        {gmailVerified ? "Gmail is verified and connected" : "Gmail connected but not verified"}
+                      </span>
+                    </div>
+                    {gmailEmail && (
+                      <p className="text-xs text-[rgba(240,244,250,0.45)] ml-5">{gmailEmail}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleVerifyGmail}
+                      disabled={gmailTesting}
+                      className="flex-1 btn-primary text-sm disabled:opacity-50"
+                    >
+                      {gmailTesting ? "Testing…" : "Test Connectivity"}
+                    </button>
+                    <button
+                      onClick={handleDisconnectGmail}
+                      disabled={gmailLoading}
+                      className="flex-1 rounded-lg border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2 text-sm font-medium text-[#ef4444] transition hover:border-[#ef4444]/50 hover:bg-[#ef4444]/15 disabled:opacity-50"
+                    >
+                      {gmailLoading ? "Disconnecting…" : "Disconnect"}
+                    </button>
+                  </div>
+
+                  {gmailTestResult && (
+                    <div
+                      className={`rounded-lg border px-4 py-3 text-sm ${
+                        gmailTestResult.success
+                          ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                          : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                      }`}
+                    >
+                      {gmailTestResult.message}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-[rgba(240,244,250,0.55)]">
+                    No Gmail account connected yet. Click the button below to authorize your Gmail account.
+                  </p>
+                  <button
+                    onClick={handleConnectGmail}
+                    disabled={gmailLoading}
+                    className="w-full btn-primary text-sm disabled:opacity-50"
+                  >
+                    {gmailLoading ? "Connecting…" : "Connect Gmail Account"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-4">
+              <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">What this enables:</p>
+              <ul className="space-y-2 text-xs text-[rgba(240,244,250,0.45)]">
+                <li className="flex items-start gap-2">
+                  <span className="text-[#14b8a6] mt-1">✓</span>
+                  <span>Voice AI can send emails on your behalf</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#14b8a6] mt-1">✓</span>
+                  <span>Automatic email responses and follow-ups</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#14b8a6] mt-1">✓</span>
+                  <span>Read and process incoming emails for automation</span>
                 </li>
               </ul>
             </div>

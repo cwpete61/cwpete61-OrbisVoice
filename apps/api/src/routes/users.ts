@@ -967,4 +967,163 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Get Gmail connection status for current user
+  fastify.get(
+    "/users/me/gmail",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        const creds = await prisma.gmailCredentials.findUnique({
+          where: {
+            userId_tenantId: {
+              userId,
+              tenantId,
+            },
+          },
+          select: {
+            id: true,
+            gmailEmail: true,
+            verified: true,
+            createdAt: true,
+            expiresAt: true,
+          },
+        }) as any;
+
+        return reply.send({
+          ok: true,
+          data: {
+            connected: !!creds,
+            ...creds,
+          },
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to get Gmail status");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Disconnect user's Gmail
+  fastify.delete(
+    "/users/me/gmail",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        await prisma.gmailCredentials.deleteMany({
+          where: {
+            userId,
+            tenantId,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          message: "Gmail disconnected",
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to disconnect Gmail");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Verify Gmail connectivity
+  fastify.post(
+    "/users/me/gmail/verify",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        const creds = await prisma.gmailCredentials.findUnique({
+          where: {
+            userId_tenantId: {
+              userId,
+              tenantId,
+            },
+          },
+        }) as any;
+
+        if (!creds) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Gmail not connected",
+          } as ApiResponse);
+        }
+
+        try {
+          // Test access by making a simple API call to Gmail
+          const response = await fetch(
+            "https://www.googleapis.com/gmail/v1/users/me/profile",
+            {
+              headers: {
+                Authorization: `Bearer ${creds.accessToken}`,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Token might be expired, mark as not verified
+              await prisma.gmailCredentials.update({
+                where: { id: creds.id },
+                data: { verified: false },
+              });
+              return reply.code(401).send({
+                ok: false,
+                message: "Gmail token expired. Please reconnect.",
+              } as ApiResponse);
+            }
+            throw new Error(`Gmail API returned ${response.status}`);
+          }
+
+          const profile = await response.json();
+
+          // Update verified status
+          await prisma.gmailCredentials.update({
+            where: { id: creds.id },
+            data: {
+              verified: true,
+              gmailEmail: profile.emailAddress || creds.gmailEmail,
+            },
+          });
+
+          return reply.send({
+            ok: true,
+            message: "Gmail connection verified successfully",
+            data: {
+              gmailEmail: profile.emailAddress || creds.gmailEmail,
+              verified: true,
+            },
+          } as ApiResponse);
+        } catch (err) {
+          fastify.log.error({ err }, "Gmail verification failed");
+          return reply.code(400).send({
+            ok: false,
+            message: "Gmail verification failed",
+          } as ApiResponse);
+        }
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to verify Gmail");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
 }

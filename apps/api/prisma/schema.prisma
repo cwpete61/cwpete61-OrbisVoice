@@ -152,3 +152,19 @@ model CalendarCredentials {
   @@unique([userId, tenantId])
 }
 
+model GmailCredentials {
+  id String @id @default(cuid())
+  userId String
+  tenantId String
+  accessToken String @db.Text
+  refreshToken String? @db.Text
+  expiresAt DateTime?
+  gmailEmail String?
+  scope String?
+  verified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId])
+}
+

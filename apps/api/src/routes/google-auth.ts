@@ -486,4 +486,192 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Get Google Gmail authorization URL for authenticated users
+  fastify.get(
+    "/auth/google/gmail-url",
+    { onRequest: [authenticate] },
+    async (request, reply) => {
+      try {
+        const userId = (request as any).user?.userId;
+        if (!userId) {
+          return reply.code(401).send({
+            ok: false,
+            message: "Unauthorized",
+          } as ApiResponse);
+        }
+
+        const googleConfig = await getGoogleConfig();
+        if (!googleConfig.clientId || !googleConfig.enabled) {
+          return reply.code(503).send({
+            ok: false,
+            message: "Google OAuth not configured",
+          } as ApiResponse);
+        }
+
+        const redirectUrl = googleConfig.redirectUri;
+        const scopes = [
+          "https://www.googleapis.com/auth/gmail.readonly",
+          "https://www.googleapis.com/auth/gmail.send",
+          "https://www.googleapis.com/auth/userinfo.email",
+        ];
+
+        const client = new OAuth2Client(
+          googleConfig.clientId,
+          googleConfig.clientSecret,
+          redirectUrl
+        );
+
+        const state = JSON.stringify({
+          type: "gmail",
+          userId,
+          timestamp: Date.now(),
+        });
+
+        const url = client.generateAuthUrl({
+          client_id: googleConfig.clientId,
+          redirect_uri: redirectUrl,
+          access_type: "offline",
+          scope: scopes,
+          state: Buffer.from(state).toString("base64"),
+        });
+
+        return reply.send({
+          ok: true,
+          data: { url },
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Error generating Gmail auth URL");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Handle Gmail authorization callback
+  fastify.post<{ Body: { code: string; state: string } }>(
+    "/auth/google/gmail/callback",
+    { onRequest: [authenticate] },
+    async (request, reply) => {
+      try {
+        const { code, state } = request.body;
+        const userId = (request as any).user?.userId;
+        const tenantId = (request as any).user?.tenantId;
+
+        if (!userId || !tenantId) {
+          return reply.code(401).send({
+            ok: false,
+            message: "Unauthorized",
+          } as ApiResponse);
+        }
+
+        if (!code || !state) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Code and state are required",
+          } as ApiResponse);
+        }
+
+        // Verify state
+        let stateData;
+        try {
+          stateData = JSON.parse(Buffer.from(state, "base64").toString());
+          if (stateData.userId !== userId) {
+            throw new Error("State user mismatch");
+          }
+        } catch (err) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Invalid state",
+          } as ApiResponse);
+        }
+
+        const googleConfig = await getGoogleConfig();
+        if (!googleConfig.clientId || !googleConfig.clientSecret) {
+          return reply.code(503).send({
+            ok: false,
+            message: "Google OAuth not configured",
+          } as ApiResponse);
+        }
+
+        const redirectUrl = googleConfig.redirectUri;
+        const exchangeClient = new OAuth2Client(
+          googleConfig.clientId,
+          googleConfig.clientSecret,
+          redirectUrl
+        );
+
+        try {
+          const { tokens } = await exchangeClient.getToken({
+            code,
+            redirect_uri: redirectUrl,
+          });
+
+          // Get user's email
+          const response = await axios.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            {
+              headers: {
+                Authorization: `Bearer ${tokens.access_token}`,
+              },
+            }
+          );
+
+          const gmailEmail = response.data.email;
+
+          // Save credentials to database
+          await prisma.gmailCredentials.upsert({
+            where: {
+              userId_tenantId: {
+                userId,
+                tenantId,
+              },
+            },
+            update: {
+              accessToken: tokens.access_token || "",
+              refreshToken: tokens.refresh_token,
+              expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+              gmailEmail,
+              scope: (tokens.scope || "").split(" "),
+              verified: true,
+            },
+            create: {
+              userId,
+              tenantId,
+              accessToken: tokens.access_token || "",
+              refreshToken: tokens.refresh_token || null,
+              expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+              gmailEmail,
+              scope: (tokens.scope || "").split(" "),
+              verified: true,
+            },
+          } as any);
+
+          fastify.log.info({ userId, gmailEmail }, "User Gmail connected");
+
+          return reply.send({
+            ok: true,
+            message: "Gmail connected successfully",
+            data: {
+              gmailEmail,
+            },
+          } as ApiResponse);
+        } catch (err) {
+          fastify.log.error({ err }, "Failed to exchange Gmail code");
+          return reply.code(401).send({
+            ok: false,
+            message: "Failed to authorize Gmail",
+          } as ApiResponse);
+        }
+      } catch (err) {
+        fastify.log.error({ err }, "Gmail callback error");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
 }
