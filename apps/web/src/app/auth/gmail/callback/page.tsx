@@ -15,7 +15,8 @@ export default function GmailCallbackPage() {
     if (error) {
       setStatus(`Gmail authorization failed: ${error}`);
       setTimeout(() => {
-        window.close() || router.push("/settings");
+        window.close();
+        router.push("/settings");
       }, 2000);
       return;
     }
@@ -23,7 +24,8 @@ export default function GmailCallbackPage() {
     if (!code) {
       setStatus("Missing authorization code.");
       setTimeout(() => {
-        window.close() || router.push("/settings");
+        window.close();
+        router.push("/settings");
       }, 2000);
       return;
     }
@@ -31,7 +33,7 @@ export default function GmailCallbackPage() {
     const completeEmailConnect = async () => {
       try {
         const token = localStorage.getItem("token");
-        
+
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/connect`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -42,23 +44,26 @@ export default function GmailCallbackPage() {
         if (res.ok) {
           const data = await res.json();
           setStatus(`✓ Gmail connected successfully! Email: ${data.data?.gmailEmail || ""}`);
-          
+
           // Close popup or redirect back to settings
           setTimeout(() => {
-            window.close() || router.push("/settings?tab=gmail");
+            window.close();
+            router.push("/settings?tab=gmail");
           }, 1500);
         } else {
           const errorData = await res.json().catch(() => ({}));
           setStatus(`Connection failed: ${errorData.message || "Unknown error"}`);
-          
+
           setTimeout(() => {
-            window.close() || router.push("/settings");
+            window.close();
+            router.push("/settings");
           }, 2000);
         }
       } catch (err) {
         setStatus("Gmail connection failed. Please try again.");
         setTimeout(() => {
-          window.close() || router.push("/settings");
+          window.close();
+          router.push("/settings");
         }, 2000);
       }
     };

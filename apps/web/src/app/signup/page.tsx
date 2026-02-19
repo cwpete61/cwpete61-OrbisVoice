@@ -23,10 +23,18 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
     try {
+      const affiliateSlug = localStorage.getItem("affiliate_slug") || "";
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, username, password, referralCode }),
+        body: JSON.stringify({
+          email,
+          name,
+          username,
+          password,
+          referralCode,
+          affiliateSlug
+        }),
       });
       const data = await res.json();
       if (res.ok) {

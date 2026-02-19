@@ -8,7 +8,7 @@ class GeminiVoiceClient {
     constructor() {
         this.model = "gemini-2.0-flash-exp";
         this.baseUrl = "https://generativelanguage.googleapis.com/v1beta/audio:transcribe";
-        this.apiKey = env_1.env.GEMINI_API_KEY;
+        this.apiKey = env_1.env.GEMINI_API_KEY || "";
         if (!this.apiKey) {
             logger_1.logger.warn("GEMINI_API_KEY not set - Gemini Voice will not work");
         }

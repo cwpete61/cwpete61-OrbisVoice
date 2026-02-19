@@ -38,13 +38,18 @@ const bcrypt = __importStar(require("bcryptjs"));
 const zod_1 = require("zod");
 const db_1 = require("../db");
 const logger_1 = require("../logger");
+const referral_1 = require("../services/referral");
+const affiliate_1 = require("../services/affiliate");
 const SignupSchema = zod_1.z.object({
     email: zod_1.z.string().email(),
     name: zod_1.z.string().min(1),
+    username: zod_1.z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
     password: zod_1.z.string().min(8),
+    referralCode: zod_1.z.string().optional(),
+    affiliateSlug: zod_1.z.string().optional(),
 });
 const LoginSchema = zod_1.z.object({
-    email: zod_1.z.string().email(),
+    email: zod_1.z.string(),
     password: zod_1.z.string(),
 });
 async function authRoutes(fastify) {
@@ -62,13 +67,22 @@ async function authRoutes(fastify) {
                     message: "Email already registered",
                 });
             }
+            // Check if username exists
+            const existingUsername = await db_1.prisma.user.findUnique({
+                where: { username: body.username },
+            });
+            if (existingUsername) {
+                return reply.code(400).send({
+                    ok: false,
+                    message: "Username already taken",
+                });
+            }
             // Hash password
             const hashedPassword = await bcrypt.hash(body.password, 10);
             // Create tenant (for free signup, each user gets their own tenant)
             const tenant = await db_1.prisma.tenant.create({
                 data: {
                     name: `${body.name}'s Workspace`,
-                    subdomain: `tenant-${Date.now()}`,
                 },
             });
             // Create user
@@ -76,17 +90,36 @@ async function authRoutes(fastify) {
                 data: {
                     email: body.email,
                     name: body.name,
+                    username: body.username,
                     passwordHash: hashedPassword,
                     tenantId: tenant.id,
                 },
             });
+            // Handle affiliate if provided
+            if (body.affiliateSlug) {
+                try {
+                    await affiliate_1.affiliateManager.recordReferral(body.affiliateSlug, user.id);
+                }
+                catch (err) {
+                    logger_1.logger.error({ err, slug: body.affiliateSlug, userId: user.id }, "Affiliate referral recording failed");
+                }
+            }
+            // Handle referral if provided
+            if (body.referralCode) {
+                try {
+                    await referral_1.referralManager.redeemReferral(body.referralCode, user.id);
+                }
+                catch (err) {
+                    logger_1.logger.error({ err, code: body.referralCode, userId: user.id }, "Referral redemption failed, but signup proceeding");
+                }
+            }
             // Generate JWT
             const token = fastify.jwt.sign({ userId: user.id, tenantId: tenant.id, email: user.email }, { expiresIn: "7d" });
             logger_1.logger.info({ userId: user.id, tenantId: tenant.id }, "User signed up");
             return reply.code(201).send({
                 ok: true,
                 message: "Signup successful",
-                data: { token, user: { id: user.id, email: user.email, name: user.name } },
+                data: { token, user: { id: user.id, email: user.email, name: user.name, username: user.username } },
             });
         }
         catch (err) {
@@ -109,13 +142,24 @@ async function authRoutes(fastify) {
         try {
             const body = LoginSchema.parse(request.body);
             // Find user
-            const user = await db_1.prisma.user.findUnique({
-                where: { email: body.email },
+            const user = await db_1.prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { email: body.email },
+                        { username: body.email }
+                    ]
+                },
             });
             if (!user) {
                 return reply.code(401).send({
                     ok: false,
                     message: "Invalid credentials",
+                });
+            }
+            if (!user.passwordHash) {
+                return reply.code(401).send({
+                    ok: false,
+                    message: "Account uses Google login",
                 });
             }
             // Verify password
@@ -132,7 +176,7 @@ async function authRoutes(fastify) {
             return reply.code(200).send({
                 ok: true,
                 message: "Login successful",
-                data: { token, user: { id: user.id, email: user.email, name: user.name } },
+                data: { token, user: { id: user.id, email: user.email, name: user.name, username: user.username } },
             });
         }
         catch (err) {

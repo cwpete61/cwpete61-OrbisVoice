@@ -6,7 +6,7 @@ const logger_1 = require("../logger");
 const auth_1 = require("../middleware/auth");
 async function statsRoutes(fastify) {
     // Get dashboard stats for tenant
-    fastify.get("/stats/dashboard", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/stats/dashboard", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const tenantId = request.user.tenantId;
             // Count agents
@@ -64,7 +64,7 @@ async function statsRoutes(fastify) {
         }
     });
     // Get agent-specific stats
-    fastify.get("/stats/agents/:agentId", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/stats/agents/:agentId", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { agentId } = request.params;
             const tenantId = request.user.tenantId;

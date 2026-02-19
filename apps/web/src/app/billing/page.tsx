@@ -22,9 +22,9 @@ const TIER_CONFIG: Record<AllTierName, {
   ltd: {
     name: "LTD (Lifetime Deal)",
     accent: "#ef4444",
-    description: "One-time payment for lifetime access",
+    description: "First Month, then $20/month for Twilio and API Costs",
     limitText: "Limited to first 100 accounts",
-    frequencyText: "One-time payment"
+    frequencyText: "One-Time Payment"
   },
   starter: {
     name: "Starter",
@@ -347,7 +347,9 @@ export default function BillingPage() {
                     <p className="text-4xl font-bold" style={{ color: config.accent }}>
                       ${info.price}
                     </p>
-                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">{config.frequencyText || "per month"}</p>
+                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">
+                      {tier === 'ltd' ? "One-Time Payment" : (config.frequencyText || "per month")}
+                    </p>
                   </div>
                   <div className="mb-6 pb-6 border-b border-white/[0.05]">
                     <p className="text-sm font-medium" style={{ color: config.accent }}>

@@ -23,4 +23,4 @@ COPY apps/api/.env ./.env
 EXPOSE 5000
 
 # Run database updates and seed, then start the application
-CMD sh -c "npx prisma db push --skip-generate --accept-data-loss && npx prisma generate && npx prisma db seed && npx tsx watch src/index.ts"
+CMD sh -c "npx prisma db push --skip-generate && npx prisma generate && npx prisma db seed && npx tsx watch src/index.ts"

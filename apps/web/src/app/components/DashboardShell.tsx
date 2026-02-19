@@ -128,6 +128,11 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
             if (item.label === "Users") {
               return profile?.isAdmin;
             }
+            // Hide "Affiliates" tab from main dashboard
+            // Professionals will access via a separate shell/portal
+            if (item.label === "Affiliates") {
+              return false;
+            }
             return true;
           }).map((item) => {
             const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));

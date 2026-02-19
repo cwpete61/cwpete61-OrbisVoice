@@ -83,6 +83,7 @@ model User {
   referralCodeUsed String?
   referralRewardTotal Float @default(0)
   referralsCreated Referral[] @relation("referrer")
+  affiliate Affiliate?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -207,7 +208,69 @@ model PlatformSettings {
   lowCommission   Float  @default(10)
   medCommission   Float  @default(20)
   highCommission  Float  @default(30)
+  starterLimit      Int      @default(1000)
+  professionalLimit Int      @default(10000)
+  enterpriseLimit   Int      @default(100000)
+  ltdLimit          Int      @default(1000)
+  aiInfraLimit      Int      @default(250000)
   updatedAt       DateTime @updatedAt
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum AffiliateReferralStatus {
+  PENDING
+  CONVERTED
+  REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model Affiliate {
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          AffiliateStatus  @default(PENDING)
+  slug            String           @unique
+  paymentInfo     String?          @db.Text // Encrypted or JSON string
+  totalEarnings   Float            @default(0)
+  totalPaid       Float            @default(0)
+  balance         Float            @default(0)
+  referrals       AffiliateReferral[]
+  payouts         AffiliatePayout[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model AffiliateReferral {
+  id              String                  @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate               @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  refereeId       String?                 @unique
+  status          AffiliateReferralStatus @default(PENDING)
+  commissionAmount Float                  @default(0)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+}
+
+model AffiliatePayout {
+  id              String           @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amount          Float
+  status          PayoutStatus     @default(PENDING)
+  method          String           @default("stripe") // stripe, paypal, manual
+  transactionId   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 

@@ -6,7 +6,7 @@ const logger_1 = require("../logger");
 const auth_1 = require("../middleware/auth");
 async function transcriptRoutes(fastify) {
     // Get conversation history for agent
-    fastify.get("/agents/:agentId/transcripts", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/agents/:agentId/transcripts", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { agentId } = request.params;
             const tenantId = request.user.tenantId;
@@ -52,7 +52,7 @@ async function transcriptRoutes(fastify) {
         }
     });
     // Get transcript details
-    fastify.get("/transcripts/:transcriptId", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/transcripts/:transcriptId", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { transcriptId } = request.params;
             const tenantId = request.user.tenantId;
@@ -88,7 +88,7 @@ async function transcriptRoutes(fastify) {
         }
     });
     // Create transcript (internal use)
-    fastify.post("/transcripts", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.post("/transcripts", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const body = request.body;
             const tenantId = request.user.tenantId;
@@ -126,7 +126,7 @@ async function transcriptRoutes(fastify) {
         }
     });
     // Delete transcript
-    fastify.delete("/transcripts/:transcriptId", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.delete("/transcripts/:transcriptId", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { transcriptId } = request.params;
             const tenantId = request.user.tenantId;

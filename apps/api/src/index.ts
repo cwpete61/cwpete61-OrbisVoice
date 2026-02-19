@@ -14,6 +14,7 @@ import billingRoutes from "./routes/billing";
 import userRoutes from "./routes/users";
 import twilioRoutes from "./routes/twilio";
 import googleAuthRoutes from "./routes/google-auth";
+import { affiliateRoutes } from "./routes/affiliates";
 import { sessionManager } from "./services/session";
 import { settingsRoutes } from "./routes/settings";
 import { registerToolHandlers } from "./tools/handlers";
@@ -58,6 +59,7 @@ fastify.register(userRoutes);
 fastify.register(twilioRoutes);
 fastify.register(googleAuthRoutes);
 fastify.register(settingsRoutes);
+fastify.register(affiliateRoutes);
 
 // Start server
 const start = async () => {

@@ -4,16 +4,29 @@ exports.default = billingRoutes;
 const db_1 = require("../db");
 const auth_1 = require("../middleware/auth");
 const zod_1 = require("zod");
-// Subscription tier pricing
-const TIER_LIMITS = {
-    starter: { conversations: 1000, price: 197 },
-    professional: { conversations: 10000, price: 497 },
-    enterprise: { conversations: 100000, price: 997 },
-    "ai-revenue-infrastructure": { conversations: 250000, price: 1997 },
+// Hardcoded prices (conversation limits are now fetched from DB)
+const TIER_PRICES = {
+    ltd: 497,
+    starter: 197,
+    professional: 497,
+    enterprise: 997,
+    "ai-revenue-infrastructure": 1997,
 };
+async function getTierLimits() {
+    const settings = await db_1.prisma.platformSettings.findUnique({
+        where: { id: "global" },
+    });
+    return {
+        ltd: { conversations: settings?.ltdLimit ?? 1000, price: TIER_PRICES.ltd },
+        starter: { conversations: settings?.starterLimit ?? 1000, price: TIER_PRICES.starter },
+        professional: { conversations: settings?.professionalLimit ?? 10000, price: TIER_PRICES.professional },
+        enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: TIER_PRICES.enterprise },
+        "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: TIER_PRICES["ai-revenue-infrastructure"] },
+    };
+}
 // Schema for creating a subscription
 const createSubscriptionSchema = zod_1.z.object({
-    tier: zod_1.z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
+    tier: zod_1.z.enum(["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
     billingEmail: zod_1.z.string().email().optional(),
 });
 // Schema for usage tracking
@@ -26,19 +39,6 @@ async function billingRoutes(fastify) {
         const tenantId = request.user.tenantId;
         const tenant = await db_1.prisma.tenant.findUnique({
             where: { id: tenantId },
-            select: {
-                id: true,
-                name: true,
-                subscriptionTier: true,
-                subscriptionStatus: true,
-                subscriptionEnds: true,
-                usageLimit: true,
-                usageCount: true,
-                usageResetAt: true,
-                billingEmail: true,
-                stripeCustomerId: true,
-                stripeSubscriptionId: true,
-            },
         });
         if (!tenant) {
             return reply.code(404).send({ error: "Tenant not found" });
@@ -48,8 +48,9 @@ async function billingRoutes(fastify) {
         // Check if usage period has reset
         const now = new Date();
         const shouldReset = now >= tenant.usageResetAt;
+        const tierLimits = await getTierLimits();
         const tierKey = tenant.subscriptionTier;
-        const tierInfo = TIER_LIMITS[tierKey] || TIER_LIMITS.starter;
+        const tierInfo = tierLimits[tierKey] ?? tierLimits.starter;
         return reply.send({
             data: {
                 ...tenant,
@@ -72,7 +73,8 @@ async function billingRoutes(fastify) {
         const { tier, billingEmail } = validation.data;
         // In production, this would integrate with Stripe to create a subscription
         // For now, we'll simulate the subscription creation
-        const tierLimit = TIER_LIMITS[tier].conversations;
+        const tierLimits = await getTierLimits();
+        const tierLimit = tierLimits[tier].conversations;
         const nextMonth = new Date();
         nextMonth.setMonth(nextMonth.getMonth() + 1);
         const updated = await db_1.prisma.tenant.update({
@@ -121,9 +123,13 @@ async function billingRoutes(fastify) {
         const tenant = await db_1.prisma.tenant.findUnique({
             where: { id: tenantId },
             select: {
+                id: true,
+                name: true,
                 usageCount: true,
                 usageLimit: true,
                 usageResetAt: true,
+                createdAt: true,
+                updatedAt: true,
             },
         });
         if (!tenant) {
@@ -196,8 +202,9 @@ async function billingRoutes(fastify) {
     });
     // Get available tiers and pricing
     fastify.get("/billing/tiers", async (request, reply) => {
+        const tierLimits = await getTierLimits();
         return reply.send({
-            data: TIER_LIMITS,
+            data: tierLimits,
         });
     });
 }

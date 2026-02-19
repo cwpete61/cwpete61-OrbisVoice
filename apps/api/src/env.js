@@ -33,6 +33,11 @@ const envSchema = zod_1.z.object({
     TWILIO_ACCOUNT_SID: zod_1.z.string().optional(),
     TWILIO_AUTH_TOKEN: zod_1.z.string().optional(),
     TWILIO_PHONE_NUMBER: zod_1.z.string().optional(),
+    // Google OAuth
+    GOOGLE_CLIENT_ID: zod_1.z.string().optional(),
+    GOOGLE_CLIENT_SECRET: zod_1.z.string().optional(),
+    GOOGLE_REDIRECT_URI: zod_1.z.string().optional(),
+    WEB_URL: zod_1.z.string().default("https://myorbisvoice.com"),
 });
 const parsed = envSchema.parse(process.env);
 // Parse CORS_ORIGINS into an array

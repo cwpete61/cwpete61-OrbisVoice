@@ -41,6 +41,11 @@ const PlatformSettingsSchema = z.object({
   lowCommission: z.number().min(0),
   medCommission: z.number().min(0),
   highCommission: z.number().min(0),
+  starterLimit: z.number().int().min(0),
+  professionalLimit: z.number().int().min(0),
+  enterpriseLimit: z.number().int().min(0),
+  ltdLimit: z.number().int().min(0),
+  aiInfraLimit: z.number().int().min(0),
 });
 
 const AdminBlockUserSchema = z.object({
@@ -326,6 +331,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
               select: {
                 subscriptionStatus: true,
                 subscriptionTier: true,
+              },
+            },
+            affiliate: {
+              select: {
+                id: true,
+                status: true,
+                slug: true,
               },
             },
           },
@@ -1128,8 +1140,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
 
         // Get user's email from the token
-        const { oauth2 } = await import("googleapis");
-        const oauth2Api = oauth2({ version: "v2", auth: client });
+        const { google } = await import("googleapis");
+        const oauth2Api = google.oauth2({ version: "v2", auth: client as any });
         client.setCredentials(tokens);
         const userInfo = await oauth2Api.userinfo.get();
 
@@ -1351,6 +1363,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
               lowCommission: 10,
               medCommission: 20,
               highCommission: 30,
+              starterLimit: 1000,
+              professionalLimit: 10000,
+              enterpriseLimit: 100000,
+              ltdLimit: 1000,
+              aiInfraLimit: 250000,
             },
           });
         }

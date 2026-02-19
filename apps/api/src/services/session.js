@@ -12,14 +12,36 @@ class SessionManager {
         if (this.initialized)
             return;
         try {
-            this.client = (0, redis_1.createClient)({ url: redisUrl });
-            this.client.on("error", (err) => logger_1.logger.error({ err }, "Redis client error"));
+            this.client = (0, redis_1.createClient)({
+                url: redisUrl,
+                socket: {
+                    reconnectStrategy: false, // Disable auto-reconnect
+                }
+            });
+            // Only log error once, don't spam on reconnect attempts
+            this.client.on("error", (err) => {
+                if (err.code === 'ECONNREFUSED') {
+                    // Silently ignore connection refused errors
+                    return;
+                }
+                logger_1.logger.error({ err }, "Redis client error");
+            });
             await this.client.connect();
             this.initialized = true;
             logger_1.logger.info("Session manager initialized with Redis");
         }
         catch (err) {
-            logger_1.logger.error({ err }, "Failed to initialize session manager");
+            // Clean up client if initialization failed
+            if (this.client) {
+                try {
+                    await this.client.quit();
+                }
+                catch {
+                    // Ignore cleanup errors
+                }
+                this.client = null;
+            }
+            logger_1.logger.warn({ err }, "Failed to initialize session manager - Redis unavailable");
             throw err;
         }
     }

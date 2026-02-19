@@ -3,15 +3,28 @@ import { prisma } from "../db";
 import { authenticate } from "../middleware/auth";
 import { z } from "zod";
 
-// Subscription tier pricing
-// Subscription tier pricing
-const TIER_LIMITS = {
-  ltd: { conversations: 1000, price: 497 },
-  starter: { conversations: 1000, price: 197 },
-  professional: { conversations: 10000, price: 497 },
-  enterprise: { conversations: 100000, price: 997 },
-  "ai-revenue-infrastructure": { conversations: 250000, price: 1997 },
+// Hardcoded prices (conversation limits are now fetched from DB)
+const TIER_PRICES = {
+  ltd: 497,
+  starter: 197,
+  professional: 497,
+  enterprise: 997,
+  "ai-revenue-infrastructure": 1997,
 };
+
+async function getTierLimits() {
+  const settings = await prisma.platformSettings.findUnique({
+    where: { id: "global" },
+  });
+
+  return {
+    ltd: { conversations: settings?.ltdLimit ?? 1000, price: TIER_PRICES.ltd },
+    starter: { conversations: settings?.starterLimit ?? 1000, price: TIER_PRICES.starter },
+    professional: { conversations: settings?.professionalLimit ?? 10000, price: TIER_PRICES.professional },
+    enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: TIER_PRICES.enterprise },
+    "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: TIER_PRICES["ai-revenue-infrastructure"] },
+  };
+}
 
 // Schema for creating a subscription
 const createSubscriptionSchema = z.object({
@@ -47,8 +60,9 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       const now = new Date();
       const shouldReset = now >= tenant.usageResetAt;
 
-      const tierKey = tenant.subscriptionTier as keyof typeof TIER_LIMITS;
-      const tierInfo = TIER_LIMITS[tierKey] ?? TIER_LIMITS.starter;
+      const tierLimits = await getTierLimits();
+      const tierKey = tenant.subscriptionTier as keyof typeof tierLimits;
+      const tierInfo = tierLimits[tierKey] ?? tierLimits.starter;
 
       return reply.send({
         data: {
@@ -81,7 +95,8 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       // In production, this would integrate with Stripe to create a subscription
       // For now, we'll simulate the subscription creation
 
-      const tierLimit = TIER_LIMITS[tier].conversations;
+      const tierLimits = await getTierLimits();
+      const tierLimit = tierLimits[tier].conversations;
       const nextMonth = new Date();
       nextMonth.setMonth(nextMonth.getMonth() + 1);
 
@@ -240,8 +255,9 @@ export default async function billingRoutes(fastify: FastifyInstance) {
 
   // Get available tiers and pricing
   fastify.get("/billing/tiers", async (request: FastifyRequest, reply: FastifyReply) => {
+    const tierLimits = await getTierLimits();
     return reply.send({
-      data: TIER_LIMITS,
+      data: tierLimits,
     });
   });
 }

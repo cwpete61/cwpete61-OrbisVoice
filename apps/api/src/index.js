@@ -17,7 +17,11 @@ const referrals_1 = require("./routes/referrals");
 const audit_1 = require("./routes/audit");
 const billing_1 = __importDefault(require("./routes/billing"));
 const users_1 = __importDefault(require("./routes/users"));
+const twilio_1 = __importDefault(require("./routes/twilio"));
+const google_auth_1 = __importDefault(require("./routes/google-auth"));
+const affiliates_1 = require("./routes/affiliates");
 const session_1 = require("./services/session");
+const settings_1 = require("./routes/settings");
 const handlers_1 = require("./tools/handlers");
 const fastify = (0, fastify_1.default)({
     logger: logger_1.logger.child({ context: "fastify" }),
@@ -39,6 +43,7 @@ fastify.get("/health", async (request, reply) => {
 fastify.get("/api", async (request, reply) => {
     return { message: "OrbisVoice API v1", version: "1.0.0" };
 });
+// ... imports
 // Register route groups
 fastify.register(auth_1.authRoutes);
 fastify.register(transcripts_1.transcriptRoutes);
@@ -49,12 +54,21 @@ fastify.register(agents_1.agentRoutes);
 fastify.register(api_keys_1.apiKeyRoutes);
 fastify.register(billing_1.default);
 fastify.register(users_1.default);
+fastify.register(twilio_1.default);
+fastify.register(google_auth_1.default);
+fastify.register(settings_1.settingsRoutes);
+fastify.register(affiliates_1.affiliateRoutes);
 // Start server
 const start = async () => {
     try {
-        // Initialize session manager
-        await session_1.sessionManager.initialize(env_1.env.REDIS_URL);
-        logger_1.logger.info("Session manager initialized");
+        // Initialize session manager (optional - continue if unavailable)
+        try {
+            await session_1.sessionManager.initialize(env_1.env.REDIS_URL);
+            logger_1.logger.info("Session manager initialized");
+        }
+        catch (err) {
+            logger_1.logger.warn({ err }, "Session manager unavailable - continuing without Redis");
+        }
         // Register tool handlers
         (0, handlers_1.registerToolHandlers)();
         logger_1.logger.info("Tool handlers registered");

@@ -13,7 +13,7 @@ const CreateAgentSchema = zod_1.z.object({
 const UpdateAgentSchema = CreateAgentSchema.partial();
 async function agentRoutes(fastify) {
     // List agents for tenant
-    fastify.get("/agents", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/agents", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const tenantId = request.user.tenantId;
             const agents = await db_1.prisma.agent.findMany({
@@ -34,7 +34,7 @@ async function agentRoutes(fastify) {
         }
     });
     // Create agent
-    fastify.post("/agents", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.post("/agents", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const body = CreateAgentSchema.parse(request.body);
             const tenantId = request.user.tenantId;
@@ -42,10 +42,9 @@ async function agentRoutes(fastify) {
             const agent = await db_1.prisma.agent.create({
                 data: {
                     tenantId,
-                    createdBy: userId,
                     name: body.name,
                     systemPrompt: body.systemPrompt,
-                    voiceModel: body.voiceModel || "default",
+                    voiceId: body.voiceModel || "default",
                 },
             });
             logger_1.logger.info({ agentId: agent.id, tenantId }, "Agent created");
@@ -71,7 +70,7 @@ async function agentRoutes(fastify) {
         }
     });
     // Get agent by ID
-    fastify.get("/agents/:id", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/agents/:id", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { id } = request.params;
             const tenantId = request.user.tenantId;
@@ -99,7 +98,7 @@ async function agentRoutes(fastify) {
         }
     });
     // Update agent
-    fastify.put("/agents/:id", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.put("/agents/:id", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { id } = request.params;
             const body = UpdateAgentSchema.parse(request.body);
@@ -138,7 +137,7 @@ async function agentRoutes(fastify) {
         }
     });
     // Delete agent
-    fastify.delete("/agents/:id", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.delete("/agents/:id", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { id } = request.params;
             const tenantId = request.user.tenantId;

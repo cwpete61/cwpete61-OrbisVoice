@@ -130,11 +130,15 @@ const sendMessageHandler = async (input, context) => {
     }
 };
 // Lead Qualification Agent Tools
+const budgetMap = { low: 30, medium: 60, high: 100 };
+const timelineMap = { "90days": 40, "30days": 70, immediate: 100 };
 const scoreLeadHandler = async (input, context) => {
     // Simple scoring algorithm
     const engagement = Math.min(100, input.engagement_level || 50);
-    const budgetScore = { low: 30, medium: 60, high: 100 }[input.budget_fit || "medium"] || 60;
-    const timelineScore = { "90days": 40, "30days": 70, immediate: 100 }[input.timeline || "90days"] || 40;
+    const budgetFit = input.budget_fit || "medium";
+    const timelineVal = input.timeline || "90days";
+    const budgetScore = budgetMap[budgetFit] || 60;
+    const timelineScore = timelineMap[timelineVal] || 40;
     const totalScore = Math.round((engagement + budgetScore + timelineScore) / 3);
     return {
         success: true,

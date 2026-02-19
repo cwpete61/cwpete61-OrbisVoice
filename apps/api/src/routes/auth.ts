@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
 import { referralManager } from "../services/referral";
+import { affiliateManager } from "../services/affiliate";
 
 const SignupSchema = z.object({
   email: z.string().email(),
@@ -12,6 +13,7 @@ const SignupSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
   referralCode: z.string().optional(),
+  affiliateSlug: z.string().optional(),
 });
 
 const LoginSchema = z.object({
@@ -69,6 +71,15 @@ export async function authRoutes(fastify: FastifyInstance) {
             tenantId: tenant.id,
           } as any,
         });
+
+        // Handle affiliate if provided
+        if ((body as any).affiliateSlug) {
+          try {
+            await affiliateManager.recordReferral((body as any).affiliateSlug, user.id);
+          } catch (err) {
+            logger.error({ err, slug: (body as any).affiliateSlug, userId: user.id }, "Affiliate referral recording failed");
+          }
+        }
 
         // Handle referral if provided
         if (body.referralCode) {

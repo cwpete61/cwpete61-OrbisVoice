@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.referralManager = void 0;
+const db_1 = require("../db");
 const logger_1 = require("../logger");
 class ReferralManager {
     // Generate unique referral code
@@ -9,49 +10,85 @@ class ReferralManager {
         const random = Math.random().toString(36).substring(2, 7);
         return `REF_${userId.substring(0, 4)}_${timestamp}_${random}`.toUpperCase();
     }
-    // Create referral
-    async createReferral(referrerId, rewardAmount) {
+    // Get or Create referral code for user
+    async getOrCreateCode(userId) {
         try {
-            const code = this.generateCode(referrerId);
-            // Store referral in database (when Referral model is added to schema)
-            logger_1.logger.info({ referrerId, code, rewardAmount }, "Referral code generated");
-            // TODO: Save to prisma.referral once schema is updated
-            // const referral = await prisma.referral.create({
-            //   data: {
-            //     referrerId,
-            //     code,
-            //     status: 'pending',
-            //     rewardAmount,
-            //     rewardCurrency: 'USD',
-            //     expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
-            //   },
-            // });
+            // Find existing referral for this user that is not expired/invalid
+            const existing = await db_1.prisma.referral.findFirst({
+                where: { referrerId: userId },
+                orderBy: { createdAt: 'desc' }
+            });
+            if (existing)
+                return existing.code;
+            const code = this.generateCode(userId);
+            await db_1.prisma.referral.create({
+                data: {
+                    referrerId: userId,
+                    code,
+                    status: 'pending', // Initial status for the code itself
+                    rewardAmount: 5, // $5 per referral
+                }
+            });
             return code;
         }
         catch (err) {
-            logger_1.logger.error({ err, referrerId }, "Failed to create referral");
+            logger_1.logger.error({ err, userId }, "Failed to get or create referral code");
             throw err;
+        }
+    }
+    // Create referral link when someone uses a code
+    async createReferralRecord(code, refereeId) {
+        try {
+            const parentReferral = await db_1.prisma.referral.findUnique({
+                where: { code }
+            });
+            if (!parentReferral)
+                return false;
+            // Create a specific record for this successful sign-up
+            await db_1.prisma.referral.create({
+                data: {
+                    referrerId: parentReferral.referrerId,
+                    refereeId: refereeId,
+                    code: `${code}_${refereeId}`, // Unique sub-code
+                    status: 'accepted',
+                    rewardAmount: 5,
+                }
+            });
+            return true;
+        }
+        catch (err) {
+            logger_1.logger.error({ err, code, refereeId }, "Failed to create referral record");
+            return false;
         }
     }
     // Redeem referral code on signup
     async redeemReferral(code, refereeId) {
         try {
-            // TODO: Look up referral code
-            // const referral = await prisma.referral.findUnique({
-            //   where: { code },
-            // });
-            // if (!referral || referral.status === 'expired') {
-            //   return { success: false };
-            // }
-            // Mark as accepted
-            // await prisma.referral.update({
-            //   where: { id: referral.id },
-            //   data: { status: 'accepted', refereeId },
-            // });
+            const referral = await db_1.prisma.referral.findUnique({
+                where: { code },
+            });
+            if (!referral) {
+                return { success: false };
+            }
+            // Track the usage
+            await db_1.prisma.referral.create({
+                data: {
+                    referrerId: referral.referrerId,
+                    refereeId,
+                    code: `USE_${code}_${refereeId}_${Date.now()}`,
+                    status: 'accepted',
+                    rewardAmount: 5, // Reward for referrer
+                }
+            });
+            // Update referee
+            await db_1.prisma.user.update({
+                where: { id: refereeId },
+                data: { referralCodeUsed: code }
+            });
             logger_1.logger.info({ code, refereeId }, "Referral code redeemed");
             return {
                 success: true,
-                reward: 10, // $10 credit for signup
+                reward: 10, // $10 credit for signup given to the new user
             };
         }
         catch (err) {
@@ -59,37 +96,47 @@ class ReferralManager {
             return { success: false };
         }
     }
-    // Mark referral as completed (when reward is earned)
-    async completeReferral(code) {
+    // Mark referral as completed
+    async completeReferral(referralId) {
         try {
-            // TODO: Update referral status to completed
-            // await prisma.referral.update({
-            //   where: { code },
-            //   data: { status: 'completed' },
-            // });
-            logger_1.logger.info({ code }, "Referral completed");
+            await db_1.prisma.referral.update({
+                where: { id: referralId },
+                data: { status: 'completed' },
+            });
+            logger_1.logger.info({ referralId }, "Referral completed");
             return true;
         }
         catch (err) {
-            logger_1.logger.error({ err, code }, "Failed to complete referral");
+            logger_1.logger.error({ err, referralId }, "Failed to complete referral");
             return false;
         }
     }
     // Get referral stats for user
     async getReferralStats(referrerId) {
         try {
-            // TODO: Query referral stats
-            // const referrals = await prisma.referral.findMany({
-            //   where: { referrerId },
-            // });
-            // const accepted = referrals.filter(r => r.status === 'accepted').length;
-            // const completed = referrals.filter(r => r.status === 'completed').length;
-            // const totalRewards = referrals.reduce((sum, r) => sum + (r.rewardAmount || 0), 0);
+            const allReferrals = await db_1.prisma.referral.findMany({
+                where: {
+                    referrerId,
+                    refereeId: { not: null } // Only records representing people signed up
+                },
+                include: {
+                    referrer: {
+                        select: { name: true, email: true }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            const accepted = allReferrals.filter(r => r.status === 'accepted').length;
+            const completed = allReferrals.filter(r => r.status === 'completed').length;
+            const totalRewards = allReferrals
+                .filter(r => r.status === 'completed' || r.status === 'accepted')
+                .reduce((sum, r) => sum + (r.rewardAmount || 0), 0);
             return {
-                totalReferred: 0,
-                accepted: 0,
-                completed: 0,
-                totalRewards: 0,
+                totalReferred: allReferrals.length,
+                accepted,
+                completed,
+                totalRewards,
+                referrals: allReferrals
             };
         }
         catch (err) {

@@ -7,7 +7,7 @@ const audit_1 = require("../services/audit");
 const db_1 = require("../db");
 async function auditRoutes(fastify) {
     // Get audit logs for an agent
-    fastify.get("/agents/:agentId/audit-logs", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/agents/:agentId/audit-logs", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { agentId } = request.params;
             const tenantId = request.user.tenantId;
@@ -42,7 +42,7 @@ async function auditRoutes(fastify) {
         }
     });
     // Get tool execution stats for an agent
-    fastify.get("/agents/:agentId/tool-stats", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/agents/:agentId/tool-stats", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { agentId } = request.params;
             const tenantId = request.user.tenantId;
@@ -75,7 +75,7 @@ async function auditRoutes(fastify) {
         }
     });
     // Get a specific audit log entry
-    fastify.get("/audit-logs/:logId", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/audit-logs/:logId", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const { logId } = request.params;
             const tenantId = request.user.tenantId;
@@ -115,7 +115,7 @@ async function auditRoutes(fastify) {
         }
     });
     // Get tenant-wide tool execution summary
-    fastify.get("/audit-summary", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
+    fastify.get("/audit-summary", { onRequest: [auth_1.requireNotBlocked] }, async (request, reply) => {
         try {
             const tenantId = request.user.tenantId;
             // Get all agents for tenant
