@@ -13,13 +13,21 @@ const googleClient = new OAuth2Client(
   env.GOOGLE_CLIENT_SECRET
 );
 
-const getGoogleConfig = async () => {
+const getGoogleConfig = async (tenantId?: string) => {
   try {
     let config;
     try {
-      config = await prisma.googleAuthConfig.findUnique({
-        where: { id: "google-auth-config" },
-      });
+      if (tenantId) {
+        config = await prisma.tenantGoogleConfig.findUnique({
+          where: { tenantId },
+        });
+      }
+
+      if (!config) {
+        config = await prisma.googleAuthConfig.findUnique({
+          where: { id: "google-auth-config" },
+        }) as any; // Cast to match shape
+      }
     } catch (dbError) {
       console.error("Database query error:", dbError);
       throw dbError;
@@ -32,7 +40,7 @@ const getGoogleConfig = async () => {
         config?.redirectUri ||
         env.GOOGLE_REDIRECT_URI ||
         "http://localhost:3000/auth/google/callback",
-      enabled: config?.enabled ?? false,
+      enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
     };
   } catch (error) {
     console.error("getGoogleConfig error:", error);
@@ -74,7 +82,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
         console.error("DEBUG: Error in getGoogleConfig:", configErr);
         throw configErr;
       }
-      
+
       if (!googleConfig.clientId || !googleConfig.enabled) {
         console.log("DEBUG: Missing clientId or not enabled");
         return reply.code(503).send({
@@ -103,7 +111,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
         access_type: "online",
         scope: scopes,
       });
-      
+
       console.log("DEBUG: Successfully generated URL, length:", url.length);
 
       return reply.send({
@@ -114,7 +122,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("DEBUG: Caught error:", errorMsg);
       console.error("DEBUG: Full error:", err);
-      
+
       fastify.log.error({ message: errorMsg }, "Error in /auth/google/url");
       return reply.code(500).send({
         ok: false,
@@ -315,7 +323,8 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const googleConfig = await getGoogleConfig();
+        const tenantId = (request as any).user?.tenantId;
+        const googleConfig = await getGoogleConfig(tenantId);
         if (!googleConfig.clientId || !googleConfig.enabled) {
           return reply.code(503).send({
             ok: false,
@@ -371,13 +380,14 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const { code, state } = request.body;
-        const userId = (request as any).user?.userId;
-        const tenantId = (request as any).user?.tenantId;
+        const user = (request as any).user;
+        const userId = user?.userId;
+        const tenantId = user?.tenantId;
 
         if (!userId || !tenantId) {
           return reply.code(401).send({
             ok: false,
-            message: "Unauthorized",
+            message: "Unauthorized - Missing user context",
           } as ApiResponse);
         }
 
@@ -402,7 +412,8 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const googleConfig = await getGoogleConfig();
+        const googleConfig = await getGoogleConfig(tenantId);
+
         if (!googleConfig.clientId || !googleConfig.clientSecret) {
           return reply.code(503).send({
             ok: false,
@@ -448,7 +459,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               refreshToken: tokens.refresh_token,
               expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
               calendarEmail,
-              scope: (tokens.scope || "").split(" "),
+              scope: tokens.scope || "",
             },
             create: {
               userId,
@@ -457,7 +468,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               refreshToken: tokens.refresh_token || null,
               expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
               calendarEmail,
-              scope: (tokens.scope || "").split(" "),
+              scope: tokens.scope || "",
             },
           } as any);
 
@@ -501,7 +512,8 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const googleConfig = await getGoogleConfig();
+        const tenantId = (request as any).user?.tenantId;
+        const googleConfig = await getGoogleConfig(tenantId);
         if (!googleConfig.clientId || !googleConfig.enabled) {
           return reply.code(503).send({
             ok: false,
@@ -588,7 +600,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const googleConfig = await getGoogleConfig();
+        const googleConfig = await getGoogleConfig(tenantId);
         if (!googleConfig.clientId || !googleConfig.clientSecret) {
           return reply.code(503).send({
             ok: false,
@@ -634,7 +646,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               refreshToken: tokens.refresh_token,
               expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
               gmailEmail,
-              scope: (tokens.scope || "").split(" "),
+              scope: tokens.scope || "",
               verified: true,
             },
             create: {
@@ -644,7 +656,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               refreshToken: tokens.refresh_token || null,
               expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
               gmailEmail,
-              scope: (tokens.scope || "").split(" "),
+              scope: tokens.scope || "",
               verified: true,
             },
           } as any);

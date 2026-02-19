@@ -12,8 +12,10 @@ import { referralRoutes } from "./routes/referrals";
 import { auditRoutes } from "./routes/audit";
 import billingRoutes from "./routes/billing";
 import userRoutes from "./routes/users";
+import twilioRoutes from "./routes/twilio";
 import googleAuthRoutes from "./routes/google-auth";
 import { sessionManager } from "./services/session";
+import { settingsRoutes } from "./routes/settings";
 import { registerToolHandlers } from "./tools/handlers";
 
 const fastify = Fastify({
@@ -41,6 +43,8 @@ fastify.get("/api", async (request, reply) => {
   return { message: "OrbisVoice API v1", version: "1.0.0" };
 });
 
+// ... imports
+
 // Register route groups
 fastify.register(authRoutes);
 fastify.register(transcriptRoutes);
@@ -51,7 +55,9 @@ fastify.register(agentRoutes);
 fastify.register(apiKeyRoutes);
 fastify.register(billingRoutes);
 fastify.register(userRoutes);
+fastify.register(twilioRoutes);
 fastify.register(googleAuthRoutes);
+fastify.register(settingsRoutes);
 
 // Start server
 const start = async () => {

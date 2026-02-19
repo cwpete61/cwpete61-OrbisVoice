@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
+import PasswordInput from "../components/PasswordInput";
 
 export default function UsersPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -18,12 +19,21 @@ export default function UsersPage() {
     username: "",
     password: "",
     tier: "starter",
+    commissionLevel: "LOW",
   });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
     tier: "starter",
+    commissionLevel: "LOW",
+  });
+  const [platformSettings, setPlatformSettings] = useState<any>(null);
+  const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    lowCommission: 0,
+    medCommission: 0,
+    highCommission: 0,
   });
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -50,8 +60,52 @@ export default function UsersPage() {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers(userFilter);
+      fetchPlatformSettings();
     }
   }, [isAdmin, userFilter]);
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformSettings(data.data);
+        setSettingsForm({
+          lowCommission: data.data.lowCommission,
+          medCommission: data.data.medCommission,
+          highCommission: data.data.highCommission,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch platform settings:", err);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSaveSettingsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(settingsForm),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformSettings(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+    } finally {
+      setSaveSettingsLoading(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -76,9 +130,8 @@ export default function UsersPage() {
       if (filter !== "all") {
         params.set("filter", filter);
       }
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/admin/users${
-        params.toString() ? `?${params.toString()}` : ""
-      }`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/admin/users${params.toString() ? `?${params.toString()}` : ""
+        }`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -111,6 +164,7 @@ export default function UsersPage() {
           username: createForm.username.trim(),
           password: createForm.password,
           tier: createForm.tier,
+          commissionLevel: createForm.commissionLevel,
         }),
       });
 
@@ -120,7 +174,7 @@ export default function UsersPage() {
         return;
       }
 
-      setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter" });
+      setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: "LOW" });
       setCreateOpen(false);
       await fetchUsers(userFilter);
     } catch (err) {
@@ -137,12 +191,13 @@ export default function UsersPage() {
       name: user.name || "",
       email: user.email || "",
       tier: (user?.tenant?.subscriptionTier as string) || "starter",
+      commissionLevel: user.commissionLevel || "LOW",
     });
   };
 
   const cancelEditUser = () => {
     setEditingUserId(null);
-    setEditForm({ name: "", email: "", tier: "starter" });
+    setEditForm({ name: "", email: "", tier: "starter", commissionLevel: "LOW" });
   };
 
   const saveEditUser = async (userId: string) => {
@@ -160,6 +215,7 @@ export default function UsersPage() {
           name: editForm.name.trim(),
           email: editForm.email.trim(),
           tier: editForm.tier,
+          commissionLevel: editForm.commissionLevel,
         }),
       });
 
@@ -241,253 +297,332 @@ export default function UsersPage() {
             <p className="text-sm text-[rgba(240,244,250,0.5)]">Admin access required.</p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[#f0f4fa]">Subscribers</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCreateOpen((prev) => !prev)}
-                  className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
-                >
-                  {createOpen ? "Close" : "Add user"}
-                </button>
-                <div className="flex items-center rounded-lg border border-white/[0.08] bg-[#05080f] p-1 text-xs">
-                  <button
-                    onClick={() => setUserFilter("paid")}
-                    className={`rounded-md px-2.5 py-1 transition ${
-                      userFilter === "paid"
-                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                    }`}
-                  >
-                    Paid only
-                  </button>
-                  <button
-                    onClick={() => setUserFilter("free")}
-                    className={`rounded-md px-2.5 py-1 transition ${
-                      userFilter === "free"
-                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                    }`}
-                  >
-                    Free only
-                  </button>
-                  <button
-                    onClick={() => setUserFilter("all")}
-                    className={`rounded-md px-2.5 py-1 transition ${
-                      userFilter === "all"
-                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                    }`}
-                  >
-                    All
-                  </button>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-[#f0f4fa]">Global Commission Levels</h2>
+                  <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">Set default commission rates for all levels</p>
                 </div>
                 <button
-                  onClick={() => fetchUsers(userFilter)}
-                  className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
+                  onClick={handleSaveSettings}
+                  disabled={saveSettingsLoading}
+                  className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-4 py-2 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:opacity-50"
                 >
-                  Refresh
+                  {saveSettingsLoading ? "Saving..." : "Save Rates"}
                 </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Low Commission (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={settingsForm.lowCommission}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, lowCommission: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
+                    <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Medium Commission (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={settingsForm.medCommission}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, medCommission: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
+                    <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">High Commission (%)</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={settingsForm.highCommission}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, highCommission: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
+                    <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {createOpen && (
-              <div className="mb-5 rounded-xl border border-white/[0.06] bg-[#05080f] p-4">
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-                  <input
-                    value={createForm.name}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, name: event.target.value }))
-                    }
-                    placeholder="Name"
-                    className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                  />
-                  <input
-                    value={createForm.email}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, email: event.target.value }))
-                    }
-                    placeholder="Email"
-                    className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                  />
-                  <input
-                    value={createForm.username}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, username: event.target.value }))
-                    }
-                    placeholder="Username"
-                    className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                  />
-                  <input
-                    type="password"
-                    value={createForm.password}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, password: event.target.value }))
-                    }
-                    placeholder="Temp password"
-                    className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                  />
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={createForm.tier}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, tier: event.target.value }))
-                      }
-                      className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                    >
-                      <option value="starter">starter</option>
-                      <option value="professional">professional</option>
-                      <option value="enterprise">enterprise</option>
-                      <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
-                    </select>
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">Subscribers</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCreateOpen((prev) => !prev)}
+                    className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
+                  >
+                    {createOpen ? "Close" : "Add user"}
+                  </button>
+                  <div className="flex items-center rounded-lg border border-white/[0.08] bg-[#05080f] p-1 text-xs">
                     <button
-                      onClick={handleCreateUser}
-                      disabled={createLoading}
-                      className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-2 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => setUserFilter("paid")}
+                      className={`rounded-md px-2.5 py-1 transition ${userFilter === "paid"
+                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                        }`}
                     >
-                      {createLoading ? "Adding..." : "Add"}
+                      Paid only
+                    </button>
+                    <button
+                      onClick={() => setUserFilter("free")}
+                      className={`rounded-md px-2.5 py-1 transition ${userFilter === "free"
+                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                        }`}
+                    >
+                      Free only
+                    </button>
+                    <button
+                      onClick={() => setUserFilter("all")}
+                      className={`rounded-md px-2.5 py-1 transition ${userFilter === "all"
+                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                        }`}
+                    >
+                      All
                     </button>
                   </div>
-                </div>
-                {createError && (
-                  <p className="mt-2 text-xs text-[#f97316]">{createError}</p>
-                )}
-              </div>
-            )}
-
-            {usersLoading ? (
-              <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading users…</p>
-            ) : users.length === 0 ? (
-              <p className="text-sm text-[rgba(240,244,250,0.4)]">None.</p>
-            ) : (
-              <div className="space-y-3">
-                {users.map((user: any) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+                  <button
+                    onClick={() => fetchUsers(userFilter)}
+                    className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
                   >
-                    <div>
-                      {editingUserId === user.id ? (
-                        <div className="space-y-2">
-                          <input
-                            value={editForm.name}
-                            onChange={(event) =>
-                              setEditForm((prev) => ({ ...prev, name: event.target.value }))
-                            }
-                            className="w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
-                          />
-                          <input
-                            value={editForm.email}
-                            onChange={(event) =>
-                              setEditForm((prev) => ({ ...prev, email: event.target.value }))
-                            }
-                            className="w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-sm font-semibold text-[#f0f4fa]">{user.name}</p>
-                          <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">{user.email}</p>
-                          <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">@{user.username || "-"}</p>
-                        </>
-                      )}
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {createOpen && (
+                <div className="mb-5 rounded-xl border border-white/[0.06] bg-[#05080f] p-4">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                    <input
+                      value={createForm.name}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                      }
+                      placeholder="Name"
+                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                    />
+                    <input
+                      value={createForm.email}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({ ...prev, email: event.target.value }))
+                      }
+                      placeholder="Email"
+                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                    />
+                    <input
+                      value={createForm.username}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({ ...prev, username: event.target.value }))
+                      }
+                      placeholder="Username"
+                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                    />
+                    <PasswordInput
+                      value={createForm.password}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({ ...prev, password: event.target.value }))
+                      }
+                      placeholder="Temp password"
+                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                    />
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={createForm.tier}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, tier: event.target.value }))
+                        }
+                        className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                      >
+                        <option value="starter">starter</option>
+                        <option value="professional">professional</option>
+                        <option value="enterprise">enterprise</option>
+                        <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                      </select>
+                      <select
+                        value={createForm.commissionLevel}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                        }
+                        className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                      >
+                        <option value="LOW">Low Comm</option>
+                        <option value="MED">Med Comm</option>
+                        <option value="HIGH">High Comm</option>
+                      </select>
+                      <button
+                        onClick={handleCreateUser}
+                        disabled={createLoading}
+                        className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-2 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {createLoading ? "Adding..." : "Add"}
+                      </button>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
+                  </div>
+                  {createError && (
+                    <p className="mt-2 text-xs text-[#f97316]">{createError}</p>
+                  )}
+                </div>
+              )}
+
+              {usersLoading ? (
+                <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading users…</p>
+              ) : users.length === 0 ? (
+                <p className="text-sm text-[rgba(240,244,250,0.4)]">None.</p>
+              ) : (
+                <div className="space-y-3">
+                  {users.map((user: any) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+                    >
+                      <div>
                         {editingUserId === user.id ? (
-                          <select
-                            value={editForm.tier}
-                            onChange={(event) =>
-                              setEditForm((prev) => ({ ...prev, tier: event.target.value }))
-                            }
-                            className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1 text-xs text-[#f0f4fa]"
-                          >
-                            <option value="starter">starter</option>
-                            <option value="professional">professional</option>
-                            <option value="enterprise">enterprise</option>
-                            <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
-                          </select>
+                          <div className="space-y-2">
+                            <input
+                              value={editForm.name}
+                              onChange={(event) =>
+                                setEditForm((prev) => ({ ...prev, name: event.target.value }))
+                              }
+                              className="w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                            />
+                            <input
+                              value={editForm.email}
+                              onChange={(event) =>
+                                setEditForm((prev) => ({ ...prev, email: event.target.value }))
+                              }
+                              className="w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                            />
+                          </div>
                         ) : (
-                          <div className="flex items-center justify-end gap-2">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border ${
-                                {
+                          <>
+                            <p className="text-sm font-semibold text-[#f0f4fa]">{user.name}</p>
+                            <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">{user.email}</p>
+                            <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">@{user.username || "-"}</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          {editingUserId === user.id ? (
+                            <>
+                              <select
+                                value={editForm.tier}
+                                onChange={(event) =>
+                                  setEditForm((prev) => ({ ...prev, tier: event.target.value }))
+                                }
+                                className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1 text-xs text-[#f0f4fa]"
+                              >
+                                <option value="starter">starter</option>
+                                <option value="professional">professional</option>
+                                <option value="enterprise">enterprise</option>
+                                <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                              </select>
+                              <select
+                                value={editForm.commissionLevel}
+                                onChange={(event) =>
+                                  setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                                }
+                                className="mt-2 block w-full rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1 text-xs text-[#f0f4fa]"
+                              >
+                                <option value="LOW">Low Comm</option>
+                                <option value="MED">Med Comm</option>
+                                <option value="HIGH">High Comm</option>
+                              </select>
+                            </>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border ${{
                                   active: "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]",
                                   trialing: "border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]",
                                   canceled: "border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]",
                                   past_due: "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]",
                                   free: "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]",
                                 }[(user?.tenant?.subscriptionStatus as string) || "free"] ||
-                                "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]"
-                              }`}
-                            >
-                              {(user?.tenant?.subscriptionStatus as string) || "free"}
-                            </span>
-                            {user.isBlocked && (
-                              <span className="inline-flex items-center rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-0.5 text-[11px] font-medium text-[#ef4444]">
-                                blocked
+                                  "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]"
+                                  }`}
+                              >
+                                {(user?.tenant?.subscriptionStatus as string) || "free"}
                               </span>
-                            )}
-                          </div>
-                        )}
-                        <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
-                          Tier: {(user?.tenant?.subscriptionTier as string) || "starter"}
-                        </p>
-                        <p className="text-xs text-[rgba(240,244,250,0.45)]">
-                          {user.role || (user.isAdmin ? "ADMIN" : "USER")}
-                        </p>
-                        <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {editingUserId === user.id ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => saveEditUser(user.id)}
-                              disabled={actionLoading === `save-${user.id}`}
-                              className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEditUser}
-                              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => startEditUser(user)}
-                              className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => toggleBlockUser(user)}
-                              disabled={actionLoading === `block-${user.id}`}
-                              className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1.5 text-xs text-[#f59e0b] hover:bg-[#f59e0b]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {user.isBlocked ? "Unblock" : "Block"}
-                            </button>
-                            <button
-                              onClick={() => deleteUser(user)}
-                              disabled={actionLoading === `delete-${user.id}`}
-                              className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
+                              {user.isBlocked && (
+                                <span className="inline-flex items-center rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-0.5 text-[11px] font-medium text-[#ef4444]">
+                                  blocked
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
+                            Tier: {(user?.tenant?.subscriptionTier as string) || "starter"}
+                          </p>
+                          <p className="text-xs text-[rgba(240,244,250,0.45)]">
+                            Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span>
+                          </p>
+                          <p className="text-xs text-[rgba(240,244,250,0.45)]">
+                            {user.role || (user.isAdmin ? "ADMIN" : "USER")}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {editingUserId === user.id ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => saveEditUser(user.id)}
+                                disabled={actionLoading === `save-${user.id}`}
+                                className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEditUser}
+                                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => startEditUser(user)}
+                                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => toggleBlockUser(user)}
+                                disabled={actionLoading === `block-${user.id}`}
+                                className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1.5 text-xs text-[#f59e0b] hover:bg-[#f59e0b]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {user.isBlocked ? "Unblock" : "Block"}
+                              </button>
+                              <button
+                                onClick={() => deleteUser(user)}
+                                disabled={actionLoading === `delete-${user.id}`}
+                                className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

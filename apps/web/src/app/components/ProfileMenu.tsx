@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 
+import PasswordInput from "./PasswordInput";
+
 interface ProfileMenuProps {
   onClose?: () => void;
 }
@@ -157,7 +159,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Data = event.target?.result as string;
-        
+
         try {
           const token = localStorage.getItem("token");
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/avatar`, {
@@ -227,20 +229,19 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
             {/* Avatar Display */}
             <div className="mt-6 flex flex-col items-center gap-4">
               {avatar && <img src={avatar} alt="Profile" className="w-20 h-20 rounded-full object-cover" />}
-              
+
               <div className="w-full max-w-xs">
                 {avatarMessage && (
                   <div
-                    className={`mb-3 rounded-lg p-3 text-sm ${
-                      avatarMessage.type === "success"
-                        ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                        : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
-                    }`}
+                    className={`mb-3 rounded-lg p-3 text-sm ${avatarMessage.type === "success"
+                      ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
+                      }`}
                   >
                     {avatarMessage.text}
                   </div>
                 )}
-                
+
                 <label className="flex cursor-pointer items-center justify-center rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-[#14b8a6]/30 hover:bg-[#14b8a6]/5 transition">
                   <input
                     type="file"
@@ -261,11 +262,10 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                 {profileMessage && (
                   <div
-                    className={`mb-4 rounded-lg p-3 text-sm ${
-                      profileMessage.type === "success"
-                        ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                        : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
-                    }`}
+                    className={`mb-4 rounded-lg p-3 text-sm ${profileMessage.type === "success"
+                      ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
+                      }`}
                   >
                     {profileMessage.text}
                   </div>
@@ -319,11 +319,10 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                 {passwordMessage && (
                   <div
-                    className={`mb-4 rounded-lg p-3 text-sm ${
-                      passwordMessage.type === "success"
-                        ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                        : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
-                    }`}
+                    className={`mb-4 rounded-lg p-3 text-sm ${passwordMessage.type === "success"
+                      ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
+                      }`}
                   >
                     {passwordMessage.text}
                   </div>
@@ -332,8 +331,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
                 <form onSubmit={handlePasswordUpdate} className="space-y-4">
                   <div>
                     <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">Current Password</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={passwordForm.currentPassword}
                       onChange={(e) =>
                         setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
@@ -345,8 +343,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                   <div>
                     <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">New Password</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={passwordForm.newPassword}
                       onChange={(e) =>
                         setPasswordForm({ ...passwordForm, newPassword: e.target.value })
@@ -360,8 +357,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                   <div>
                     <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">Confirm New Password</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={passwordForm.confirmPassword}
                       onChange={(e) =>
                         setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })

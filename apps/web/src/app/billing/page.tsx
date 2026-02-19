@@ -16,7 +16,16 @@ const TIER_CONFIG: Record<AllTierName, {
   accent: string;
   description: string;
   popular?: boolean;
+  limitText?: string;
+  frequencyText?: string;
 }> = {
+  ltd: {
+    name: "LTD (Lifetime Deal)",
+    accent: "#ef4444",
+    description: "One-time payment for lifetime access",
+    limitText: "Limited to first 100 accounts",
+    frequencyText: "One-time payment"
+  },
   starter: {
     name: "Starter",
     accent: "#14b8a6",
@@ -43,7 +52,7 @@ const TIER_CONFIG: Record<AllTierName, {
 const tierNames = ["starter", "professional", "enterprise"] as const;
 type TierName = (typeof tierNames)[number];
 
-const allTierNames = ["starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
+const allTierNames = ["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
 type AllTierName = (typeof allTierNames)[number];
 
 const isTierName = (tier: string): tier is TierName =>
@@ -270,9 +279,8 @@ export default function BillingPage() {
               </div>
               <div className="h-3 bg-[#080c16] rounded-full overflow-hidden mb-2">
                 <div
-                  className={`h-full transition-all ${
-                    isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
-                  }`}
+                  className={`h-full transition-all ${isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
+                    }`}
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
@@ -286,7 +294,7 @@ export default function BillingPage() {
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
               <p className="text-red-400 font-semibold flex items-center gap-2">
                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                  <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" />
                 </svg>
                 Usage Limit Exceeded
               </p>
@@ -311,9 +319,8 @@ export default function BillingPage() {
               return (
                 <div
                   key={tier}
-                  className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 ${
-                    isCurrent ? "border-[#14b8a6]" : "border-white/[0.07]"
-                  }`}
+                  className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 ${isCurrent ? "border-[#14b8a6]" : "border-white/[0.07]"
+                    }`}
                 >
                   {config.popular && !isCurrent && (
                     <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/40 font-semibold uppercase tracking-wider">
@@ -323,6 +330,11 @@ export default function BillingPage() {
                   {isCurrent && (
                     <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#14b8a6]/10 text-[#14b8a6] border border-[#14b8a6]/40 font-semibold uppercase tracking-wider">
                       Current
+                    </span>
+                  )}
+                  {config.limitText && !isCurrent && (
+                    <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/40 font-semibold uppercase tracking-wider">
+                      {config.limitText}
                     </span>
                   )}
                   <div className="mb-4">
@@ -335,7 +347,7 @@ export default function BillingPage() {
                     <p className="text-4xl font-bold" style={{ color: config.accent }}>
                       ${info.price}
                     </p>
-                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">per month</p>
+                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">{config.frequencyText || "per month"}</p>
                   </div>
                   <div className="mb-6 pb-6 border-b border-white/[0.05]">
                     <p className="text-sm font-medium" style={{ color: config.accent }}>
@@ -346,8 +358,8 @@ export default function BillingPage() {
                   {!isCurrent && (
                     <button
                       onClick={() => setSelectedTier(tier)}
-                      className={isUpgrade 
-                        ? "btn-primary w-full text-sm" 
+                      className={isUpgrade
+                        ? "btn-primary w-full text-sm"
                         : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
                     >
                       {isUpgrade ? "Upgrade Plan" : "Change Plan"}

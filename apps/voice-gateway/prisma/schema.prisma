@@ -15,12 +15,6 @@ enum UserRole {
   USER
 }
 
-enum CommissionLevel {
-  LOW
-  MED
-  HIGH
-}
-
 model Tenant {
   id    String     @id @default(cuid())
   name  String
@@ -43,18 +37,6 @@ model Tenant {
   updatedAt DateTime @updatedAt
   
   googleConfig TenantGoogleConfig?
-  twilioConfig TenantTwilioConfig?
-}
-
-model TenantTwilioConfig {
-  id        String   @id @default(cuid())
-  tenantId  String   @unique
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  accountSid String
-  authToken  String
-  phoneNumber String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -69,9 +51,6 @@ model User {
   role UserRole @default(USER)
   isBlocked Boolean @default(false)
   avatar String? @db.Text
-  
-  // Commission settings
-  commissionLevel CommissionLevel @default(LOW)
   
   // Google OAuth fields
   googleId String? @unique
@@ -200,14 +179,6 @@ model GmailCredentials {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, tenantId])
-}
-
-model PlatformSettings {
-  id              String @id @default("global")
-  lowCommission   Float  @default(10)
-  medCommission   Float  @default(20)
-  highCommission  Float  @default(30)
-  updatedAt       DateTime @updatedAt
 }
 
 

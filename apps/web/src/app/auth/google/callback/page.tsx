@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Completing Google sign-in...");
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    if (processedRef.current) return;
     const error = searchParams.get("error");
     const code = searchParams.get("code");
 
@@ -22,22 +24,61 @@ export default function GoogleCallbackPage() {
       return;
     }
 
+    processedRef.current = true;
+
     const completeLogin = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/callback`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
+        let endpoint = "/auth/google/callback"; // Default to sign-in
+        let body = { code };
+        let method = "POST";
+
+        // Check for state to determine if this is Gmail or Calendar linking
+        const state = searchParams.get("state");
+        if (state) {
+          try {
+            const decodedState = JSON.parse(atob(state));
+            if (decodedState.type === 'gmail') {
+              endpoint = "/auth/google/gmail/callback";
+              body = { code, state } as any; // Pass state back for verification
+              setStatus("Linking Gmail...");
+            } else if (decodedState.type === 'calendar') {
+              endpoint = "/auth/google/calendar/callback";
+              body = { code, state } as any;
+              setStatus("Linking Calendar...");
+            }
+          } catch (e) {
+            console.error("Failed to parse state", e);
+          }
+        }
+
+        const token = localStorage.getItem("token"); // Needed for linking
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+          method,
+          headers,
+          body: JSON.stringify(body),
         });
         const data = await res.json();
+
         if (res.ok) {
-          localStorage.setItem("token", data.data.token);
-          router.push("/dashboard");
+          if (endpoint === "/auth/google/callback") {
+            // Sign-in flow
+            localStorage.setItem("token", data.data.token);
+            router.push("/dashboard");
+          } else {
+            // Linking flow
+            router.push("/settings"); // Redirect back to settings
+          }
         } else {
-          setStatus(data.message || "Google sign-in failed.");
+          setStatus(data.message || "Google sign-in/linking failed.");
         }
       } catch (err) {
-        setStatus("Google sign-in failed.");
+        setStatus("Google authentication failed.");
+        console.error(err);
       }
     };
 

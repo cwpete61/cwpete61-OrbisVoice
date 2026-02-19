@@ -5,6 +5,7 @@ import { ApiResponse } from "../types";
 import { authenticate } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 import { referralManager } from "../services/referral";
+import { env } from "../env";
 
 export async function referralRoutes(fastify: FastifyInstance) {
   // Get referral code for user
@@ -12,16 +13,14 @@ export async function referralRoutes(fastify: FastifyInstance) {
     try {
       const userId = (request as any).user.userId;
 
-      // TODO: Check if user already has a referral code
-      // For now, generate a new one
-      const code = referralManager.generateCode(userId);
+      const code = await referralManager.getOrCreateCode(userId);
 
       return reply.code(200).send({
         ok: true,
         message: "Referral code retrieved",
         data: {
           code,
-          shareUrl: `https://myorbisvoice.com/?ref=${code}`,
+          shareUrl: `${env.WEB_URL}/signup?ref=${code}`,
         },
       } as ApiResponse);
     } catch (err) {

@@ -7,27 +7,31 @@ export interface GeminiAudioResponse {
 }
 
 class GeminiVoiceClient {
-  private apiKey: string;
   private model: string = "gemini-2.0-flash-exp";
 
   constructor() {
-    this.apiKey = env.GEMINI_API_KEY;
-    if (!this.apiKey) {
-      logger.warn("GEMINI_API_KEY not set - Gemini Voice will not work");
+    if (!env.GEMINI_API_KEY) {
+      logger.warn("GEMINI_API_KEY not set - Gemini Voice will default to failing if no key provided in request");
     }
   }
 
-  async processAudio(audioData: string, systemPrompt: string): Promise<GeminiAudioResponse> {
-    if (!this.apiKey) {
+  private getEffectiveKey(apiKey?: string): string {
+    const key = apiKey || env.GEMINI_API_KEY;
+    if (!key) {
       throw new Error("Gemini API key not configured");
     }
+    return key;
+  }
+
+  async processAudio(apiKey: string | undefined, audioData: string, systemPrompt: string): Promise<GeminiAudioResponse> {
+    const key = this.getEffectiveKey(apiKey);
 
     try {
       logger.debug({ audioLength: audioData.length }, "Processing audio with Gemini");
 
       // Call Gemini API with audio input
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${key}`,
         {
           method: "POST",
           headers: {
@@ -63,7 +67,7 @@ class GeminiVoiceClient {
         throw new Error(`Gemini API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       let textContent = "";
 
       if (data.candidates?.[0]?.content?.parts) {
@@ -86,17 +90,15 @@ class GeminiVoiceClient {
     }
   }
 
-  async processText(text: string, agentId: string): Promise<{ text: string; audioData?: string }> {
-    if (!this.apiKey) {
-      throw new Error("Gemini API key not configured");
-    }
+  async processText(apiKey: string | undefined, text: string, agentId: string): Promise<{ text: string; audioData?: string }> {
+    const key = this.getEffectiveKey(apiKey);
 
     try {
       logger.debug({ agentId }, "Processing text with Gemini");
 
       // Call Gemini API with text input
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${key}`,
         {
           method: "POST",
           headers: {
@@ -126,7 +128,7 @@ class GeminiVoiceClient {
         throw new Error(`Gemini API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       let textContent = "";
 
       if (data.candidates?.[0]?.content?.parts) {

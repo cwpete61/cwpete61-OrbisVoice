@@ -1,4 +1,5 @@
 import * as WebSocket from "ws";
+import * as jwt from "jsonwebtoken";
 // @ts-ignore - uuid types
 import { v4 as uuidv4 } from "uuid";
 import { env } from "./env";
@@ -47,7 +48,62 @@ class VoiceGateway {
     sessionId: string
   ) {
     if (message.type === "control") {
-      if (message.data === "init") {
+      if (message.data.startsWith("{")) {
+        // Handle init with JSON payload containing token
+        try {
+          const payload = JSON.parse(message.data);
+          if (payload.event === "init" && payload.token) {
+            const token = payload.token;
+
+            // Fetch config from API
+            let apiKey: string | undefined;
+            try {
+              const response = await fetch(`${env.API_URL}/api/settings/google-config?include_secrets=true`, {
+                headers: {
+                  Authorization: `Bearer ${token}`
+                }
+              });
+
+              if (response.status === 401) {
+                ws.send(JSON.stringify({ error: "Unauthorized" }));
+                return;
+              }
+
+              if (response.ok) {
+                const configResponse = await response.json() as any;
+                if (configResponse.ok && configResponse.data) {
+                  apiKey = configResponse.data.geminiApiKey;
+                }
+              }
+            } catch (err) {
+              logger.error({ err }, "Failed to fetch config");
+            }
+
+            // Decode token to get userId/agentId
+            const decoded = jwt.decode(token) as any;
+            if (!decoded || !decoded.userId) {
+              ws.send(JSON.stringify({ error: "Invalid token" }));
+              return;
+            }
+
+            const client: GatewayClient = {
+              sessionId,
+              userId: decoded.userId,
+              agentId: decoded.agentId || "default-agent", // Fallback
+              connectedAt: new Date(),
+              apiKey: apiKey, // Will be undefined for now, using global fallback
+            };
+
+            this.clients.set(sessionId, client);
+            logger.info({ sessionId, userId: client.userId }, "Client initialized");
+            ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+          }
+        } catch (e) {
+          logger.error({ err: e }, "Failed to handle init message");
+          ws.send(JSON.stringify({ error: "Initialization failed" }));
+        }
+      } else if (message.data === "init") {
+        // Legacy/Test init
         const client: GatewayClient = {
           sessionId,
           userId: "test-user", // TODO: extract from JWT header
@@ -55,7 +111,7 @@ class VoiceGateway {
           connectedAt: new Date(),
         };
         this.clients.set(sessionId, client);
-        logger.info({ client }, "Client initialized");
+        logger.info({ client }, "Client initialized (test mode)");
         ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
       }
     } else if (message.type === "audio") {
@@ -67,8 +123,8 @@ class VoiceGateway {
 
       try {
         // Forward to Gemini API
-        const response = await this.forwardToGemini(message.data, client.agentId);
-        
+        const response = await this.forwardToGemini(message.data, client.agentId, client.apiKey);
+
         // Send response back to client
         ws.send(JSON.stringify({
           type: "audio",
@@ -88,8 +144,8 @@ class VoiceGateway {
 
       try {
         // For text input, synthesize to audio then process
-        const response = await geminiVoiceClient.processText(message.data, client.agentId);
-        
+        const response = await geminiVoiceClient.processText(client.apiKey, message.data, client.agentId);
+
         ws.send(JSON.stringify({
           type: "text",
           data: response.text,
@@ -102,31 +158,17 @@ class VoiceGateway {
     }
   }
 
-  private async forwardToGemini(audioData: string, agentId: string): Promise<GeminiResponse> {
+  private async forwardToGemini(audioData: string, agentId: string, apiKey?: string): Promise<GeminiResponse> {
     // TODO: Fetch agent details from API using agentId
     // TODO: Get system prompt from agent
     // TODO: Get tool definitions from agent
     // TODO: Handle tool calls and stream results back to client
-    
+
     const systemPrompt = "You are a helpful AI assistant with access to various tools.";
-    
+
     try {
       // For now, process without tools. Phase 4.5 will integrate tool definitions and execution
-      return await geminiVoiceClient.processAudio(audioData, systemPrompt);
-      
-      // Future: Tool execution flow
-      // const toolDefs = await fetchToolDefinitions(agentId);
-      // const geminiResponse = await geminiVoiceClient.processAudio(audioData, systemPrompt, toolDefs);
-      // if (geminiResponse.toolCalls?.length > 0) {
-      //   const toolResults = await geminiVoiceClient.executeToolCalls(geminiResponse.toolCalls, {
-      //     agentId,
-      //     userId: client.userId,
-      //     tenantId: client.tenantId,
-      //     sessionId: client.sessionId,
-      //   });
-      //   // Send tool results back to Gemini for follow-up response
-      //   // return await geminiVoiceClient.processWithToolResults(toolResults, ...);
-      // }
+      return await geminiVoiceClient.processAudio(apiKey, audioData, systemPrompt);
     } catch (err) {
       logger.error({ err, agentId }, "Gemini processing failed");
       // Return stub response on error

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
@@ -81,6 +81,30 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
   const path = usePathname();
   const router = useRouter();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (tokenLoaded) {
+      fetchProfile();
+    }
+  }, [tokenLoaded]);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -99,17 +123,22 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
 
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 px-3 py-4">
-          {NAV.map((item) => {
+          {NAV.filter(item => {
+            // Hide "Users" tab if not admin
+            if (item.label === "Users") {
+              return profile?.isAdmin;
+            }
+            return true;
+          }).map((item) => {
             const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                  active
-                    ? "bg-[#14b8a6]/10 text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.04] hover:text-[#f0f4fa]"
-                }`}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${active
+                  ? "bg-[#14b8a6]/10 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.04] hover:text-[#f0f4fa]"
+                  }`}
               >
                 {item.icon}
                 {item.label}

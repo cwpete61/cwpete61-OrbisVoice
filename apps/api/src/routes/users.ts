@@ -21,7 +21,8 @@ const AdminUpdateUserSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
-  tier: z.enum(["starter", "professional", "enterprise"]).optional(),
+  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),
 });
 
 const AdminCreateUserSchema = z.object({
@@ -32,7 +33,14 @@ const AdminCreateUserSchema = z.object({
     .min(3)
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
-  tier: z.enum(["starter", "professional", "enterprise"]).optional(),
+  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  commissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
+});
+
+const PlatformSettingsSchema = z.object({
+  lowCommission: z.number().min(0),
+  medCommission: z.number().min(0),
+  highCommission: z.number().min(0),
 });
 
 const AdminBlockUserSchema = z.object({
@@ -64,6 +72,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             isBlocked: true,
             avatar: true,
             tenantId: true,
+            commissionLevel: true,
             referralCodeUsed: true,
             referralRewardTotal: true,
             createdAt: true,
@@ -227,7 +236,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const userId = (request as any).user.userId;
         const body = request.body as any;
-        
+
         if (!body || !body.avatarData) {
           return reply.code(400).send({
             ok: false,
@@ -236,7 +245,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
 
         const avatarData = body.avatarData;
-        
+
         // Validate base64 data size (max 5MB = ~6.7MB base64)
         if (avatarData.length > 7 * 1024 * 1024) {
           return reply.code(400).send({
@@ -310,6 +319,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             tenantId: true,
             googleId: true,
             googleEmail: true,
+            commissionLevel: true,
             createdAt: true,
             updatedAt: true,
             tenant: {
@@ -382,6 +392,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash,
             tenantId: tenant.id,
+            commissionLevel: body.commissionLevel,
           } as any,
           select: {
             id: true,
@@ -391,6 +402,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             role: true,
             isAdmin: true,
             isBlocked: true,
+            commissionLevel: true,
             tenant: {
               select: {
                 subscriptionStatus: true,
@@ -446,6 +458,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             googleEmail: true,
             googleName: true,
             googleProfilePicture: true,
+            commissionLevel: true,
             createdAt: true,
             updatedAt: true,
             tenant: {
@@ -559,6 +572,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           isAdmin: true,
           role: true,
           isBlocked: true,
+          commissionLevel: true,
           tenant: {
             select: {
               subscriptionStatus: true,
@@ -661,6 +675,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             isAdmin: true,
             role: true,
             isBlocked: true,
+            commissionLevel: true,
           },
         } as any);
 
@@ -1040,6 +1055,197 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Get Gmail OAuth connection URL
+  fastify.get(
+    "/users/me/gmail/connect-url",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const { OAuth2Client } = await import("google-auth-library");
+        const { env } = await import("../env.js");
+
+        const client = new OAuth2Client(
+          env.GOOGLE_CLIENT_ID,
+          env.GOOGLE_CLIENT_SECRET,
+          `${env.GOOGLE_REDIRECT_URI?.replace("/auth/google/callback", "") || "http://localhost:3000"}/auth/gmail/callback`
+        );
+
+        const url = client.generateAuthUrl({
+          access_type: "offline",
+          scope: [
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/gmail.send",
+          ],
+          prompt: "consent",
+        });
+
+        return reply.send({
+          ok: true,
+          data: { url },
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to generate Gmail connect URL");
+        return reply.code(500).send({
+          ok: false,
+          message: "Failed to generate Gmail connection URL",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Handle Gmail OAuth callback
+  fastify.post(
+    "/users/me/gmail/connect",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+        const body = request.body as any;
+        const { code } = body;
+
+        if (!code) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Authorization code is required",
+          } as ApiResponse);
+        }
+
+        const { OAuth2Client } = await import("google-auth-library");
+        const { env } = await import("../env.js");
+
+        const client = new OAuth2Client(
+          env.GOOGLE_CLIENT_ID,
+          env.GOOGLE_CLIENT_SECRET,
+          `${env.GOOGLE_REDIRECT_URI?.replace("/auth/google/callback", "") || "http://localhost:3000"}/auth/gmail/callback`
+        );
+
+        // Exchange code for tokens
+        const { tokens } = await client.getToken(code);
+
+        if (!tokens.access_token) {
+          throw new Error("No access token received");
+        }
+
+        // Get user's email from the token
+        const { oauth2 } = await import("googleapis");
+        const oauth2Api = oauth2({ version: "v2", auth: client });
+        client.setCredentials(tokens);
+        const userInfo = await oauth2Api.userinfo.get();
+
+        // Store or update Gmail credentials
+        await prisma.gmailCredentials.upsert({
+          where: {
+            userId_tenantId: {
+              userId,
+              tenantId,
+            },
+          },
+          create: {
+            userId,
+            tenantId,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token || null,
+            expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+            gmailEmail: (userInfo.data as any).email,
+            scope: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email",
+            verified: true,
+          },
+          update: {
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token || null,
+            expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+            gmailEmail: (userInfo.data as any).email,
+            verified: true,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          message: "Gmail connected successfully",
+          data: {
+            gmailEmail: (userInfo.data as any).email,
+          },
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to connect Gmail");
+        return reply.code(400).send({
+          ok: false,
+          message: "Failed to connect Gmail account",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Get Gmail credentials
+  fastify.get(
+    "/users/me/gmail/credentials",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        const creds = await prisma.gmailCredentials.findUnique({
+          where: {
+            userId_tenantId: {
+              userId,
+              tenantId,
+            },
+          },
+          select: {
+            gmailEmail: true,
+            verified: true,
+            expiresAt: true,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          data: creds || { gmailEmail: null, verified: false },
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to fetch Gmail credentials");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Disconnect Gmail
+  fastify.delete(
+    "/users/me/gmail/disconnect",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        await prisma.gmailCredentials.delete({
+          where: {
+            userId_tenantId: {
+              userId,
+              tenantId,
+            },
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          message: "Gmail disconnected successfully",
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to disconnect Gmail");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
   // Verify Gmail connectivity
   fastify.post(
     "/users/me/gmail/verify",
@@ -1119,6 +1325,82 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       } catch (err) {
         fastify.log.error({ err }, "Failed to verify Gmail");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: Get platform settings
+  fastify.get(
+    "/admin/platform-settings",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        let settings = await prisma.platformSettings.findUnique({
+          where: { id: "global" },
+        });
+
+        if (!settings) {
+          // Initialize default settings if not exists
+          settings = await prisma.platformSettings.create({
+            data: {
+              id: "global",
+              lowCommission: 10,
+              medCommission: 20,
+              highCommission: 30,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          data: settings,
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to fetch platform settings");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: Update platform settings
+  fastify.put<{ Body: z.infer<typeof PlatformSettingsSchema> }>(
+    "/admin/platform-settings",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const body = PlatformSettingsSchema.parse(request.body);
+
+        const settings = await prisma.platformSettings.upsert({
+          where: { id: "global" },
+          update: body,
+          create: {
+            id: "global",
+            ...body,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          data: settings,
+          message: "Platform settings updated successfully",
+        } as ApiResponse);
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Validation error",
+            data: err.errors,
+          } as ApiResponse);
+        }
+
+        fastify.log.error({ err }, "Failed to update platform settings");
         return reply.code(500).send({
           ok: false,
           message: "Internal server error",
