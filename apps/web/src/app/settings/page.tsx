@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
+import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
 export default function SettingsPage() {
@@ -9,7 +11,9 @@ export default function SettingsPage() {
   const [newKeyName, setNewKeyName] = useState("");
   const [loading, setLoading] = useState(false);
   const [showNewKey, setShowNewKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("api");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "api");
   const [profile, setProfile] = useState<any>(null);
   const [googleConfig, setGoogleConfig] = useState<any>({
     clientId: "",
@@ -36,6 +40,28 @@ export default function SettingsPage() {
   const [gmailClientSecret, setGmailClientSecret] = useState("");
   const [gmailCredentialsSaving, setGmailCredentialsSaving] = useState(false);
   const [gmailCredentialsResult, setGmailCredentialsResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Tenant Google Config State
+  const [tenantGoogleConfig, setTenantGoogleConfig] = useState<any>({
+    clientId: "",
+    clientSecret: "",
+    geminiApiKey: "",
+    hasConfig: false,
+  });
+  const [tenantConfigLoading, setTenantConfigLoading] = useState(false);
+  const [tenantConfigSaving, setTenantConfigSaving] = useState(false);
+  const [tenantConfigMessage, setTenantConfigMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Twilio State
+  const [twilioConfig, setTwilioConfig] = useState<any>({
+    accountSid: "",
+    authToken: "",
+    phoneNumber: "",
+  });
+  const [twilioLoading, setTwilioLoading] = useState(false);
+  const [twilioSaving, setTwilioSaving] = useState(false);
+  const [twilioMessage, setTwilioMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -51,6 +77,10 @@ export default function SettingsPage() {
     checkCalendarConnection();
     checkGmailConnection();
     fetchGmailCredentials();
+    fetchGmailCredentials();
+    fetchGmailCredentials();
+    fetchTenantGoogleConfig();
+    fetchTwilioConfig();
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -128,6 +158,150 @@ export default function SettingsPage() {
       }
     } catch (err) {
       console.error("Failed to fetch Google config:", err);
+    }
+
+  };
+
+  const fetchTenantGoogleConfig = async () => {
+    try {
+      setTenantConfigLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/google-config?include_secrets=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data) {
+          setTenantGoogleConfig({
+            clientId: data.data.clientId || "",
+            clientSecret: data.data.clientSecret || "",
+            geminiApiKey: data.data.geminiApiKey || "",
+            hasConfig: !!data.data.hasConfig,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch tenant Google config:", err);
+    } finally {
+      setTenantConfigLoading(false);
+    }
+  };
+
+  const saveTenantGoogleConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTenantConfigSaving(true);
+    setTenantConfigMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/google-config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          clientId: tenantGoogleConfig.clientId,
+          clientSecret: tenantGoogleConfig.clientSecret,
+          geminiApiKey: tenantGoogleConfig.geminiApiKey,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setTenantConfigMessage({ type: 'success', text: 'Configuration saved successfully' });
+        fetchTenantGoogleConfig();
+        setTimeout(() => setTenantConfigMessage(null), 3000);
+      } else {
+        setTenantConfigMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+      }
+    } catch (err) {
+      console.error("Failed to save tenant config:", err);
+      setTenantConfigMessage({ type: 'error', text: 'Network error occurred' });
+    } finally {
+      setTenantConfigSaving(false);
+    }
+  };
+
+  const deleteTenantGoogleConfig = async () => {
+    if (!confirm("Are you sure? This will revert to platform default credentials.")) return;
+
+    setTenantConfigSaving(true);
+    setTenantConfigMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/google-config`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setTenantConfigMessage({ type: 'success', text: 'Configuration removed. Using platform defaults.' });
+        setTenantGoogleConfig({
+          clientId: "",
+          clientSecret: "",
+          geminiApiKey: "",
+          hasConfig: false,
+        });
+        setTimeout(() => setTenantConfigMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to delete tenant config:", err);
+    } finally {
+      setTenantConfigSaving(false);
+    }
+  };
+
+  const fetchTwilioConfig = async () => {
+    try {
+      setTwilioLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/twilio/config`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data) {
+          setTwilioConfig({
+            accountSid: data.data.accountSid || "",
+            authToken: data.data.authToken || "",
+            phoneNumber: data.data.phoneNumber || "",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch Twilio config:", err);
+    } finally {
+      setTwilioLoading(false);
+    }
+  };
+
+  const saveTwilioConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTwilioSaving(true);
+    setTwilioMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/twilio/config`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(twilioConfig),
+      });
+
+      if (res.ok) {
+        setTwilioMessage({ type: 'success', text: 'Twilio configuration saved successfully' });
+        setTimeout(() => setTwilioMessage(null), 3000);
+      } else {
+        const data = await res.json();
+        setTwilioMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+      }
+    } catch (err) {
+      console.error("Failed to save Twilio config:", err);
+      setTwilioMessage({ type: 'error', text: 'Network error occurred' });
+    } finally {
+      setTwilioSaving(false);
     }
   };
 
@@ -239,7 +413,7 @@ export default function SettingsPage() {
 
   const handleDisconnectCalendar = async () => {
     if (!confirm("Are you sure you want to disconnect your calendar?")) return;
-    
+
     try {
       setCalendarLoading(true);
       const token = localStorage.getItem("token");
@@ -279,7 +453,7 @@ export default function SettingsPage() {
     try {
       setGmailLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/connect-url`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/gmail-url`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -335,7 +509,7 @@ export default function SettingsPage() {
 
   const handleDisconnectGmail = async () => {
     if (!confirm("Are you sure you want to disconnect your Gmail account?")) return;
-    
+
     try {
       setGmailLoading(true);
       const token = localStorage.getItem("token");
@@ -412,12 +586,14 @@ export default function SettingsPage() {
 
         <div className="mb-6 flex flex-wrap gap-2">
           <button
-            onClick={() => setActiveTab("api")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "api"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
+            onClick={() => {
+              setActiveTab("api");
+              router.replace("/settings?tab=api");
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "api"
+              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+              }`}
           >
             API Keys
           </button>
@@ -426,13 +602,13 @@ export default function SettingsPage() {
               <button
                 onClick={() => {
                   setActiveTab("google");
+                  router.replace("/settings?tab=google");
                   fetchGoogleConfig();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  activeTab === "google"
-                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "google"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
               >
                 Google Config
               </button>
@@ -440,29 +616,55 @@ export default function SettingsPage() {
           )}
           <button
             onClick={() => {
+              setActiveTab("integrations");
+              router.replace("/settings?tab=integrations");
+              fetchTenantGoogleConfig();
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "integrations"
+              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+              }`}
+          >
+            Integrations
+          </button>
+          <button
+            onClick={() => {
               setActiveTab("calendar");
+              router.replace("/settings?tab=calendar");
               checkCalendarConnection();
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "calendar"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "calendar"
+              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+              }`}
           >
             Calendar
           </button>
           <button
             onClick={() => {
               setActiveTab("gmail");
+              router.replace("/settings?tab=gmail");
               checkGmailConnection();
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "gmail"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "gmail"
+              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+              }`}
           >
             Gmail
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("twilio");
+              router.replace("/settings?tab=twilio");
+              fetchTwilioConfig();
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "twilio"
+              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+              }`}
+          >
+            Twilio
           </button>
         </div>
 
@@ -490,45 +692,45 @@ export default function SettingsPage() {
           <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">API Keys</h2>
 
-          <form onSubmit={handleCreateKey} className="mb-5 flex gap-3">
-            <input
-              type="text"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              placeholder="Key name (e.g. Production API)"
-              className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-            />
-            <button
-              type="submit"
-              disabled={loading || !newKeyName}
-              className="btn-primary text-sm disabled:opacity-50"
-            >
-              {loading ? "Creating…" : "Create Key"}
-            </button>
-          </form>
-
-          <div className="space-y-3">
-            {apiKeys.length === 0 ? (
-              <p className="text-sm text-[rgba(240,244,250,0.4)]">No API keys yet.</p>
-            ) : apiKeys.map((key: any) => (
-              <div
-                key={key.id}
-                className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+            <form onSubmit={handleCreateKey} className="mb-5 flex gap-3">
+              <input
+                type="text"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder="Key name (e.g. Production API)"
+                className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+              />
+              <button
+                type="submit"
+                disabled={loading || !newKeyName}
+                className="btn-primary text-sm disabled:opacity-50"
               >
-                <div>
-                  <p className="text-sm font-semibold text-[#f0f4fa]">{key.name}</p>
-                  <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
-                    Created {new Date(key.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleRevokeKey(key.id)}
-                  className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-3 py-1.5 text-xs text-[#f97316] transition hover:bg-[#f97316]/25"
+                {loading ? "Creating…" : "Create Key"}
+              </button>
+            </form>
+
+            <div className="space-y-3">
+              {apiKeys.length === 0 ? (
+                <p className="text-sm text-[rgba(240,244,250,0.4)]">No API keys yet.</p>
+              ) : apiKeys.map((key: any) => (
+                <div
+                  key={key.id}
+                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
                 >
-                  Revoke
-                </button>
-              </div>
-            ))}
+                  <div>
+                    <p className="text-sm font-semibold text-[#f0f4fa]">{key.name}</p>
+                    <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
+                      Created {new Date(key.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRevokeKey(key.id)}
+                    className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-3 py-1.5 text-xs text-[#f97316] transition hover:bg-[#f97316]/25"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -557,8 +759,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Client Secret</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={googleConfig.clientSecret}
                   onChange={(e) => {
                     setGoogleConfig({ ...googleConfig, clientSecret: e.target.value });
@@ -602,11 +803,10 @@ export default function SettingsPage() {
 
               {googleTestResult && (
                 <div
-                  className={`rounded-lg border px-4 py-3 text-sm ${
-                    googleTestResult.success
-                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                  }`}
+                  className={`rounded-lg border px-4 py-3 text-sm ${googleTestResult.success
+                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                    }`}
                 >
                   {googleTestResult.message}
                 </div>
@@ -814,7 +1014,7 @@ export default function SettingsPage() {
               <p className="mb-4 text-xs text-[rgba(240,244,250,0.45)]">
                 Connect your personal Gmail account to send emails from the platform.
               </p>
-              
+
               {gmailConnected && gmailEmail ? (
                 <div className="space-y-4">
                   <div className="rounded-lg border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-4">
@@ -824,7 +1024,7 @@ export default function SettingsPage() {
                     </div>
                     <p className="text-xs text-[rgba(240,244,250,0.65)] ml-6">{gmailEmail}</p>
                   </div>
-                  
+
                   <button
                     onClick={handleDisconnectGmail}
                     disabled={gmailLoading}
@@ -849,65 +1049,7 @@ export default function SettingsPage() {
               )}
             </div>
 
-            <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5 mb-6">
-              {gmailConnected ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`h-3 w-3 rounded-full ${gmailVerified ? "bg-[#14b8a6]" : "bg-[#f59e0b]"}`} />
-                      <span className="text-sm text-[rgba(240,244,250,0.75)]">
-                        {gmailVerified ? "Gmail is verified and connected" : "Gmail connected but not verified"}
-                      </span>
-                    </div>
-                    {gmailEmail && (
-                      <p className="text-xs text-[rgba(240,244,250,0.45)] ml-5">{gmailEmail}</p>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleVerifyGmail}
-                      disabled={gmailTesting}
-                      className="flex-1 btn-primary text-sm disabled:opacity-50"
-                    >
-                      {gmailTesting ? "Testing…" : "Test Connectivity"}
-                    </button>
-                    <button
-                      onClick={handleDisconnectGmail}
-                      disabled={gmailLoading}
-                      className="flex-1 rounded-lg border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2 text-sm font-medium text-[#ef4444] transition hover:border-[#ef4444]/50 hover:bg-[#ef4444]/15 disabled:opacity-50"
-                    >
-                      {gmailLoading ? "Disconnecting…" : "Disconnect"}
-                    </button>
-                  </div>
 
-                  {gmailTestResult && (
-                    <div
-                      className={`rounded-lg border px-4 py-3 text-sm ${
-                        gmailTestResult.success
-                          ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                          : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                      }`}
-                    >
-                      {gmailTestResult.message}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-[rgba(240,244,250,0.55)]">
-                    No Gmail account connected yet. Click the button below to authorize your Gmail account.
-                  </p>
-                  <button
-                    onClick={handleConnectGmail}
-                    disabled={gmailLoading}
-                    className="w-full btn-primary text-sm disabled:opacity-50"
-                  >
-                    {gmailLoading ? "Connecting…" : "Connect Gmail Account"}
-                  </button>
-                </div>
-              )}
-            </div>
 
             <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-4">
               <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">What this enables:</p>
@@ -926,6 +1068,210 @@ export default function SettingsPage() {
                 </li>
               </ul>
             </div>
+          </div>
+        )}
+
+        {/* Integrations Section */}
+        {activeTab === "integrations" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Google Cloud & Gemini Integration</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Configure your own Google Cloud Project credentials and Gemini API Key (Bring Your Own Key).
+              This allows you to control quotas and use your custom branding for authentication screens.
+            </p>
+
+            <form onSubmit={saveTenantGoogleConfig} className="space-y-4">
+              <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-semibold text-[#f0f4fa]">Custom Credentials</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${tenantGoogleConfig.hasConfig ? "bg-[#14b8a6]" : "bg-[#64748b]"}`} />
+                    <span className="text-xs text-[rgba(240,244,250,0.55)]">
+                      {tenantGoogleConfig.hasConfig ? "Active" : "Using Platform Defaults"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Google Client ID</label>
+                    <input
+                      type="text"
+                      value={tenantGoogleConfig.clientId}
+                      onChange={(e) => setTenantGoogleConfig({ ...tenantGoogleConfig, clientId: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="Your Google Cloud Client ID"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Google Client Secret</label>
+                    <PasswordInput
+                      value={tenantGoogleConfig.clientSecret}
+                      onChange={(e) => setTenantGoogleConfig({ ...tenantGoogleConfig, clientSecret: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder={tenantGoogleConfig.hasConfig && !tenantGoogleConfig.clientSecret ? "********" : "Your Google Cloud Client Secret"}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Gemini API Key</label>
+                    <PasswordInput
+                      value={tenantGoogleConfig.geminiApiKey}
+                      onChange={(e) => setTenantGoogleConfig({ ...tenantGoogleConfig, geminiApiKey: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder={tenantGoogleConfig.hasConfig && !tenantGoogleConfig.geminiApiKey ? "********" : "Your Gemini API Key (AI Studio)"}
+                    />
+                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">
+                      Required for the Voice Agent. Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Google AI Studio</a>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {tenantConfigMessage && (
+                <div className={`rounded-lg border px-4 py-3 text-sm ${tenantConfigMessage.type === 'success'
+                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}>
+                  {tenantConfigMessage.text}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={tenantConfigSaving}
+                  className="btn-primary text-sm disabled:opacity-50"
+                >
+                  {tenantConfigSaving ? "Saving..." : "Save Configuration"}
+                </button>
+                {tenantGoogleConfig.hasConfig && (
+                  <button
+                    type="button"
+                    onClick={deleteTenantGoogleConfig}
+                    className="rounded-lg border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2 text-sm font-medium text-[#ef4444] transition hover:border-[#ef4444]/50 hover:bg-[#ef4444]/15"
+                  >
+                    Revert to Default
+                  </button>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="mt-6 rounded-lg border border-white/[0.06] bg-[#05080f]/50 p-4">
+                <h4 className="mb-3 text-xs font-semibold text-[#f0f4fa]">Setup Instructions:</h4>
+                <ol className="space-y-3 text-xs text-[rgba(240,244,250,0.55)]">
+                  <li className="flex gap-2">
+                    <span className="text-[#14b8a6]">1.</span>
+                    <span>
+                      Create a project in the <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Google Cloud Console</a>.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-[#14b8a6]">2.</span>
+                    <span>
+                      Create OAuth credentials (Client ID & Secret) and add the following redirect URIs:
+                    </span>
+                  </li>
+                  <li className="ml-5 font-mono text-[#14b8a6]">
+                    https://[your-domain]/auth/google/gmail/callback
+                  </li>
+                  <li className="ml-5 font-mono text-[#14b8a6]">
+                    https://[your-domain]/auth/google/calendar/callback
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-[#14b8a6]">3.</span>
+                    <span>
+                      Get your Gemini API Key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Google AI Studio</a>.
+                    </span>
+                  </li>
+                </ol>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Twilio Section */}
+        {activeTab === "twilio" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Twilio Configuration</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Configure your Twilio credentials to enable SMS and phone call capabilities.
+            </p>
+
+            <form onSubmit={saveTwilioConfig} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Account SID</label>
+                <input
+                  type="text"
+                  value={twilioConfig.accountSid}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, accountSid: e.target.value })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  placeholder="AC..."
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Auth Token</label>
+                <PasswordInput
+                  value={twilioConfig.authToken}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, authToken: e.target.value })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  placeholder="Your Twilio Auth Token"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Phone Number</label>
+                <input
+                  type="text"
+                  value={twilioConfig.phoneNumber}
+                  onChange={(e) => setTwilioConfig({ ...twilioConfig, phoneNumber: e.target.value })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  placeholder="+1234567890"
+                />
+              </div>
+
+              {twilioMessage && (
+                <div className={`rounded-lg border px-4 py-3 text-sm ${twilioMessage.type === 'success'
+                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}>
+                  {twilioMessage.text}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={twilioSaving}
+                  className="btn-primary text-sm disabled:opacity-50"
+                >
+                  {twilioSaving ? "Saving..." : "Save Configuration"}
+                </button>
+              </div>
+
+              {/* Instructions */}
+              <div className="mt-6 rounded-lg border border-white/[0.06] bg-[#05080f]/50 p-4">
+                <h4 className="mb-3 text-xs font-semibold text-[#f0f4fa]">Setup Instructions:</h4>
+                <ol className="space-y-3 text-xs text-[rgba(240,244,250,0.55)]">
+                  <li className="flex gap-2">
+                    <span className="text-[#14b8a6]">1.</span>
+                    <span>
+                      Log in to the <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Twilio Console</a>.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-[#14b8a6]">2.</span>
+                    <span>
+                      Copy your <strong>Account SID</strong> and <strong>Auth Token</strong> from the dashboard (under "Account Info").
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-[#14b8a6]">3.</span>
+                    <span>
+                      Go to <a href="https://console.twilio.com/us1/develop/phone-numbers/manage/active" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Phone Numbers &gt; Manage &gt; Active numbers</a> to get your phone number.
+                    </span>
+                  </li>
+                </ol>
+              </div>
+            </form>
           </div>
         )}
 

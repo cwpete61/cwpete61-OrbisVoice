@@ -4,7 +4,9 @@ import { authenticate } from "../middleware/auth";
 import { z } from "zod";
 
 // Subscription tier pricing
+// Subscription tier pricing
 const TIER_LIMITS = {
+  ltd: { conversations: 1000, price: 497 },
   starter: { conversations: 1000, price: 197 },
   professional: { conversations: 10000, price: 497 },
   enterprise: { conversations: 100000, price: 997 },
@@ -13,7 +15,7 @@ const TIER_LIMITS = {
 
 // Schema for creating a subscription
 const createSubscriptionSchema = z.object({
-  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
+  tier: z.enum(["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
   billingEmail: z.string().email().optional(),
 });
 
@@ -65,7 +67,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
-      
+
       const validation = createSubscriptionSchema.safeParse(request.body);
       if (!validation.success) {
         return reply.code(400).send({
@@ -131,7 +133,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = (request.user as any).tenantId;
-      
+
       const validation = trackUsageSchema.safeParse(request.body);
       if (!validation.success) {
         return reply.code(400).send({

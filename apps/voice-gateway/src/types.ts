@@ -10,6 +10,7 @@ export interface GatewayClient {
   userId: string;
   agentId: string;
   connectedAt: Date;
+  apiKey?: string;
 }
 
 export interface GeminiResponse {

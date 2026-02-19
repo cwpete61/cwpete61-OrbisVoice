@@ -4,16 +4,18 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
+import { referralManager } from "../services/referral";
 
 const SignupSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
+  referralCode: z.string().optional(),
 });
 
 const LoginSchema = z.object({
-  email: z.string().email(),
+  email: z.string(),
   password: z.string(),
 });
 
@@ -68,6 +70,15 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as any,
         });
 
+        // Handle referral if provided
+        if (body.referralCode) {
+          try {
+            await referralManager.redeemReferral(body.referralCode, user.id);
+          } catch (err) {
+            logger.error({ err, code: body.referralCode, userId: user.id }, "Referral redemption failed, but signup proceeding");
+          }
+        }
+
         // Generate JWT
         const token = fastify.jwt.sign(
           { userId: user.id, tenantId: tenant.id, email: user.email },
@@ -105,8 +116,13 @@ export async function authRoutes(fastify: FastifyInstance) {
         const body = LoginSchema.parse(request.body);
 
         // Find user
-        const user = await prisma.user.findUnique({
-          where: { email: body.email },
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: body.email },
+              { username: body.email }
+            ]
+          },
         });
         if (!user) {
           return reply.code(401).send({

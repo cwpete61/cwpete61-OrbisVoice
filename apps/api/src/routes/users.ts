@@ -21,7 +21,8 @@ const AdminUpdateUserSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
-  tier: z.enum(["starter", "professional", "enterprise"]).optional(),
+  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),
 });
 
 const AdminCreateUserSchema = z.object({
@@ -32,7 +33,14 @@ const AdminCreateUserSchema = z.object({
     .min(3)
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
-  tier: z.enum(["starter", "professional", "enterprise"]).optional(),
+  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  commissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
+});
+
+const PlatformSettingsSchema = z.object({
+  lowCommission: z.number().min(0),
+  medCommission: z.number().min(0),
+  highCommission: z.number().min(0),
 });
 
 const AdminBlockUserSchema = z.object({
@@ -64,6 +72,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             isBlocked: true,
             avatar: true,
             tenantId: true,
+            commissionLevel: true,
             referralCodeUsed: true,
             referralRewardTotal: true,
             createdAt: true,
@@ -227,7 +236,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const userId = (request as any).user.userId;
         const body = request.body as any;
-        
+
         if (!body || !body.avatarData) {
           return reply.code(400).send({
             ok: false,
@@ -236,7 +245,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
 
         const avatarData = body.avatarData;
-        
+
         // Validate base64 data size (max 5MB = ~6.7MB base64)
         if (avatarData.length > 7 * 1024 * 1024) {
           return reply.code(400).send({
@@ -310,6 +319,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             tenantId: true,
             googleId: true,
             googleEmail: true,
+            commissionLevel: true,
             createdAt: true,
             updatedAt: true,
             tenant: {
@@ -382,6 +392,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash,
             tenantId: tenant.id,
+            commissionLevel: body.commissionLevel,
           } as any,
           select: {
             id: true,
@@ -391,6 +402,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             role: true,
             isAdmin: true,
             isBlocked: true,
+            commissionLevel: true,
             tenant: {
               select: {
                 subscriptionStatus: true,
@@ -446,6 +458,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             googleEmail: true,
             googleName: true,
             googleProfilePicture: true,
+            commissionLevel: true,
             createdAt: true,
             updatedAt: true,
             tenant: {
@@ -559,6 +572,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           isAdmin: true,
           role: true,
           isBlocked: true,
+          commissionLevel: true,
           tenant: {
             select: {
               subscriptionStatus: true,
@@ -661,6 +675,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             isAdmin: true,
             role: true,
             isBlocked: true,
+            commissionLevel: true,
           },
         } as any);
 
@@ -1107,7 +1122,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         // Exchange code for tokens
         const { tokens } = await client.getToken(code);
-        
+
         if (!tokens.access_token) {
           throw new Error("No access token received");
         }
@@ -1310,6 +1325,82 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       } catch (err) {
         fastify.log.error({ err }, "Failed to verify Gmail");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: Get platform settings
+  fastify.get(
+    "/admin/platform-settings",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        let settings = await prisma.platformSettings.findUnique({
+          where: { id: "global" },
+        });
+
+        if (!settings) {
+          // Initialize default settings if not exists
+          settings = await prisma.platformSettings.create({
+            data: {
+              id: "global",
+              lowCommission: 10,
+              medCommission: 20,
+              highCommission: 30,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          data: settings,
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to fetch platform settings");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: Update platform settings
+  fastify.put<{ Body: z.infer<typeof PlatformSettingsSchema> }>(
+    "/admin/platform-settings",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const body = PlatformSettingsSchema.parse(request.body);
+
+        const settings = await prisma.platformSettings.upsert({
+          where: { id: "global" },
+          update: body,
+          create: {
+            id: "global",
+            ...body,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          data: settings,
+          message: "Platform settings updated successfully",
+        } as ApiResponse);
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Validation error",
+            data: err.errors,
+          } as ApiResponse);
+        }
+
+        fastify.log.error({ err }, "Failed to update platform settings");
         return reply.code(500).send({
           ok: false,
           message: "Internal server error",
