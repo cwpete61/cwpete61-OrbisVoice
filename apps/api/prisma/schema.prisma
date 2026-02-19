@@ -136,3 +136,19 @@ model GoogleAuthConfig {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model CalendarCredentials {
+  id String @id @default(cuid())
+  userId String
+  tenantId String
+  accessToken String @db.Text
+  refreshToken String? @db.Text
+  expiresAt DateTime?
+  calendarEmail String?
+  scope String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId])
+}
+

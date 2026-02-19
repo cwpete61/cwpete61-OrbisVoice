@@ -896,4 +896,75 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Get calendar connection status for current user
+  fastify.get(
+    "/users/me/calendar",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        const creds = await prisma.calendarCredentials.findUnique({
+          where: {
+            userId_tenantId: {
+              userId,
+              tenantId,
+            },
+          },
+          select: {
+            id: true,
+            calendarEmail: true,
+            createdAt: true,
+            expiresAt: true,
+          },
+        }) as any;
+
+        return reply.send({
+          ok: true,
+          data: {
+            connected: !!creds,
+            ...creds,
+          },
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to get calendar status");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Disconnect user's calendar
+  fastify.delete(
+    "/users/me/calendar",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request as any).user.userId;
+        const tenantId = (request as any).user.tenantId;
+
+        await prisma.calendarCredentials.deleteMany({
+          where: {
+            userId,
+            tenantId,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          message: "Calendar disconnected",
+        } as ApiResponse);
+      } catch (err) {
+        fastify.log.error({ err }, "Failed to disconnect calendar");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
 }

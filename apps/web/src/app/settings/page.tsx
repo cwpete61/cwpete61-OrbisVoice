@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DashboardShell from "../components/DashboardShell";
+import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
 export default function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
@@ -21,6 +22,10 @@ export default function SettingsPage() {
   const [googleTesting, setGoogleTesting] = useState(false);
   const [googleTestResult, setGoogleTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [tokenEmail, setTokenEmail] = useState<string | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarConnectUrl, setCalendarConnectUrl] = useState<string | null>(null);
+  const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
     profile?.role === "ADMIN" ||
@@ -32,6 +37,7 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchApiKeys();
     fetchProfile();
+    checkCalendarConnection();
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -41,7 +47,7 @@ export default function SettingsPage() {
         setTokenEmail(null);
       }
     }
-  }, []);
+  }, [tokenLoaded]);
 
 
   const fetchApiKeys = async () => {
@@ -159,6 +165,65 @@ export default function SettingsPage() {
     }
   };
 
+  const checkCalendarConnection = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/calendar`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarConnected(!!data.data?.connected);
+      }
+    } catch (err) {
+      console.error("Failed to check calendar connection:", err);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    try {
+      setCalendarLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/calendar-url`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data?.url) {
+          setCalendarConnectUrl(data.data.url);
+          // Redirect to Google OAuth for calendar access
+          window.location.href = data.data.url;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to get calendar connect URL:", err);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    if (!confirm("Are you sure you want to disconnect your calendar?")) return;
+    
+    try {
+      setCalendarLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/calendar`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setCalendarConnected(false);
+      }
+    } catch (err) {
+      console.error("Failed to disconnect calendar:", err);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
 
 
   const handleCreateKey = async (e: React.FormEvent) => {
@@ -238,6 +303,19 @@ export default function SettingsPage() {
               </button>
             </>
           )}
+          <button
+            onClick={() => {
+              setActiveTab("calendar");
+              checkCalendarConnection();
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "calendar"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
+          >
+            Calendar
+          </button>
         </div>
 
         {/* New key banner */}
@@ -407,6 +485,65 @@ export default function SettingsPage() {
           </div>
         )}
 
+
+        {/* Widget embed */}
+        {activeTab === "calendar" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Calendar Connection</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Connect your Google Calendar to allow Voice Automation to check availability and book appointments automatically.
+            </p>
+
+            <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5">
+              {calendarConnected ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 rounded-full bg-[#14b8a6]" />
+                    <span className="text-sm text-[rgba(240,244,250,0.75)]">Calendar is connected</span>
+                  </div>
+                  <button
+                    onClick={handleDisconnectCalendar}
+                    disabled={calendarLoading}
+                    className="w-full rounded-lg border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2.5 text-sm font-medium text-[#ef4444] transition hover:border-[#ef4444]/50 hover:bg-[#ef4444]/15 disabled:opacity-50"
+                  >
+                    {calendarLoading ? "Disconnecting…" : "Disconnect Calendar"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-[rgba(240,244,250,0.55)]">
+                    No calendar connected yet. Click the button below to authorize access to your Google Calendar.
+                  </p>
+                  <button
+                    onClick={handleConnectCalendar}
+                    disabled={calendarLoading}
+                    className="w-full btn-primary text-sm disabled:opacity-50"
+                  >
+                    {calendarLoading ? "Connecting…" : "Connect Google Calendar"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 rounded-xl border border-white/[0.07] bg-[#05080f] p-4">
+              <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">What this enables:</p>
+              <ul className="space-y-2 text-xs text-[rgba(240,244,250,0.45)]">
+                <li className="flex items-start gap-2">
+                  <span className="text-[#14b8a6] mt-1">✓</span>
+                  <span>Voice AI checks your calendar availability before booking appointments</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#14b8a6] mt-1">✓</span>
+                  <span>Automatically adds confirmed appointments to your calendar</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#14b8a6] mt-1">✓</span>
+                  <span>Prevents double-booking by checking real-time availability</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Widget embed */}
         {activeTab === "api" && (
