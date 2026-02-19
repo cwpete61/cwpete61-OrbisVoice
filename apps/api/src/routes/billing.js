@@ -6,14 +6,14 @@ const auth_1 = require("../middleware/auth");
 const zod_1 = require("zod");
 // Subscription tier pricing
 const TIER_LIMITS = {
-    free: { conversations: 100, price: 0 },
-    starter: { conversations: 1000, price: 29 },
-    professional: { conversations: 10000, price: 99 },
-    enterprise: { conversations: 100000, price: 499 },
+    starter: { conversations: 1000, price: 197 },
+    professional: { conversations: 10000, price: 497 },
+    enterprise: { conversations: 100000, price: 997 },
+    "ai-revenue-infrastructure": { conversations: 250000, price: 1997 },
 };
 // Schema for creating a subscription
 const createSubscriptionSchema = zod_1.z.object({
-    tier: zod_1.z.enum(["starter", "professional", "enterprise"]),
+    tier: zod_1.z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
     billingEmail: zod_1.z.string().email().optional(),
 });
 // Schema for usage tracking
@@ -48,12 +48,14 @@ async function billingRoutes(fastify) {
         // Check if usage period has reset
         const now = new Date();
         const shouldReset = now >= tenant.usageResetAt;
+        const tierKey = tenant.subscriptionTier;
+        const tierInfo = TIER_LIMITS[tierKey] || TIER_LIMITS.starter;
         return reply.send({
             data: {
                 ...tenant,
                 usagePercent: Math.round(usagePercent * 10) / 10,
                 shouldReset,
-                tierInfo: TIER_LIMITS[tenant.subscriptionTier],
+                tierInfo,
             },
         });
     });

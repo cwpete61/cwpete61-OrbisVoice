@@ -10,6 +10,48 @@ interface TierInfo {
   price: number;
 }
 
+// Tier display configuration
+const TIER_CONFIG: Record<AllTierName, {
+  name: string;
+  accent: string;
+  description: string;
+  popular?: boolean;
+}> = {
+  starter: {
+    name: "Starter",
+    accent: "#14b8a6",
+    description: "Core conversion engine for single-location teams"
+  },
+  professional: {
+    name: "Professional",
+    accent: "#f97316",
+    description: "AI qualification and revenue acceleration",
+    popular: true
+  },
+  enterprise: {
+    name: "Enterprise",
+    accent: "#38bdf8",
+    description: "Multi-location revenue infrastructure"
+  },
+  "ai-revenue-infrastructure": {
+    name: "AI Revenue Infrastructure",
+    accent: "#a855f7",
+    description: "AI operations command for revenue control"
+  }
+};
+
+const tierNames = ["starter", "professional", "enterprise"] as const;
+type TierName = (typeof tierNames)[number];
+
+const allTierNames = ["starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
+type AllTierName = (typeof allTierNames)[number];
+
+const isTierName = (tier: string): tier is TierName =>
+  tierNames.includes(tier as TierName);
+
+const isAllTierName = (tier: string): tier is AllTierName =>
+  allTierNames.includes(tier as AllTierName);
+
 interface SubscriptionData {
   id: string;
   name: string;
@@ -27,12 +69,7 @@ interface SubscriptionData {
   tierInfo: TierInfo;
 }
 
-interface TierLimits {
-  free: TierInfo;
-  starter: TierInfo;
-  professional: TierInfo;
-  enterprise: TierInfo;
-}
+type TierLimits = Record<AllTierName, TierInfo>;
 
 export default function BillingPage() {
   const router = useRouter();
@@ -40,7 +77,7 @@ export default function BillingPage() {
   const [availableTiers, setAvailableTiers] = useState<TierLimits | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<AllTierName | null>(null);
   const [billingEmail, setBillingEmail] = useState("");
 
   // Extract token from URL if present (from OAuth callback)
@@ -91,8 +128,8 @@ export default function BillingPage() {
     }
   };
 
-  const handleUpgrade = async (tier: string) => {
-    if (!billingEmail && tier !== "free") {
+  const handleUpgrade = async (tier: AllTierName) => {
+    if (!billingEmail) {
       setError("Billing email is required");
       return;
     }
@@ -177,7 +214,11 @@ export default function BillingPage() {
     );
   }
 
-  const currentTier = subscription.subscriptionTier as keyof TierLimits;
+  const currentTier: AllTierName = isAllTierName(subscription.subscriptionTier)
+    ? subscription.subscriptionTier
+    : "starter";
+  const currentTierInfo = availableTiers[currentTier] ?? availableTiers.starter;
+  const currentTierConfig = TIER_CONFIG[currentTier];
   const usagePercent = subscription.usagePercent;
   const isOverLimit = usagePercent >= 100;
 
@@ -194,17 +235,22 @@ export default function BillingPage() {
 
         {/* Current Subscription */}
         <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 mb-8">
-          <h2 className="text-lg font-bold text-[#f0f4fa] mb-4">Current Subscription</h2>
+          <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Current Subscription</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <p className="text-sm text-[rgba(240,244,250,0.4)] mb-1">Plan</p>
-              <p className="text-2xl font-bold text-[#14b8a6] capitalize">{currentTier}</p>
+              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Plan</p>
+              <p className="text-2xl font-bold" style={{ color: currentTierConfig.accent }}>
+                {currentTierConfig.name}
+              </p>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
-                ${availableTiers[currentTier].price}/month
+                ${currentTierInfo.price}/month
+              </p>
+              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-2">
+                {currentTierConfig.description}
               </p>
             </div>
             <div>
-              <p className="text-sm text-[rgba(240,244,250,0.4)] mb-1">Status</p>
+              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Status</p>
               <p className="text-lg font-semibold text-[#f0f4fa] capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
@@ -215,14 +261,14 @@ export default function BillingPage() {
               )}
             </div>
             <div>
-              <p className="text-sm text-[rgba(240,244,250,0.4)] mb-1">Usage</p>
-              <div className="flex justify-between text-sm mb-2">
+              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Usage</p>
+              <div className="flex justify-between text-sm mb-3">
                 <span className="text-[rgba(240,244,250,0.5)]">Conversations</span>
-                <span className={isOverLimit ? "text-red-500 font-bold" : "text-[#f0f4fa]"}>
+                <span className={isOverLimit ? "text-red-400 font-bold" : "font-semibold text-[#f0f4fa]"}>
                   {subscription.usageCount} / {subscription.usageLimit}
                 </span>
               </div>
-              <div className="h-3 bg-[#080c16] rounded-full overflow-hidden">
+              <div className="h-3 bg-[#080c16] rounded-full overflow-hidden mb-2">
                 <div
                   className={`h-full transition-all ${
                     isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
@@ -230,7 +276,7 @@ export default function BillingPage() {
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-1">
+              <p className="text-xs text-[rgba(240,244,250,0.4)]">
                 Resets on {new Date(subscription.usageResetAt).toLocaleDateString()}
               </p>
             </div>
@@ -238,7 +284,12 @@ export default function BillingPage() {
 
           {isOverLimit && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
-              <p className="text-red-500 font-semibold">⚠️ Usage Limit Exceeded</p>
+              <p className="text-red-400 font-semibold flex items-center gap-2">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                </svg>
+                Usage Limit Exceeded
+              </p>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
                 Upgrade your plan to continue creating conversations
               </p>
@@ -248,42 +299,64 @@ export default function BillingPage() {
 
         {/* Available Plans */}
         <section>
-          <h2 className="text-lg font-bold text-[#f0f4fa] mb-4">Available Plans</h2>
+          <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Available Plans</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.entries(availableTiers).map(([tier, info]) => {
+            {allTierNames.map((tier) => {
+              const info = availableTiers[tier];
+              if (!info) return null;
               const isCurrent = tier === currentTier;
-              const isUpgrade = info.price > availableTiers[currentTier].price;
+              const isUpgrade = info.price > currentTierInfo.price;
+              const config = TIER_CONFIG[tier];
 
               return (
                 <div
                   key={tier}
-                  className={`rounded-2xl border bg-[#0c111d] p-6 ${
+                  className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 ${
                     isCurrent ? "border-[#14b8a6]" : "border-white/[0.07]"
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-lg font-bold text-[#f0f4fa] capitalize">{tier}</h3>
-                    {isCurrent && (
-                      <span className="px-2 py-0.5 text-xs rounded-md bg-[#14b8a6]/10 text-[#14b8a6] border border-[#14b8a6]/20">Current</span>
-                    )}
+                  {config.popular && !isCurrent && (
+                    <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/40 font-semibold uppercase tracking-wider">
+                      Popular
+                    </span>
+                  )}
+                  {isCurrent && (
+                    <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#14b8a6]/10 text-[#14b8a6] border border-[#14b8a6]/40 font-semibold uppercase tracking-wider">
+                      Current
+                    </span>
+                  )}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-bold text-[#f0f4fa]">
+                      {config.name}
+                    </h3>
+                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">{config.description}</p>
                   </div>
-                  <p className="text-3xl font-bold text-[#14b8a6] mb-2">${info.price}</p>
-                  <p className="text-sm text-[rgba(240,244,250,0.4)] mb-4">per month</p>
-                  <p className="text-[rgba(240,244,250,0.5)] mb-6">
-                    {info.conversations.toLocaleString()} conversations/month
-                  </p>
+                  <div className="mb-4">
+                    <p className="text-4xl font-bold" style={{ color: config.accent }}>
+                      ${info.price}
+                    </p>
+                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">per month</p>
+                  </div>
+                  <div className="mb-6 pb-6 border-b border-white/[0.05]">
+                    <p className="text-sm font-medium" style={{ color: config.accent }}>
+                      {info.conversations.toLocaleString()} conversations
+                    </p>
+                    <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">per month</p>
+                  </div>
                   {!isCurrent && (
                     <button
                       onClick={() => setSelectedTier(tier)}
-                      className={isUpgrade ? "btn-primary w-full" : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
+                      className={isUpgrade 
+                        ? "btn-primary w-full text-sm" 
+                        : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
                     >
-                      {isUpgrade ? "Upgrade" : "Downgrade"}
+                      {isUpgrade ? "Upgrade Plan" : "Change Plan"}
                     </button>
                   )}
-                  {isCurrent && subscription.subscriptionStatus === "active" && tier !== "free" && (
+                  {isCurrent && subscription.subscriptionStatus === "active" && (
                     <button
                       onClick={handleCancel}
-                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"
+                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 w-full"
                     >
                       Cancel Plan
                     </button>
@@ -296,31 +369,47 @@ export default function BillingPage() {
 
         {/* Upgrade Modal */}
         {selectedTier && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold text-[#f0f4fa] mb-4">
-                Change to {selectedTier} Plan
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8 max-w-md w-full shadow-2xl">
+              <h3 className="text-xl font-bold text-[#f0f4fa] mb-2">
+                Change to {TIER_CONFIG[selectedTier].name}
               </h3>
+              <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">
+                {TIER_CONFIG[selectedTier].description}
+              </p>
+              <div className="bg-[#080c16] rounded-xl p-4 mb-6 border border-white/[0.05]">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-[rgba(240,244,250,0.5)]">Monthly Price</span>
+                  <span className="text-2xl font-bold" style={{ color: TIER_CONFIG[selectedTier].accent }}>
+                    ${availableTiers[selectedTier].price}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-[rgba(240,244,250,0.5)]">Conversations</span>
+                  <span className="text-sm font-semibold text-[#f0f4fa]">
+                    {availableTiers[selectedTier].conversations.toLocaleString()}/month
+                  </span>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-[rgba(240,244,250,0.5)] uppercase tracking-wide block mb-2">Billing Email</label>
+                  <label className="text-xs font-medium text-[rgba(240,244,250,0.5)] uppercase tracking-wide block mb-2">
+                    Billing Email
+                  </label>
                   <input
                     type="email"
                     value={billingEmail}
                     onChange={(e) => setBillingEmail(e.target.value)}
-                    className="w-full px-4 py-2 bg-[#080c16] border border-white/[0.07] rounded-lg text-[#f0f4fa] focus:outline-none focus:border-[#14b8a6]"
+                    className="w-full px-4 py-2.5 bg-[#080c16] border border-white/[0.07] rounded-lg text-[#f0f4fa] focus:outline-none focus:border-[#14b8a6] transition"
                     placeholder="billing@company.com"
                   />
                 </div>
-                <p className="text-sm text-[rgba(240,244,250,0.5)]">
-                  You'll be charged ${availableTiers[selectedTier as keyof TierLimits].price}/month
-                </p>
-                <div className="flex gap-3">
+                <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => handleUpgrade(selectedTier)}
                     className="btn-primary flex-1"
                   >
-                    Confirm
+                    Confirm Change
                   </button>
                   <button
                     onClick={() => setSelectedTier(null)}

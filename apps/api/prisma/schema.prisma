@@ -26,7 +26,7 @@ model Tenant {
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
   subscriptionStatus   String?   // active, canceled, past_due, trialing, incomplete
-  subscriptionTier     String    @default("free") // free, starter, professional, enterprise
+  subscriptionTier     String    @default("starter") // starter, professional, enterprise
   subscriptionEnds     DateTime?
   usageLimit           Int       @default(100) // conversations per month
   usageCount           Int       @default(0)   // current month usage

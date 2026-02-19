@@ -21,7 +21,7 @@ const AdminUpdateUserSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
-  tier: z.enum(["free", "starter", "professional", "enterprise"]).optional(),
+  tier: z.enum(["starter", "professional", "enterprise"]).optional(),
 });
 
 const AdminCreateUserSchema = z.object({
@@ -32,7 +32,7 @@ const AdminCreateUserSchema = z.object({
     .min(3)
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
-  tier: z.enum(["free", "starter", "professional", "enterprise"]).optional(),
+  tier: z.enum(["starter", "professional", "enterprise"]).optional(),
 });
 
 const AdminBlockUserSchema = z.object({
@@ -343,7 +343,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const body = AdminCreateUserSchema.parse(request.body);
-        const tier = body.tier || "free";
+        const tier = body.tier || "starter";
 
         const existing = await prisma.user.findUnique({
           where: { email: body.email },
@@ -371,7 +371,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           data: {
             name: `${body.name}'s Workspace`,
             subscriptionTier: tier as any,
-            subscriptionStatus: tier === "free" ? null : "active",
+            subscriptionStatus: "active",
           } as any,
         });
 
@@ -591,7 +591,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
               where: { id: targetUser.tenantId },
               data: {
                 subscriptionTier: tier as any,
-                subscriptionStatus: tier === "free" ? null : "active",
+                subscriptionStatus: "active",
               } as any,
             } as any)
           );

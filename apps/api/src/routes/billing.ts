@@ -5,15 +5,15 @@ import { z } from "zod";
 
 // Subscription tier pricing
 const TIER_LIMITS = {
-  free: { conversations: 100, price: 0 },
-  starter: { conversations: 1000, price: 29 },
-  professional: { conversations: 10000, price: 99 },
-  enterprise: { conversations: 100000, price: 499 },
+  starter: { conversations: 1000, price: 197 },
+  professional: { conversations: 10000, price: 497 },
+  enterprise: { conversations: 100000, price: 997 },
+  "ai-revenue-infrastructure": { conversations: 250000, price: 1997 },
 };
 
 // Schema for creating a subscription
 const createSubscriptionSchema = z.object({
-  tier: z.enum(["starter", "professional", "enterprise"]),
+  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
   billingEmail: z.string().email().optional(),
 });
 
@@ -45,12 +45,15 @@ export default async function billingRoutes(fastify: FastifyInstance) {
       const now = new Date();
       const shouldReset = now >= tenant.usageResetAt;
 
+      const tierKey = tenant.subscriptionTier as keyof typeof TIER_LIMITS;
+      const tierInfo = TIER_LIMITS[tierKey] ?? TIER_LIMITS.starter;
+
       return reply.send({
         data: {
           ...tenant,
           usagePercent: Math.round(usagePercent * 10) / 10,
           shouldReset,
-          tierInfo: TIER_LIMITS[tenant.subscriptionTier as keyof typeof TIER_LIMITS],
+          tierInfo,
         },
       });
     }

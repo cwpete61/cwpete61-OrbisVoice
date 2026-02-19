@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingAgent, setEditingAgent] = useState<any>(null);
   const [stats, setStats] = useState({ totalAgents: 0, totalConversations: 0, avgDuration: 0 });
+  const [subscription, setSubscription] = useState<any>(null);
 
   // Extract token from URL if present (from OAuth callback)
   const tokenLoaded = useTokenFromUrl();
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     if (tokenLoaded) {
       fetchAgents();
       fetchStats();
+      fetchSubscription();
     }
   }, [tokenLoaded]);
 
@@ -37,6 +39,21 @@ export default function DashboardPage() {
       totalConversations: 0,
       avgDuration: 0,
     });
+  };
+
+  const fetchSubscription = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/subscription`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscription(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch subscription:", err);
+    }
   };
 
   const fetchAgents = async () => {
@@ -137,6 +154,40 @@ export default function DashboardPage() {
             + New Agent
           </button>
         </div>
+
+        {/* Current Plan */}
+        {subscription && (
+          <section className="mb-8 rounded-2xl border border-[#14b8a6]/20 bg-[#0c111d] p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-[rgba(240,244,250,0.45)] uppercase tracking-wide">Current Plan</p>
+                <p className="mt-3 text-3xl font-bold text-[#14b8a6] capitalize">
+                  {subscription.subscriptionTier === "ai-revenue-infrastructure"
+                    ? "AI Revenue Infrastructure"
+                    : subscription.subscriptionTier}
+                </p>
+                <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)]">
+                  ${subscription.tierInfo?.price || 0}/month
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-[rgba(240,244,250,0.45)]">Usage</p>
+                <p className="mt-2 text-lg font-semibold text-[#f0f4fa]">
+                  {subscription.usageCount} / {subscription.usageLimit}
+                </p>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">conversations</p>
+                <div className="mt-3 h-2 w-32 rounded-full bg-[#080c16] overflow-hidden">
+                  <div
+                    className="h-full bg-[#14b8a6] transition-all"
+                    style={{
+                      width: `${Math.min((subscription.usageCount / subscription.usageLimit) * 100, 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Stat strip */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">

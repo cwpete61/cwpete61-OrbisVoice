@@ -17,13 +17,13 @@ export default function UsersPage() {
     email: "",
     username: "",
     password: "",
-    tier: "free",
+    tier: "starter",
   });
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
-    tier: "free",
+    tier: "starter",
   });
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -120,7 +120,7 @@ export default function UsersPage() {
         return;
       }
 
-      setCreateForm({ name: "", email: "", username: "", password: "", tier: "free" });
+      setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter" });
       setCreateOpen(false);
       await fetchUsers(userFilter);
     } catch (err) {
@@ -136,13 +136,13 @@ export default function UsersPage() {
     setEditForm({
       name: user.name || "",
       email: user.email || "",
-      tier: (user?.tenant?.subscriptionTier as string) || "free",
+      tier: (user?.tenant?.subscriptionTier as string) || "starter",
     });
   };
 
   const cancelEditUser = () => {
     setEditingUserId(null);
-    setEditForm({ name: "", email: "", tier: "free" });
+    setEditForm({ name: "", email: "", tier: "starter" });
   };
 
   const saveEditUser = async (userId: string) => {
@@ -336,10 +336,10 @@ export default function UsersPage() {
                       }
                       className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
                     >
-                      <option value="free">free</option>
                       <option value="starter">starter</option>
                       <option value="professional">professional</option>
                       <option value="enterprise">enterprise</option>
+                      <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
                     </select>
                     <button
                       onClick={handleCreateUser}
@@ -403,10 +403,10 @@ export default function UsersPage() {
                             }
                             className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1 text-xs text-[#f0f4fa]"
                           >
-                            <option value="free">free</option>
                             <option value="starter">starter</option>
                             <option value="professional">professional</option>
                             <option value="enterprise">enterprise</option>
+                            <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
                           </select>
                         ) : (
                           <div className="flex items-center justify-end gap-2">
@@ -432,7 +432,7 @@ export default function UsersPage() {
                           </div>
                         )}
                         <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
-                          Tier: {(user?.tenant?.subscriptionTier as string) || "free"}
+                          Tier: {(user?.tenant?.subscriptionTier as string) || "starter"}
                         </p>
                         <p className="text-xs text-[rgba(240,244,250,0.45)]">
                           {user.role || (user.isAdmin ? "ADMIN" : "USER")}
