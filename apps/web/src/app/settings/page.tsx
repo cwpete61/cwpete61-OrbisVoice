@@ -32,6 +32,10 @@ export default function SettingsPage() {
   const [gmailConnectUrl, setGmailConnectUrl] = useState<string | null>(null);
   const [gmailTesting, setGmailTesting] = useState(false);
   const [gmailTestResult, setGmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [gmailClientId, setGmailClientId] = useState("");
+  const [gmailClientSecret, setGmailClientSecret] = useState("");
+  const [gmailCredentialsSaving, setGmailCredentialsSaving] = useState(false);
+  const [gmailCredentialsResult, setGmailCredentialsResult] = useState<{ success: boolean; message: string } | null>(null);
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -46,6 +50,7 @@ export default function SettingsPage() {
     fetchProfile();
     checkCalendarConnection();
     checkGmailConnection();
+    fetchGmailCredentials();
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -56,6 +61,24 @@ export default function SettingsPage() {
       }
     }
   }, [tokenLoaded]);
+
+  const fetchGmailCredentials = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/credentials`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data?.gmailClientId) {
+          setGmailClientId(data.data.gmailClientId);
+          setGmailClientSecret(data.data.gmailClientSecret || "");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch Gmail credentials:", err);
+    }
+  };
 
 
   const fetchApiKeys = async () => {
@@ -238,12 +261,12 @@ export default function SettingsPage() {
   const checkGmailConnection = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/credentials`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        setGmailConnected(!!data.data?.connected);
+        setGmailConnected(!!data.data?.gmailEmail);
         setGmailEmail(data.data?.gmailEmail || null);
         setGmailVerified(data.data?.verified || false);
       }
@@ -256,7 +279,7 @@ export default function SettingsPage() {
     try {
       setGmailLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/gmail-url`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/connect-url`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -316,7 +339,7 @@ export default function SettingsPage() {
     try {
       setGmailLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/disconnect`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -606,6 +629,113 @@ export default function SettingsPage() {
                   {googleTesting ? "Testing…" : "Test Connection"}
                 </button>
               </div>
+
+              {/* Instructions */}
+              <div className="mt-6 rounded-lg border border-white/[0.06] bg-[#05080f]/50 p-4">
+                <h4 className="mb-3 text-xs font-semibold text-[#f0f4fa]">How to get your Google OAuth credentials:</h4>
+                <ol className="space-y-3 text-xs text-[rgba(240,244,250,0.55)]">
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">1.</span>
+                    <span>
+                      Go to{" "}
+                      <a
+                        href="https://console.cloud.google.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Google Cloud Console
+                      </a>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">2.</span>
+                    <span>Create a new project or select an existing one</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">3.</span>
+                    <span>
+                      Enable the{" "}
+                      <a
+                        href="https://console.cloud.google.com/apis/library/gmail.googleapis.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Gmail API
+                      </a>{" "}
+                      and{" "}
+                      <a
+                        href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Google Calendar API
+                      </a>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">4.</span>
+                    <span>
+                      Go to "Credentials" and click{" "}
+                      <span className="text-[#14b8a6]">Create Credentials → OAuth 2.0 Client ID</span>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">5.</span>
+                    <span>
+                      Choose "Web application" as the application type
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">6.</span>
+                    <span>
+                      Add Authorized redirect URIs:
+                      <div className="mt-1 space-y-1 ml-3">
+                        <div className="font-mono text-[#14b8a6]">http://localhost:3000/auth/google/callback</div>
+                        <div className="font-mono text-[#14b8a6]">https://yourdomain.com/auth/google/callback</div>
+                      </div>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">7.</span>
+                    <span>
+                      Click "Create" and copy the Client ID and Client Secret to the fields above
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">8.</span>
+                    <span>
+                      Go to{" "}
+                      <a
+                        href="https://console.cloud.google.com/auth/audience"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        OAuth consent screen
+                      </a>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">9.</span>
+                    <span>Scroll to <strong>Test users</strong> section</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">10.</span>
+                    <span>Click <strong>+ ADD USERS</strong></span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">11.</span>
+                    <span>Enter your Gmail address (e.g., onbrandcopywriter@gmail.com)</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-[#14b8a6] font-semibold">12.</span>
+                    <span>Click <strong>Save</strong></span>
+                  </li>
+                </ol>
+              </div>
             </form>
           </div>
         )}
@@ -677,6 +807,47 @@ export default function SettingsPage() {
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
               Connect your Gmail account to enable voice automation to send emails and manage your inbox.
             </p>
+
+            {/* Gmail Connection Section */}
+            <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5 mb-6">
+              <h3 className="mb-4 text-xs font-semibold text-[#f0f4fa]">Gmail Account</h3>
+              <p className="mb-4 text-xs text-[rgba(240,244,250,0.45)]">
+                Connect your personal Gmail account to send emails from the platform.
+              </p>
+              
+              {gmailConnected && gmailEmail ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-3 w-3 rounded-full bg-[#14b8a6]" />
+                      <span className="text-sm font-medium text-[#14b8a6]">Gmail Connected</span>
+                    </div>
+                    <p className="text-xs text-[rgba(240,244,250,0.65)] ml-6">{gmailEmail}</p>
+                  </div>
+                  
+                  <button
+                    onClick={handleDisconnectGmail}
+                    disabled={gmailLoading}
+                    className="w-full rounded-lg border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2.5 text-sm font-medium text-[#ef4444] transition hover:border-[#ef4444]/50 hover:bg-[#ef4444]/15 disabled:opacity-50"
+                  >
+                    {gmailLoading ? "Disconnecting…" : "Disconnect Gmail"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-xs text-[rgba(240,244,250,0.55)]">
+                    No Gmail account connected. You'll be able to send emails from your Gmail address once connected.
+                  </p>
+                  <button
+                    onClick={handleConnectGmail}
+                    disabled={gmailLoading}
+                    className="w-full btn-primary text-sm disabled:opacity-50"
+                  >
+                    {gmailLoading ? "Connecting…" : "Connect Gmail Account"}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5 mb-6">
               {gmailConnected ? (

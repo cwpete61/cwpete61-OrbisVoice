@@ -37,21 +37,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError("");
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/url`);
-      const data = await res.json();
-      if (res.ok) {
-        window.location.href = data.data.url;
-      } else {
-        setError(data.message || "Google sign-in unavailable");
-      }
-    } catch (err) {
-      setError("Error: " + String(err));
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#05080f]">
       <PublicNav />
@@ -73,12 +58,11 @@ export default function LoginPage() {
                 </div>
               )}
               <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition"
+                type="submit"
+                disabled={loading}
+                className="btn-primary w-full py-2.5"
               >
-                <span className="text-base">G</span>
-                Continue with Google
+                {loading ? "Signing in…" : "Sign In"}
               </button>
               <div className="flex items-center gap-3 text-xs text-[rgba(240,244,250,0.35)]">
                 <div className="h-px flex-1 bg-white/[0.06]" />
