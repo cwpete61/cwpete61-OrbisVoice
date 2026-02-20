@@ -929,6 +929,191 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Admin: get System Email configuration
+  fastify.get(
+    "/admin/system-email",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const config = await prisma.systemEmailConfig.findUnique({
+          where: { id: "global" },
+        } as any);
+
+        return reply.send({
+          ok: true,
+          data: config || {
+            username: "",
+            password: "",
+            imapServer: "",
+            imapPort: "",
+            imapSecurity: "SSL",
+            smtpServer: "",
+            smtpPort: "",
+            smtpSecurity: "SSL",
+            pop3Server: "",
+            pop3Port: "",
+            pop3Security: "SSL",
+          },
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to fetch system email config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: update System Email configuration
+  fastify.put<{ Body: any }>(
+    "/admin/system-email",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const body = (request.body || {}) as any;
+
+        const config = await prisma.systemEmailConfig.upsert({
+          where: { id: "global" },
+          update: {
+            username: body.username,
+            password: body.password,
+            imapServer: body.imapServer,
+            imapPort: body.imapPort,
+            imapSecurity: body.imapSecurity,
+            smtpServer: body.smtpServer,
+            smtpPort: body.smtpPort,
+            smtpSecurity: body.smtpSecurity,
+            pop3Server: body.pop3Server,
+            pop3Port: body.pop3Port,
+            pop3Security: body.pop3Security,
+          } as any,
+          create: {
+            id: "global",
+            username: body.username,
+            password: body.password,
+            imapServer: body.imapServer,
+            imapPort: body.imapPort,
+            imapSecurity: body.imapSecurity || "SSL",
+            smtpServer: body.smtpServer,
+            smtpPort: body.smtpPort,
+            smtpSecurity: body.smtpSecurity || "SSL",
+            pop3Server: body.pop3Server,
+            pop3Port: body.pop3Port,
+            pop3Security: body.pop3Security || "SSL",
+          } as any,
+        });
+
+        return reply.send({
+          ok: true,
+          data: config,
+          message: "System email configuration updated",
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to update system email config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: test System Email configuration
+  fastify.post<{ Body: { testEmail: string; forceDevMode?: boolean } }>(
+    "/admin/system-email/test",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const { testEmail, forceDevMode } = request.body || {};
+
+        if (!testEmail) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Test email address is required",
+          } as ApiResponse);
+        }
+
+        const config = await prisma.systemEmailConfig.findUnique({
+          where: { id: "global" },
+        } as any);
+
+        const nodemailer = await import("nodemailer");
+        let transporter: any;
+        let isDevTest = false;
+
+        const isDevEnv = process.env.NODE_ENV !== "production";
+        const requiresDevFallback = (!config || !config.smtpServer || !config.username || !config.password);
+        const shouldRunDevMode = isDevEnv && (forceDevMode || requiresDevFallback);
+
+        if (shouldRunDevMode) {
+          const testAccount = await nodemailer.createTestAccount();
+          transporter = nodemailer.createTransport({
+            host: "smtp.ethereal.email",
+            port: 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+              user: testAccount.user, // generated ethereal user
+              pass: testAccount.pass, // generated ethereal password
+            },
+            tls: {
+              rejectUnauthorized: false
+            }
+          });
+          isDevTest = true;
+        } else if (requiresDevFallback) {
+          return reply.code(400).send({
+            ok: false,
+            message: "System email is not fully configured. Please save SMTP settings first.",
+          } as ApiResponse);
+        } else {
+          // Determine secure port logic
+          const port = parseInt(config.smtpPort || "587");
+          const secure = port === 465 || config.smtpSecurity === "SSL";
+
+          transporter = nodemailer.createTransport({
+            host: config.smtpServer,
+            port,
+            secure,
+            auth: {
+              user: config.username,
+              pass: config.password,
+            },
+          } as any);
+
+          // Verify connection for real configs
+          await transporter.verify();
+        }
+
+        // Send test email
+        const info = await transporter.sendMail({
+          from: `"OrbisVoice System" <${config?.username || "test@orbisvoice.local"}>`,
+          to: testEmail,
+          subject: "Test Email from OrbisVoice",
+          text: "This is a test email sent from the OrbisVoice System Email configuration panel.",
+          html: "<p>This is a test email sent from the <strong>OrbisVoice System Email</strong> configuration panel.</p>",
+        });
+
+        let successMessage = "Test email sent successfully! Please check your inbox.";
+        if (isDevTest) {
+          const previewUrl = nodemailer.getTestMessageUrl(info);
+          successMessage = `Dev mode: Email sent via Ethereal. ${previewUrl}`;
+        }
+
+        return reply.send({
+          ok: true,
+          message: successMessage,
+        } as ApiResponse);
+      } catch (err: any) {
+        console.error("Test email failed:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: `Failed to send test email: ${err.message || "Unknown error"}`,
+        } as ApiResponse);
+      }
+    }
+  );
+
   // Get calendar connection status for current user
   fastify.get(
     "/users/me/calendar",

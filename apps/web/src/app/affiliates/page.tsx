@@ -400,6 +400,15 @@ export default function AffiliatesPage() {
                 />
               </div>
               <div className="space-y-2">
+                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Refund Hold Period (Days)</label>
+                <input
+                  type="number"
+                  value={settingsForm.refundHoldDays}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
                 <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Lifetime / Term (0 = Infinite)</label>
                 <input
                   type="number"

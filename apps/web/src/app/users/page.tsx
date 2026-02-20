@@ -513,6 +513,15 @@ export default function UsersPage() {
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Refund Hold (Days)</label>
+                    <input
+                      type="number"
+                      value={settingsForm.refundHoldDays}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-12 mb-5">
@@ -777,42 +786,48 @@ export default function UsersPage() {
                         key={user.id}
                         className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
                       >
-                        <div>
+                        <div className="flex-1 min-w-0 pr-4">
                           {editingUserId === user.id ? (
-                            <div className="space-y-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                               <input
                                 value={editForm.name}
                                 onChange={(event) =>
                                   setEditForm((prev) => ({ ...prev, name: event.target.value }))
                                 }
-                                className="w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                                className="w-full sm:w-48 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                                placeholder="Name"
                               />
                               <input
                                 value={editForm.email}
                                 onChange={(event) =>
                                   setEditForm((prev) => ({ ...prev, email: event.target.value }))
                                 }
-                                className="w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                                className="w-full sm:w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                                placeholder="Email"
                               />
                             </div>
                           ) : (
-                            <>
-                              <p className="text-sm font-semibold text-[#f0f4fa]">{user.name}</p>
-                              <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">{user.email}</p>
-                              <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">@{user.username || "-"}</p>
-                            </>
+                            <div className="flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-3">
+                              <p className="text-sm font-semibold text-[#f0f4fa] truncate">{user.name}</p>
+                              <div className="flex flex-wrap items-center gap-2 text-xs truncate">
+                                <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <p className="text-[rgba(240,244,250,0.5)] truncate">{user.email}</p>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <p className="text-[rgba(240,244,250,0.35)] truncate">@{user.username || "-"}</p>
+                              </div>
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0">
+                          <div className="flex flex-col items-start sm:items-end gap-1.5">
                             {editingUserId === user.id ? (
-                              <>
+                              <div className="flex flex-col sm:flex-row items-center gap-2">
                                 <select
                                   value={editForm.tier}
                                   onChange={(event) =>
                                     setEditForm((prev) => ({ ...prev, tier: event.target.value }))
                                   }
-                                  className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1 text-xs text-[#f0f4fa]"
+                                  className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
                                 >
                                   <option value="starter">starter</option>
                                   <option value="professional">professional</option>
@@ -824,17 +839,17 @@ export default function UsersPage() {
                                   onChange={(event) =>
                                     setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
                                   }
-                                  className="mt-2 block w-full rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1 text-xs text-[#f0f4fa]"
+                                  className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
                                 >
                                   <option value="LOW">Low Comm</option>
                                   <option value="MED">Med Comm</option>
                                   <option value="HIGH">High Comm</option>
                                 </select>
-                              </>
+                              </div>
                             ) : (
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[11px] text-[rgba(240,244,250,0.45)]">
                                 <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border ${{
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium border ${{
                                     active: "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]",
                                     trialing: "border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]",
                                     canceled: "border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]",
@@ -847,24 +862,20 @@ export default function UsersPage() {
                                   {(user?.tenant?.subscriptionStatus as string) || "free"}
                                 </span>
                                 {user.isBlocked && (
-                                  <span className="inline-flex items-center rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-0.5 text-[11px] font-medium text-[#ef4444]">
+                                  <span className="inline-flex items-center rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-0.5 font-medium text-[#ef4444]">
                                     blocked
                                   </span>
                                 )}
+                                <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span>Tier: <span className="text-[#f0f4fa]">{(user?.tenant?.subscriptionTier as string) || "starter"}</span></span>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span className="uppercase font-semibold text-[rgba(240,244,250,0.6)]">{user.role || (user.isAdmin ? "ADMIN" : "USER")}</span>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span className="text-[rgba(240,244,250,0.35)]">{new Date(user.createdAt).toLocaleDateString()}</span>
                               </div>
                             )}
-                            <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
-                              Tier: {(user?.tenant?.subscriptionTier as string) || "starter"}
-                            </p>
-                            <p className="text-xs text-[rgba(240,244,250,0.45)]">
-                              Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span>
-                            </p>
-                            <p className="text-xs text-[rgba(240,244,250,0.45)]">
-                              {user.role || (user.isAdmin ? "ADMIN" : "USER")}
-                            </p>
-                            <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
-                              {new Date(user.createdAt).toLocaleDateString()}
-                            </p>
                           </div>
                           <div className="flex items-center gap-2">
                             {editingUserId === user.id ? (

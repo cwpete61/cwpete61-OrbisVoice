@@ -62,6 +62,27 @@ export default function SettingsPage() {
   const [twilioSaving, setTwilioSaving] = useState(false);
   const [twilioMessage, setTwilioMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // System Email State
+  const [systemEmailConfig, setSystemEmailConfig] = useState<any>({
+    username: "",
+    password: "",
+    imapServer: "",
+    imapPort: "",
+    imapSecurity: "SSL",
+    smtpServer: "",
+    smtpPort: "",
+    smtpSecurity: "SSL",
+    pop3Server: "",
+    pop3Port: "",
+    pop3Security: "SSL",
+  });
+  const [systemEmailLoading, setSystemEmailLoading] = useState(false);
+  const [systemEmailSaving, setSystemEmailSaving] = useState(false);
+  const [systemEmailMessage, setSystemEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [systemEmailTesting, setSystemEmailTesting] = useState(false);
+  const [systemEmailTestResult, setSystemEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [systemTestEmailTarget, setSystemTestEmailTarget] = useState("");
+
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -81,6 +102,7 @@ export default function SettingsPage() {
     fetchGmailCredentials();
     fetchTenantGoogleConfig();
     fetchTwilioConfig();
+    fetchSystemEmailConfig();
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -302,6 +324,101 @@ export default function SettingsPage() {
       setTwilioMessage({ type: 'error', text: 'Network error occurred' });
     } finally {
       setTwilioSaving(false);
+    }
+  };
+
+  const fetchSystemEmailConfig = async () => {
+    try {
+      setSystemEmailLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/system-email`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data) {
+          setSystemEmailConfig({
+            username: data.data.username || "",
+            password: data.data.password || "",
+            imapServer: data.data.imapServer || "",
+            imapPort: data.data.imapPort || "",
+            imapSecurity: data.data.imapSecurity || "SSL",
+            smtpServer: data.data.smtpServer || "",
+            smtpPort: data.data.smtpPort || "",
+            smtpSecurity: data.data.smtpSecurity || "SSL",
+            pop3Server: data.data.pop3Server || "",
+            pop3Port: data.data.pop3Port || "",
+            pop3Security: data.data.pop3Security || "SSL",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch System Email config:", err);
+    } finally {
+      setSystemEmailLoading(false);
+    }
+  };
+
+  const saveSystemEmailConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSystemEmailSaving(true);
+    setSystemEmailMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/system-email`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(systemEmailConfig),
+      });
+
+      if (res.ok) {
+        setSystemEmailMessage({ type: 'success', text: 'System Email configuration saved successfully' });
+        setTimeout(() => setSystemEmailMessage(null), 3000);
+      } else {
+        const data = await res.json();
+        setSystemEmailMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+      }
+    } catch (err) {
+      console.error("Failed to save System Email config:", err);
+      setSystemEmailMessage({ type: 'error', text: 'Network error occurred' });
+    } finally {
+      setSystemEmailSaving(false);
+    }
+  };
+
+  const testSystemEmailConfig = async (forceDevMode = false) => {
+    if (!systemTestEmailTarget) {
+      setSystemEmailTestResult({ success: false, message: "Please enter a test email address" });
+      return;
+    }
+
+    setSystemEmailTesting(true);
+    setSystemEmailTestResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/system-email/test`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ testEmail: systemTestEmailTarget, forceDevMode }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setSystemEmailTestResult({ success: true, message: data.message || "Test email sent successfully!" });
+      } else {
+        setSystemEmailTestResult({ success: false, message: data.message || "Failed to send test email" });
+      }
+    } catch (err: any) {
+      console.error("Test email connection failed:", err);
+      setSystemEmailTestResult({ success: false, message: `Connection failed: ${err.message || "Unknown error"}` });
+    } finally {
+      setSystemEmailTesting(false);
     }
   };
 
@@ -668,6 +785,19 @@ export default function SettingsPage() {
           </button>
           {isAdmin && (
             <>
+              <button
+                onClick={() => {
+                  setActiveTab("system-email");
+                  router.replace("/settings?tab=system-email");
+                  fetchSystemEmailConfig();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "system-email"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                System Email
+              </button>
               <button
                 onClick={() => {
                   setActiveTab("affiliates");
@@ -1316,6 +1446,227 @@ export default function SettingsPage() {
             <p className="mt-3 text-xs text-[rgba(240,244,250,0.35)]">
               Replace YOUR_AGENT_ID and YOUR_API_KEY with your values. Add <code className="text-[#14b8a6]">data-position="bottom-left"</code> to change widget position.
             </p>
+          </div>
+        )}
+
+        {/* System Email Section */}
+        {activeTab === "system-email" && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">System Email Configuration</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Configure the global email settings used to send transactional emails for the SaaS.
+            </p>
+
+            <form onSubmit={saveSystemEmailConfig} className="space-y-6">
+              {/* Account Information */}
+              <div>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">Account information</h3>
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Username</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.username}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, username: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="talk@myorbisvoice.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Password</label>
+                    <PasswordInput
+                      value={systemEmailConfig.password}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, password: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="use your password for this email account"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* IMAP */}
+              <div>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">IMAP (Incoming)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming server name</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.imapServer}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, imapServer: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="mail.spacemail.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming port</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.imapPort}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, imapPort: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="993"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Type of Security</label>
+                    <select
+                      value={systemEmailConfig.imapSecurity}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, imapSecurity: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                    >
+                      <option value="SSL">SSL</option>
+                      <option value="TLS">TLS</option>
+                      <option value="None">None</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SMTP */}
+              <div>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">SMTP (Outgoing)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Outgoing server name</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.smtpServer}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, smtpServer: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="mail.spacemail.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Outgoing port</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.smtpPort}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, smtpPort: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="465 or 587"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Type of Security</label>
+                    <select
+                      value={systemEmailConfig.smtpSecurity}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, smtpSecurity: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                    >
+                      <option value="SSL">SSL</option>
+                      <option value="TLS">TLS</option>
+                      <option value="STARTTLS">STARTTLS</option>
+                      <option value="None">None</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* POP3 */}
+              <div>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">POP3 (Alternative Incoming)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming server name</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.pop3Server}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, pop3Server: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="mail.spacemail.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming port</label>
+                    <input
+                      type="text"
+                      value={systemEmailConfig.pop3Port}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, pop3Port: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                      placeholder="995"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Type of Security</label>
+                    <select
+                      value={systemEmailConfig.pop3Security}
+                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, pop3Security: e.target.value })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                    >
+                      <option value="SSL">SSL</option>
+                      <option value="TLS">TLS</option>
+                      <option value="None">None</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {systemEmailMessage && (
+                <div className={`rounded-lg border px-4 py-3 text-sm ${systemEmailMessage.type === 'success'
+                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}>
+                  {systemEmailMessage.text}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={systemEmailSaving}
+                  className="btn-primary text-sm disabled:opacity-50"
+                >
+                  {systemEmailSaving ? "Saving..." : "Save Configuration"}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-8 border-t border-white/[0.07] pt-6">
+              <h3 className="mb-3 text-xs font-semibold text-[#f0f4fa]">Test Configuration</h3>
+              <p className="mb-4 text-xs text-[rgba(240,244,250,0.55)]">
+                Send a test email to verify your SMTP settings are correct. Ensure you save your configuration first.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 items-start">
+                <input
+                  type="email"
+                  value={systemTestEmailTarget}
+                  onChange={(e) => setSystemTestEmailTarget(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full sm:w-64 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => testSystemEmailConfig(false)}
+                  disabled={systemEmailTesting || !systemTestEmailTarget}
+                  className="rounded-lg border border-white/[0.12] bg-white/[0.03] px-4 py-2 text-sm text-[rgba(240,244,250,0.75)] transition hover:border-white/[0.25] hover:bg-white/[0.05] disabled:opacity-50 shrink-0"
+                >
+                  {systemEmailTesting ? "Sending..." : "Send Test Email"}
+                </button>
+                {process.env.NODE_ENV !== "production" && (
+                  <button
+                    type="button"
+                    onClick={() => testSystemEmailConfig(true)}
+                    disabled={systemEmailTesting || !systemTestEmailTarget}
+                    className="rounded-lg border border-[#f59e0b]/30 bg-[#f59e0b]/10 px-4 py-2 text-sm text-[#f59e0b] transition hover:border-[#f59e0b]/50 hover:bg-[#f59e0b]/20 disabled:opacity-50 shrink-0"
+                    title="Force Ethereal Email test in development mode"
+                  >
+                    Development Testing
+                  </button>
+                )}
+              </div>
+
+              {systemEmailTestResult && (
+                <div className={`mt-4 rounded-lg border px-4 py-3 text-sm ${systemEmailTestResult.success
+                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}>
+                  {systemEmailTestResult.message}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
