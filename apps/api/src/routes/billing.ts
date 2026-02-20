@@ -2,6 +2,29 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../db";
 import { authenticate } from "../middleware/auth";
 import { z } from "zod";
+import { referralManager } from "../services/referral";
+import { env } from "../env";
+import { logger } from "../logger";
+
+// Stripe Price IDs — map each tier to its Stripe price(s)
+const STRIPE_PRICES: Record<string, { oneTime?: string; recurring?: string }> = {
+  ltd: {
+    oneTime: "price_1T2kFjEFjM4hGTWYoZrCCDMJ",    // $497 one-time
+    recurring: "price_1T2kHaEFjM4hGTWYOvNxHr89",   // $20/month
+  },
+  starter: {
+    recurring: "price_1T2kh8EFjM4hGTWY08r5GmOe",   // $197/month
+  },
+  professional: {
+    recurring: "price_1T2kh9EFjM4hGTWYZxPvZBq6",   // $497/month
+  },
+  enterprise: {
+    recurring: "price_1T2khAEFjM4hGTWY6tmOu6lJ",   // $997/month
+  },
+  "ai-revenue-infrastructure": {
+    recurring: "price_1T2khBEFjM4hGTWYpmm7EC7s",   // $1997/month
+  },
+};
 
 // Hardcoded prices (conversation limits are now fetched from DB)
 const TIER_PRICES = {
@@ -38,6 +61,134 @@ const trackUsageSchema = z.object({
 });
 
 export default async function billingRoutes(fastify: FastifyInstance) {
+
+  // ─── CREATE STRIPE CHECKOUT SESSION ──────────────────────────
+  fastify.post(
+    "/billing/checkout",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = (request.user as any).tenantId;
+      const userId = (request.user as any).userId;
+
+      const parsed = z.object({
+        tier: z.enum(["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
+      }).safeParse(request.body);
+
+      if (!parsed.success) {
+        logger.error({ errors: parsed.error.issues }, "Invalid checkout request body");
+        return reply.code(400).send({ error: "Invalid tier specified" });
+      }
+
+      const { tier } = parsed.data;
+
+      const stripePrices = STRIPE_PRICES[tier];
+      if (!stripePrices || (!stripePrices.oneTime && !stripePrices.recurring)) {
+        return reply.code(400).send({ error: `Stripe checkout is not yet available for the ${tier} tier. Please contact support.` });
+      }
+
+      if (!env.STRIPE_API_KEY) {
+        return reply.code(500).send({ error: "Stripe API key not configured" });
+      }
+
+      try {
+        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } }) as any;
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!tenant || !user) {
+          return reply.code(404).send({ error: "Tenant or user not found" });
+        }
+
+        // Get or create Stripe customer
+        let stripeCustomerId = tenant.stripeCustomerId;
+        if (!stripeCustomerId) {
+          const params = new URLSearchParams({
+            email: user.email,
+            name: user.name || tenant.name || "",
+            "metadata[tenantId]": tenantId,
+            "metadata[userId]": userId,
+          });
+
+          const customerRes = await fetch("https://api.stripe.com/v1/customers", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${env.STRIPE_API_KEY}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: params.toString(),
+          });
+
+          if (!customerRes.ok) {
+            const err = await customerRes.text();
+            logger.error({ err }, "Failed to create Stripe customer");
+            return reply.code(500).send({ error: "Failed to create Stripe customer" });
+          }
+
+          const customer = await customerRes.json();
+          stripeCustomerId = customer.id;
+
+          // Save Stripe customer ID to tenant
+          await prisma.tenant.update({
+            where: { id: tenantId },
+            data: { stripeCustomerId } as any,
+          });
+        }
+
+        const webUrl = env.WEB_URL || "http://localhost:3000";
+
+        // Build the checkout session parameters
+        const bodyParts: string[] = [];
+        bodyParts.push(`customer=${stripeCustomerId}`);
+        bodyParts.push(`success_url=${encodeURIComponent(`${webUrl}/billing?success=true`)}`);
+        bodyParts.push(`cancel_url=${encodeURIComponent(`${webUrl}/billing?canceled=true`)}`);
+        bodyParts.push(`metadata[tier]=${tier}`);
+        bodyParts.push(`metadata[tenantId]=${tenantId}`);
+        bodyParts.push(`metadata[userId]=${userId}`);
+
+        // For LTD: charge $497 one-time first, $20/month subscription starts via webhook
+        // For other tiers: just the recurring subscription
+        if (stripePrices.oneTime && stripePrices.recurring) {
+          // LTD: payment mode for the $497 one-time
+          // The $20/month subscription will be created in the webhook after payment
+          bodyParts.push(`mode=payment`);
+          bodyParts.push(`line_items[0][price]=${stripePrices.oneTime}`);
+          bodyParts.push(`line_items[0][quantity]=1`);
+        } else if (stripePrices.recurring) {
+          // Regular subscription tiers
+          bodyParts.push(`mode=subscription`);
+          bodyParts.push(`line_items[0][price]=${stripePrices.recurring}`);
+          bodyParts.push(`line_items[0][quantity]=1`);
+        } else if (stripePrices.oneTime) {
+          // One-time only
+          bodyParts.push(`mode=payment`);
+          bodyParts.push(`line_items[0][price]=${stripePrices.oneTime}`);
+          bodyParts.push(`line_items[0][quantity]=1`);
+        }
+
+        const sessionRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.STRIPE_API_KEY}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: bodyParts.join("&"),
+        });
+
+        if (!sessionRes.ok) {
+          const errText = await sessionRes.text();
+          logger.error({ err: errText, tier }, "Failed to create Stripe Checkout session");
+          return reply.code(400).send({ error: "Failed to create checkout session", details: errText });
+        }
+
+        const session = await sessionRes.json();
+        logger.info({ sessionId: session.id, tier }, "Checkout session created");
+
+        return reply.send({ url: session.url });
+      } catch (err) {
+        logger.error({ err }, "Checkout error");
+        return reply.code(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
   // Get tenant subscription info
   fastify.get(
     "/billing/subscription",
@@ -111,6 +262,19 @@ export default async function billingRoutes(fastify: FastifyInstance) {
           // In production: stripeCustomerId and stripeSubscriptionId would be set from Stripe
         } as any,
       }) as any;
+
+      // Simulate a webhook for commission processing (since we lack a live webhook here)
+      // Only trigger if they are selecting a paid plan
+      if (tierLimits[tier].price > 0) {
+        const user = await prisma.user.findFirst({
+          where: { tenantId }
+        });
+
+        if (user) {
+          const simulatedPaymentId = `sub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+          await referralManager.processCommission(user.id, tierLimits[tier].price, simulatedPaymentId);
+        }
+      }
 
       return reply.send({
         message: `Subscription updated to ${tier} tier`,

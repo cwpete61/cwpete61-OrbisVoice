@@ -19,3 +19,4 @@ build/
 # Misc
 *.log
 .turbo
+apps/api/.env

@@ -2,187 +2,465 @@
 
 import { useEffect, useState } from "react";
 import AffiliateShell from "../components/AffiliateShell";
-import Link from "next/link";
-
-interface ApiResponse {
-  ok: boolean;
-  message?: string;
-  data?: any;
-}
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 export default function AffiliatesPage() {
+  const [profile, setProfile] = useState<any>(null);
+  const [affiliates, setAffiliates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [affiliate, setAffiliate] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"affiliates" | "payouts" | "overview" | "settings">("affiliates");
+
+  const [platformSettings, setPlatformSettings] = useState<any>(null);
+  const [settingsForm, setSettingsForm] = useState({
+    commissionRateDefault: 30,
+    commissionDurationMonths: 0,
+    payoutMinimum: 100,
+    refundHoldDays: 14,
+  });
+  const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const isAdmin = profile?.role === "ADMIN" || profile?.isAdmin || profile?.username === "Oadmin" || profile?.email === "admin@orbisvoice.app";
 
   useEffect(() => {
-    fetchAffiliateStatus();
+    fetchProfile();
   }, []);
 
-  const fetchAffiliateStatus = async () => {
+  useEffect(() => {
+    if (isAdmin) {
+      fetchAffiliates();
+      fetchPlatformSettings();
+    }
+  }, [isAdmin]);
+
+  const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/me`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        setAffiliate(data.data);
+        setProfile(data.data);
       }
     } catch (err) {
-      console.error("Failed to fetch affiliate status:", err);
-      setError("Failed to load partner data");
+      console.error("Failed to fetch profile");
+    }
+  };
+
+  const fetchAffiliates = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAffiliates(data.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch affiliates");
     } finally {
       setLoading(false);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const fetchPlatformSettings = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformSettings(data.data);
+        setSettingsForm({
+          commissionRateDefault: data.data.commissionRateDefault || 30,
+          commissionDurationMonths: data.data.commissionDurationMonths || 0,
+          payoutMinimum: data.data.payoutMinimum || 100,
+          refundHoldDays: data.data.refundHoldDays || 14,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings");
+    }
   };
 
-  if (loading) {
+  const handleSaveSettings = async () => {
+    setSaveSettingsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...platformSettings,
+          ...settingsForm,
+        }),
+      });
+      if (res.ok) {
+        // saved
+      }
+    } catch (err) {
+      console.error("Failed to save settings");
+    } finally {
+      setSaveSettingsLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    setActionLoading(id);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${id}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) fetchAffiliates();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleProcessPayout = async (id: string) => {
+    if (!confirm("Are you sure you want to mark this payout as complete?")) return;
+    setActionLoading(id);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${id}/payout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        fetchAffiliates();
+      } else {
+        const d = await res.json();
+        alert(d.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Mock chart data
+  const chartData = [
+    { name: "Mon", Clicks: 400, Conversions: 24, Revenue: 2400 },
+    { name: "Tue", Clicks: 300, Conversions: 13, Revenue: 1398 },
+    { name: "Wed", Clicks: 200, Conversions: 98, Revenue: 9800 },
+    { name: "Thu", Clicks: 278, Conversions: 39, Revenue: 3908 },
+    { name: "Fri", Clicks: 189, Conversions: 48, Revenue: 4800 },
+    { name: "Sat", Clicks: 239, Conversions: 38, Revenue: 3800 },
+    { name: "Sun", Clicks: 349, Conversions: 43, Revenue: 4300 },
+  ];
+
+  if (profile && !isAdmin) {
     return (
       <AffiliateShell>
         <div className="flex h-screen items-center justify-center">
-          <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading partner data…</p>
+          <p className="text-sm text-[rgba(240,244,250,0.4)]">Access restricted. Admins only.</p>
         </div>
       </AffiliateShell>
     );
   }
 
-  if (!affiliate || !affiliate.id) {
-    return (
-      <AffiliateShell>
-        <div className="mx-auto max-w-6xl px-8 py-20 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
-            <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M12 15v.01M12 9v4m-7.9 6h15.8c1.1 0 1.9-.9 1.9-2V7c0-1.1-.9-2-1.9-2H4.1C3 5 2.1 5.9 2.1 7v10c0 1.1.9 2 1.9 2z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-[#f0f4fa]">Access Restricted</h2>
-          <p className="mt-2 text-sm text-[rgba(240,244,250,0.4)]">This area is for authorized partners only.</p>
-          <Link href="/dashboard" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white/5 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition">
-            Return to Dashboard
-          </Link>
-        </div>
-      </AffiliateShell>
-    );
-  }
+  const payouts = affiliates.filter((a) => a.balance >= (settingsForm.payoutMinimum || 100));
 
   return (
     <AffiliateShell>
       <div className="mx-auto max-w-6xl px-8 py-10">
         <div className="mb-10">
-          <h1 className="text-2xl font-bold text-[#f0f4fa]">Partner Dashboard</h1>
-          <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Manage your referrals and view earnings performance.</p>
+          <h1 className="text-2xl font-bold text-[#f0f4fa]">Affiliate Ecosystem</h1>
+          <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Manage affiliates, payouts, and analytics.</p>
         </div>
 
-        {affiliate.status === "PENDING" ? (
-          <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-8 text-center">
-            <h2 className="text-lg font-semibold text-yellow-500">Application Under Review</h2>
-            <p className="mt-2 text-sm text-[rgba(240,244,250,0.5)]">
-              Your partner account is currently being reviewed. We'll notify you once it's fully active.
-            </p>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-lg bg-yellow-500/10 px-4 py-2 text-xs font-medium text-yellow-500">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
-              Pending Activation
+        {/* Tab Navigation */}
+        <div className="mb-8 flex space-x-1 rounded-xl bg-white/[0.02] p-1">
+          {[
+            { id: "affiliates", label: "Affiliate List" },
+            { id: "payouts", label: "Payouts Queue", badge: payouts.length },
+            { id: "overview", label: "Overview / Analytics" },
+            { id: "settings", label: "Controls & Management" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
+                  ? "bg-[#14b8a6]/10 text-[#14b8a6] shadow-sm"
+                  : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.05] hover:text-[#f0f4fa]"
+                }`}
+            >
+              {tab.label}
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className="flex h-5 items-center justify-center w-5 rounded-full bg-[#14b8a6] text-[10px] text-white">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ========== OVERVIEW / ANALYTICS TAB ========== */}
+        {activeTab === "overview" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="text-sm font-semibold text-[#f0f4fa] mb-6">Traffic & Revenue Ecosystem</h2>
+            <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fill: "rgba(255,255,255,0.5)" }} />
+                  <YAxis yAxisId="left" stroke="rgba(255,255,255,0.5)" tick={{ fill: "rgba(255,255,255,0.5)" }} />
+                  <YAxis yAxisId="right" orientation="right" stroke="rgba(255,255,255,0.5)" tick={{ fill: "rgba(255,255,255,0.5)" }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}
+                    itemStyle={{ color: "#f0f4fa" }}
+                  />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="Clicks" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  <Line yAxisId="left" type="monotone" dataKey="Conversions" stroke="#82ca9d" />
+                  <Line yAxisId="right" type="monotone" dataKey="Revenue" stroke="#f97316" />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        ) : (
-          <div className="space-y-8">
-            {/* Affiliate Link Card */}
-            <div className="rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-8">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-[#f0f4fa]">Your Professional Referral Link</h3>
-                  <p className="mt-1 text-xs text-[rgba(240,244,250,0.5)]">Share this link to track your professional referrals</p>
-                </div>
-                <div className="flex flex-1 max-w-xl items-center gap-3 rounded-xl border border-white/[0.08] bg-[#05080f] px-4 py-3">
-                  <span className="flex-1 truncate font-mono text-sm text-[#14b8a6]">
-                    {typeof window !== 'undefined' ? `${window.location.origin}/a/${affiliate.slug}` : `/a/${affiliate.slug}`}
-                  </span>
-                  <button
-                    onClick={() => copyToClipboard(`${window.location.origin}/a/${affiliate.slug}`)}
-                    className="rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition"
-                  >
-                    {copied ? "Copied!" : "Copy Link"}
-                  </button>
-                </div>
-              </div>
-            </div>
+        )}
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "Total Referrals", value: affiliate.totalReferrals, icon: "👥" },
-                { label: "Conversions", value: affiliate.convertedReferrals, icon: "🎯" },
-                { label: "Unpaid Balance", value: `$${affiliate.balance.toFixed(2)}`, icon: "💰" },
-                { label: "Total Earned", value: `$${affiliate.totalEarnings.toFixed(2)}`, icon: "📈" },
-              ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition hover:border-white/[0.15]">
-                  <div className="mb-3 text-2xl">{stat.icon}</div>
-                  <div className="text-2xl font-bold text-[#f0f4fa]">{stat.value}</div>
-                  <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.35)]">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Referral Table */}
-            <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0c111d]">
-              <div className="border-b border-white/[0.07] px-6 py-4">
-                <h3 className="text-sm font-semibold text-[#f0f4fa]">Conversion History</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#111827] text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">
+        {/* ========== AFFILIATE LIST TAB ========== */}
+        {activeTab === "affiliates" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">Affiliate Roster</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#111827] text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">
+                  <tr>
+                    <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Balance</th>
+                    <th className="px-6 py-4">Total Paid</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {loading ? (
                     <tr>
-                      <th className="px-6 py-4">ID / Referee</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4">Commission</th>
-                      <th className="px-6 py-4 text-right">Date</th>
+                      <td colSpan={5} className="py-12 text-center text-[rgba(240,244,250,0.3)]">Loading...</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.03]">
-                    {affiliate.referrals?.length > 0 ? (
-                      affiliate.referrals.map((ref: any) => (
-                        <tr key={ref.id} className="hover:bg-white/[0.02] transition">
-                          <td className="px-6 py-4 font-mono text-xs text-[#f0f4fa]">
-                            {ref.id.substring(0, 8)}...
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${ref.status === "CONVERTED"
-                              ? "bg-green-500/10 text-green-400"
-                              : ref.status === "PENDING"
-                                ? "bg-yellow-500/10 text-yellow-400"
-                                : "bg-red-500/10 text-red-400"
-                              }`}>
-                              {ref.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-[#f0f4fa]">
-                            ${ref.commissionAmount.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 text-right text-[rgba(240,244,250,0.4)]">
-                            {new Date(ref.createdAt).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
-                          No professional referrals recorded yet.
+                  ) : affiliates.length > 0 ? (
+                    affiliates.map((aff) => (
+                      <tr key={aff.id} className="hover:bg-white/[0.02]">
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-[#f0f4fa]">{aff.user?.name}</div>
+                          <div className="text-xs text-[#14b8a6]">slug: {aff.slug}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${aff.status === "ACTIVE"
+                                ? "bg-green-500/10 text-green-400"
+                                : aff.status === "PENDING"
+                                  ? "bg-yellow-500/10 text-yellow-400"
+                                  : "bg-red-500/10 text-red-400"
+                              }`}
+                          >
+                            {aff.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-[#f0f4fa]">${aff.balance?.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-[#f0f4fa]">${aff.totalPaid?.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right space-x-2">
+                          {aff.status === "PENDING" && (
+                            <button
+                              disabled={actionLoading === aff.id}
+                              onClick={() => handleUpdateStatus(aff.id, "ACTIVE")}
+                              className="text-green-500 hover:underline text-xs"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {aff.status === "ACTIVE" && (
+                            <button
+                              disabled={actionLoading === aff.id}
+                              onClick={() => handleUpdateStatus(aff.id, "REJECTED")}
+                              className="text-red-500 hover:underline text-xs"
+                            >
+                              Revoke
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-[rgba(240,244,250,0.3)]">No affiliates found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ========== PAYOUTS TAB ========== */}
+        {activeTab === "payouts" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-5 flex justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">Payout Queue</h2>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.5)]">
+                  Partners above the ${settingsForm.payoutMinimum} threshold.
+                </p>
               </div>
+            </div>
+
+            <div className="grid gap-4">
+              {payouts.length > 0 ? (
+                payouts.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-5">
+                    <div>
+                      <h3 className="font-semibold text-[#f0f4fa]">
+                        {a.user?.name}{" "}
+                        <span className="text-xs font-normal text-[rgba(240,244,250,0.5)]">({a.user?.email})</span>
+                      </h3>
+                      <p className="mt-1 text-sm text-[#10b981] font-mono">Available Balance: ${a.balance.toFixed(2)}</p>
+                    </div>
+                    <button
+                      onClick={() => handleProcessPayout(a.id)}
+                      disabled={actionLoading === a.id}
+                      className="rounded-lg bg-[#14b8a6] px-4 py-2 text-sm font-medium text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50"
+                    >
+                      Mark as Paid
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-white/[0.1] py-12 text-center text-[rgba(240,244,250,0.5)]">
+                  No partners currently eligible for payout.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========== CONTROLS & MANAGEMENT TAB ========== */}
+        {activeTab === "settings" && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-6 flex justify-between">
+              <h2 className="text-sm font-semibold text-[#f0f4fa]">Global Commission Parameters</h2>
+              <button
+                onClick={handleSaveSettings}
+                disabled={saveSettingsLoading}
+                className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-4 py-2 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:opacity-50"
+              >
+                {saveSettingsLoading ? "Saving..." : "Save Settings"}
+              </button>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Default Rate (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={settingsForm.commissionRateDefault}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, commissionRateDefault: parseFloat(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
+                  />
+                  <span className="absolute right-3 top-2.5 text-sm text-[#f0f4fa]/50">%</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Payout Minimum Threshold</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-sm text-[#f0f4fa]/50">$</span>
+                  <input
+                    type="number"
+                    value={settingsForm.payoutMinimum}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, payoutMinimum: parseFloat(e.target.value) || 0 })}
+                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] pl-8 pr-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Refund Hold Period (Days)</label>
+                <input
+                  type="number"
+                  value={settingsForm.refundHoldDays}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Lifetime / Term (0 = Infinite)</label>
+                <input
+                  type="number"
+                  value={settingsForm.commissionDurationMonths}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, commissionDurationMonths: parseInt(e.target.value) || 0 })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
+                  placeholder="0 for Lifetime"
+                />
+              </div>
+            </div>
+
+            <div className="mt-10 border-t border-white/[0.05] pt-6">
+              <h2 className="text-sm font-semibold text-[#f0f4fa] mb-4">Manual Partner Override</h2>
+              <div className="flex gap-3 max-w-md">
+                <input
+                  type="text"
+                  placeholder="Enter User ID..."
+                  className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
+                  id="overrideUserId"
+                />
+                <button
+                  onClick={async () => {
+                    const input = document.getElementById("overrideUserId") as HTMLInputElement;
+                    const val = input?.value;
+                    if (!val) return;
+                    setActionLoading("override");
+                    try {
+                      const token = localStorage.getItem("token");
+                      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/promote`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ userId: val }),
+                      });
+                      if (res.ok) {
+                        alert("User successfully promoted to affiliate!");
+                        input.value = "";
+                        fetchAffiliates();
+                      } else {
+                        const d = await res.json();
+                        alert(d.message);
+                      }
+                    } catch (e) { }
+                    setActionLoading(null);
+                  }}
+                  disabled={actionLoading === "override"}
+                  className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-medium text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50"
+                >
+                  Promote
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-[rgba(240,244,250,0.4)]">
+                Instantly converts a standard user into an active partner without an application.
+              </p>
             </div>
           </div>
         )}

@@ -666,6 +666,34 @@ export default function SettingsPage() {
           >
             Twilio
           </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => {
+                  setActiveTab("affiliates");
+                  router.replace("/settings?tab=affiliates");
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "affiliates"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                Affiliates
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("referrals");
+                  router.replace("/settings?tab=referrals");
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "referrals"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                Referrals
+              </button>
+            </>
+          )}
         </div>
 
         {/* New key banner */}
@@ -1287,6 +1315,26 @@ export default function SettingsPage() {
             </div>
             <p className="mt-3 text-xs text-[rgba(240,244,250,0.35)]">
               Replace YOUR_AGENT_ID and YOUR_API_KEY with your values. Add <code className="text-[#14b8a6]">data-position="bottom-left"</code> to change widget position.
+            </p>
+          </div>
+        )}
+
+        {/* Affiliates Section (Blank for now) */}
+        {activeTab === "affiliates" && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Affiliates Settings</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Settings for the affiliate program will be available here.
+            </p>
+          </div>
+        )}
+
+        {/* Referrals Section (Blank for now) */}
+        {activeTab === "referrals" && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Referrals Settings</h2>
+            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
+              Settings for the referrals program will be available here.
             </p>
           </div>
         )}

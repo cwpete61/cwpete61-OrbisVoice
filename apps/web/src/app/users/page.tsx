@@ -34,6 +34,10 @@ export default function UsersPage() {
     lowCommission: 0,
     medCommission: 0,
     highCommission: 0,
+    commissionDurationMonths: 0,
+    commissionRateDefault: 30,
+    payoutMinimum: 100,
+    refundHoldDays: 14,
     starterLimit: 1000,
     professionalLimit: 10000,
     enterpriseLimit: 100000,
@@ -86,6 +90,10 @@ export default function UsersPage() {
           lowCommission: data.data.lowCommission,
           medCommission: data.data.medCommission,
           highCommission: data.data.highCommission,
+          commissionDurationMonths: data.data.commissionDurationMonths || 0,
+          commissionRateDefault: data.data.commissionRateDefault || 30,
+          payoutMinimum: data.data.payoutMinimum || 100,
+          refundHoldDays: data.data.refundHoldDays || 14,
           starterLimit: data.data.starterLimit || 1000,
           professionalLimit: data.data.professionalLimit || 10000,
           enterpriseLimit: data.data.enterpriseLimit || 100000,
@@ -454,6 +462,45 @@ export default function UsersPage() {
                       />
                       <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Default Rate (%)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={settingsForm.commissionRateDefault}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, commissionRateDefault: parseFloat(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                      />
+                      <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Duration (Months, 0=Lifetime)</label>
+                    <input
+                      type="number"
+                      value={settingsForm.commissionDurationMonths}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, commissionDurationMonths: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Payout Minimum ($)</label>
+                    <input
+                      type="number"
+                      value={settingsForm.payoutMinimum}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, payoutMinimum: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Refund Hold (Days)</label>
+                    <input
+                      type="number"
+                      value={settingsForm.refundHoldDays}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                    />
                   </div>
                 </div>
 

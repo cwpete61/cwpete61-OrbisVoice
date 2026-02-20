@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
+import { referralManager } from "./referral";
 
 export class AffiliateManager {
     // Submit an affiliate application
@@ -51,29 +52,25 @@ export class AffiliateManager {
     async getStats(userId: string) {
         try {
             const affiliate = await prisma.affiliate.findUnique({
-                where: { userId },
-                include: {
-                    referrals: {
-                        orderBy: { createdAt: "desc" },
-                        take: 10,
-                    },
-                },
+                where: { userId }
             });
 
             if (!affiliate) return null;
 
-            const totalReferrals = await prisma.affiliateReferral.count({
-                where: { affiliateId: affiliate.id },
-            });
-
-            const convertedReferrals = await prisma.affiliateReferral.count({
-                where: { affiliateId: affiliate.id, status: "CONVERTED" },
-            });
+            const referralStats = await referralManager.getReferralStats(userId);
 
             return {
                 ...affiliate,
-                totalReferrals,
-                convertedReferrals,
+                totalReferrals: referralStats.totalSignups,
+                convertedReferrals: referralStats.transactions.length,
+                balance: referralStats.availableRewards,
+                totalEarnings: referralStats.totalRewards,
+                referrals: referralStats.transactions.map((t: any) => ({
+                    id: t.id,
+                    status: t.status === 'pending' ? 'PENDING' : 'CONVERTED',
+                    commissionAmount: t.amount,
+                    createdAt: t.createdAt
+                }))
             };
         } catch (err) {
             logger.error({ err, userId }, "Failed to get affiliate stats");

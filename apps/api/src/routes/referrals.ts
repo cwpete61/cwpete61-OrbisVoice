@@ -81,13 +81,31 @@ export async function referralRoutes(fastify: FastifyInstance) {
         return reply.code(200).send({
           ok: true,
           message: "Referral code redeemed",
-          data: {
-            reward: result.reward,
-            message: `You've received $${result.reward} credit!`,
-          },
         } as ApiResponse);
       } catch (err) {
         logger.error(err, "Failed to redeem referral code");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Manual trigger to process holds (useful for testing/admin)
+  fastify.post(
+    "/referrals/process-holds",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const count = await referralManager.clearPendingHolds();
+        return reply.code(200).send({
+          ok: true,
+          message: `Processed ${count} pending holds`,
+          data: { count }
+        } as ApiResponse);
+      } catch (err) {
+        logger.error(err, "Failed to process holds");
         return reply.code(500).send({
           ok: false,
           message: "Internal server error",

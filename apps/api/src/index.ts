@@ -15,9 +15,11 @@ import userRoutes from "./routes/users";
 import twilioRoutes from "./routes/twilio";
 import googleAuthRoutes from "./routes/google-auth";
 import { affiliateRoutes } from "./routes/affiliates";
+import stripeWebhookRoutes from "./routes/stripe-webhooks";
 import { sessionManager } from "./services/session";
 import { settingsRoutes } from "./routes/settings";
 import { registerToolHandlers } from "./tools/handlers";
+import { referralManager } from "./services/referral";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }) as any,
@@ -60,6 +62,7 @@ fastify.register(twilioRoutes);
 fastify.register(googleAuthRoutes);
 fastify.register(settingsRoutes);
 fastify.register(affiliateRoutes);
+fastify.register(stripeWebhookRoutes);
 
 // Start server
 const start = async () => {
@@ -78,6 +81,13 @@ const start = async () => {
 
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });
     logger.info(`Server running at http://0.0.0.0:${env.PORT}`);
+
+    // Set up background job to process commission holds (every hour)
+    setInterval(() => {
+      logger.info("Running scheduled clearPendingHolds...");
+      referralManager.clearPendingHolds();
+    }, 1000 * 60 * 60);
+
   } catch (err) {
     logger.error(err);
     process.exit(1);

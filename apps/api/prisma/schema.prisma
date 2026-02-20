@@ -84,6 +84,8 @@ model User {
   referralRewardTotal Float @default(0)
   referralsCreated Referral[] @relation("referrer")
   affiliate Affiliate?
+  isAffiliate Boolean @default(false)
+  rewards RewardTransaction[] @relation("referrer_rewards")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -135,6 +137,19 @@ model Referral {
   expiresAt DateTime @default(dbgenerated("now() + interval '90 days'"))
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model RewardTransaction {
+  id              String           @id @default(cuid())
+  referrerId      String
+  referrer        User             @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId       String?
+  amount          Float
+  status          String           @default("pending") // pending, available, paid, refunded
+  sourcePaymentId String?          // e.g., Stripe charge ID
+  holdEndsAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model ToolExecutionAudit {
@@ -208,6 +223,10 @@ model PlatformSettings {
   lowCommission   Float  @default(10)
   medCommission   Float  @default(20)
   highCommission  Float  @default(30)
+  commissionDurationMonths Int @default(0) // 0 means lifetime
+  commissionRateDefault Float @default(30)
+  payoutMinimum Float @default(100)
+  refundHoldDays Int @default(14)
   starterLimit      Int      @default(1000)
   professionalLimit Int      @default(10000)
   enterpriseLimit   Int      @default(100000)
@@ -241,6 +260,7 @@ model Affiliate {
   status          AffiliateStatus  @default(PENDING)
   slug            String           @unique
   paymentInfo     String?          @db.Text // Encrypted or JSON string
+  payoutEmail     String?          // PayPal or preferred payout email
   totalEarnings   Float            @default(0)
   totalPaid       Float            @default(0)
   balance         Float            @default(0)

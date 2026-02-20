@@ -44,6 +44,26 @@ const NAV = [
     ),
   },
   {
+    href: "/affiliates",
+    label: "Affiliates",
+    icon: (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    ),
+  },
+  {
+    href: "/referral-agents",
+    label: "Referral Agents",
+    icon: (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+        <circle cx="8.5" cy="7" r="4" />
+        <path d="M20 8v6M23 11h-6" />
+      </svg>
+    ),
+  },
+  {
     href: "/settings",
     label: "Settings",
     icon: (
@@ -62,16 +82,6 @@ const NAV = [
         <circle cx="9" cy="7" r="4" />
         <path d="M23 21v-2a4 4 0 00-3-3.87" />
         <path d="M16 3.13a4 4 0 010 7.75" />
-      </svg>
-    ),
-  },
-  {
-    href: "/affiliates",
-    label: "Affiliates",
-    icon: (
-      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="4" />
-        <path d="M16 8l3-3m-3 11l3 3m-11-3l-3 3m3-11L5 5" />
       </svg>
     ),
   },
@@ -124,14 +134,9 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 px-3 py-4">
           {NAV.filter(item => {
-            // Hide "Users" tab if not admin
-            if (item.label === "Users") {
+            // Hide admin-only tabs if not admin
+            if (item.label === "Users" || item.label === "Affiliates" || item.label === "Referral Agents") {
               return profile?.isAdmin;
-            }
-            // Hide "Affiliates" tab from main dashboard
-            // Professionals will access via a separate shell/portal
-            if (item.label === "Affiliates") {
-              return false;
             }
             return true;
           }).map((item) => {

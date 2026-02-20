@@ -138,30 +138,30 @@ export default function BillingPage() {
   };
 
   const handleUpgrade = async (tier: AllTierName) => {
-    if (!billingEmail) {
-      setError("Billing email is required");
-      return;
-    }
-
     try {
+      setError("");
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/subscription`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier, billingEmail }),
+        body: JSON.stringify({ tier }),
       });
 
-      if (res.ok) {
-        setSelectedTier(null);
-        fetchSubscription();
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else {
-        const data = await res.json();
-        setError(data.error || "Failed to update subscription");
+        console.error("Checkout error:", data);
+        setError(data.error || "Failed to start checkout");
+        setSelectedTier(null);
       }
     } catch (err: any) {
+      console.error("Checkout exception:", err);
       setError(err.message);
     }
   };
@@ -386,18 +386,26 @@ export default function BillingPage() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8 max-w-md w-full shadow-2xl">
               <h3 className="text-xl font-bold text-[#f0f4fa] mb-2">
-                Change to {TIER_CONFIG[selectedTier].name}
+                {TIER_CONFIG[selectedTier].name}
               </h3>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">
                 {TIER_CONFIG[selectedTier].description}
               </p>
               <div className="bg-[#080c16] rounded-xl p-4 mb-6 border border-white/[0.05]">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-[rgba(240,244,250,0.5)]">Monthly Price</span>
+                  <span className="text-sm text-[rgba(240,244,250,0.5)]">
+                    {selectedTier === "ltd" ? "One-Time Payment" : "Monthly Price"}
+                  </span>
                   <span className="text-2xl font-bold" style={{ color: TIER_CONFIG[selectedTier].accent }}>
                     ${availableTiers[selectedTier].price}
                   </span>
                 </div>
+                {selectedTier === "ltd" && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-[rgba(240,244,250,0.5)]">+ Monthly Hosting</span>
+                    <span className="text-sm font-semibold text-[#f0f4fa]">$20/mo</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[rgba(240,244,250,0.5)]">Conversations</span>
                   <span className="text-sm font-semibold text-[#f0f4fa]">
@@ -405,33 +413,22 @@ export default function BillingPage() {
                   </span>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-[rgba(240,244,250,0.5)] uppercase tracking-wide block mb-2">
-                    Billing Email
-                  </label>
-                  <input
-                    type="email"
-                    value={billingEmail}
-                    onChange={(e) => setBillingEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#080c16] border border-white/[0.07] rounded-lg text-[#f0f4fa] focus:outline-none focus:border-[#14b8a6] transition"
-                    placeholder="billing@company.com"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => handleUpgrade(selectedTier)}
-                    className="btn-primary flex-1"
-                  >
-                    Confirm Change
-                  </button>
-                  <button
-                    onClick={() => setSelectedTier(null)}
-                    className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex-1"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <p className="text-xs text-[rgba(240,244,250,0.4)] mb-4">
+                You'll be redirected to Stripe's secure checkout to complete your purchase.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleUpgrade(selectedTier)}
+                  className="btn-primary flex-1"
+                >
+                  Proceed to Checkout →
+                </button>
+                <button
+                  onClick={() => setSelectedTier(null)}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex-1"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

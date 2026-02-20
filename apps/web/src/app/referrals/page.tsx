@@ -15,6 +15,8 @@ interface ReferralStats {
   accepted: number;
   completed: number;
   totalRewards: number;
+  availableRewards: number;
+  pendingRewards: number;
   referrals: any[];
 }
 
@@ -184,7 +186,9 @@ export default function ReferralsPage() {
                   { label: "Referrals", value: stats.totalReferred, color: "#14b8a6" },
                   { label: "Accepted", value: stats.accepted, color: "#f0f4fa" },
                   { label: "Completed", value: stats.completed, color: "#a78bfa" },
-                  { label: "Earnings", value: `$${stats.totalRewards}`, color: "#f97316" },
+                  { label: "Total Earnings", value: `$${stats.totalRewards.toFixed(2)}`, color: "#f97316" },
+                  { label: "Available", value: `$${stats.availableRewards.toFixed(2)}`, color: "#10b981" },
+                  { label: "Pending (Hold)", value: `$${stats.pendingRewards.toFixed(2)}`, color: "#f59e0b" },
                 ].map((s) => (
                   <div key={s.label} className="flex flex-col rounded-lg border border-white/[0.05] bg-[#05080f] p-4">
                     <span className="text-xs text-[rgba(240,244,250,0.5)]">{s.label}</span>

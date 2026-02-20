@@ -36,6 +36,36 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
         }
     );
 
+    // Update affiliate payout email
+    fastify.put(
+        "/affiliates/me/payout-email",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as any).userId;
+                const { payoutEmail } = z.object({ payoutEmail: z.string().email() }).parse(request.body);
+
+                const affiliate = await prisma.affiliate.findUnique({ where: { userId } });
+                if (!affiliate) {
+                    return reply.code(404).send({ ok: false, message: "No affiliate profile found" });
+                }
+
+                await prisma.affiliate.update({
+                    where: { userId },
+                    data: { payoutEmail },
+                });
+
+                return reply.send({ ok: true, message: "Payout email updated" } as ApiResponse);
+            } catch (err) {
+                if (err instanceof z.ZodError) {
+                    return reply.code(400).send({ ok: false, message: "Invalid email address" });
+                }
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
     // Apply for affiliate status
     fastify.post(
         "/affiliates/apply",
@@ -144,6 +174,62 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 if (err instanceof z.ZodError) {
                     return reply.code(400).send({ ok: false, message: "Missing userId" });
                 }
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // Admin: Process payout for an affiliate
+    fastify.post<{ Params: { id: string } }>(
+        "/admin/affiliates/:id/payout",
+        { onRequest: [requireAdmin] },
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+
+                const affiliate = await prisma.affiliate.findUnique({
+                    where: { id }
+                });
+
+                if (!affiliate) {
+                    return reply.code(404).send({ ok: false, message: "Affiliate not found" });
+                }
+
+                // Find all available transactions for this user
+                const txs = await prisma.rewardTransaction.findMany({
+                    where: { referrerId: affiliate.userId, status: 'available' }
+                });
+
+                if (txs.length === 0) {
+                    return reply.code(400).send({ ok: false, message: "No available funds to payout" });
+                }
+
+                const payoutAmount = txs.reduce((sum, t) => sum + t.amount, 0);
+
+                // Update within a transaction
+                await prisma.$transaction(async (tx) => {
+                    // Update all available to paid
+                    await tx.rewardTransaction.updateMany({
+                        where: { referrerId: affiliate.userId, status: 'available' },
+                        data: { status: 'paid' }
+                    });
+
+                    // Update affiliate totals
+                    await tx.affiliate.update({
+                        where: { id },
+                        data: {
+                            balance: { decrement: payoutAmount },
+                            totalPaid: { increment: payoutAmount }
+                        }
+                    });
+                });
+
+                return reply.send({
+                    ok: true,
+                    message: `Processed payout of $${payoutAmount.toFixed(2)}`,
+                } as ApiResponse);
+            } catch (err) {
                 fastify.log.error(err);
                 return reply.code(500).send({ ok: false, message: "Server error" });
             }
