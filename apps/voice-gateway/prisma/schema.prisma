@@ -1,0 +1,184 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model Tenant {
+  id    String     @id @default(cuid())
+  name  String
+  users User[]
+  agents Agent[]
+  apiKeys ApiKey[]
+  
+  // Billing & Subscription fields
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  subscriptionStatus   String?   // active, canceled, past_due, trialing, incomplete
+  subscriptionTier     String    @default("starter") // starter, professional, enterprise
+  subscriptionEnds     DateTime?
+  usageLimit           Int       @default(100) // conversations per month
+  usageCount           Int       @default(0)   // current month usage
+  usageResetAt         DateTime  @default(now())
+  billingEmail         String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  googleConfig TenantGoogleConfig?
+}
+
+model User {
+  id    String     @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email String @unique
+  name  String
+  username String? @unique
+  passwordHash String?
+  isAdmin Boolean @default(false)
+  role UserRole @default(USER)
+  isBlocked Boolean @default(false)
+  avatar String? @db.Text
+  
+  // Google OAuth fields
+  googleId String? @unique
+  googleEmail String?
+  googleName String?
+  googleProfilePicture String?
+  googleAuthProvider String? // "google"
+  
+  referralCodeUsed String?
+  referralRewardTotal Float @default(0)
+  referralsCreated Referral[] @relation("referrer")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, email])
+}
+
+model Agent {
+  id    String     @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name  String
+  systemPrompt String
+  voiceId String @default("default")
+  transcripts Transcript[]
+  toolAudits ToolExecutionAudit[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApiKey {
+  id    String     @id @default(cuid())
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key   String @unique
+  name  String
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+}
+
+model Transcript {
+  id    String     @id @default(cuid())
+  agentId String
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId String?
+  content String
+  duration Int @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Referral {
+  id    String     @id @default(cuid())
+  referrerId String
+  referrer User @relation("referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId String?
+  code  String @unique
+  status String @default("pending") // pending, accepted, completed, expired
+  rewardAmount Float @default(10)
+  rewardCurrency String @default("USD")
+  expiresAt DateTime @default(dbgenerated("now() + interval '90 days'"))
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ToolExecutionAudit {
+  id    String     @id @default(cuid())
+  agentId String
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId String?
+  toolName String
+  toolInput String // JSON
+  toolOutput String? // JSON
+  status String @default("pending") // pending, success, failed
+  errorMessage String?
+  executionTimeMs Int @default(0)
+  createdAt DateTime @default(now())
+}
+
+model GoogleAuthConfig {
+  id String @id @default(cuid())
+  clientId String?
+  clientSecret String?
+  redirectUri String?
+  enabled Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TenantGoogleConfig {
+  id String @id @default(cuid())
+  tenantId String @unique
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String
+  clientSecret String
+  geminiApiKey String? // Optional: For AI Studio API
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CalendarCredentials {
+  id String @id @default(cuid())
+  userId String
+  tenantId String
+  accessToken String @db.Text
+  refreshToken String? @db.Text
+  expiresAt DateTime?
+  calendarEmail String?
+  scope String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId])
+}
+
+model GmailCredentials {
+  id String @id @default(cuid())
+  userId String
+  tenantId String
+  accessToken String @db.Text
+  refreshToken String? @db.Text
+  expiresAt DateTime?
+  gmailEmail String?
+  scope String?
+  verified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId])
+}
+
+

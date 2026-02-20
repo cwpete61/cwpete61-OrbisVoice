@@ -1,0 +1,37 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CodeQualityAgent = void 0;
+class CodeQualityAgent {
+    constructor() {
+        this.name = "code_quality";
+        this.description = "Performs pre-commit checks to keep code production ready.";
+    }
+    async run(input, context) {
+        const checks = [
+            {
+                name: "Lint",
+                status: "warn",
+                detail: "No lint runner configured yet.",
+            },
+            {
+                name: "Tests",
+                status: "warn",
+                detail: "No test runner configured yet.",
+            },
+            {
+                name: "Typecheck",
+                status: "warn",
+                detail: "No typecheck script configured yet.",
+            },
+        ];
+        const hasWarnings = checks.some((check) => check.status !== "pass");
+        return {
+            ok: !hasWarnings,
+            message: hasWarnings
+                ? "CodeQualityAgent found checks that need configuration."
+                : "All checks passed.",
+            data: { input, requestId: context.requestId, checks },
+        };
+    }
+}
+exports.CodeQualityAgent = CodeQualityAgent;

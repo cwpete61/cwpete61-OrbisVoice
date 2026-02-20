@@ -1,0 +1,26 @@
+FROM node:22-slim
+
+# Install OpenSSL for Prisma  
+RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/apps/api
+
+# Copy API package files
+COPY apps/api/package*.json ./
+COPY apps/api/prisma ./prisma
+
+# Install dependencies
+RUN npm install
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy API source
+COPY apps/api/src ./src
+COPY apps/api/.env ./.env
+
+# Expose port
+EXPOSE 5000
+
+# Run database updates and seed, then start the application
+CMD sh -c "npx prisma db push --skip-generate && npx prisma generate && npx prisma db seed && npx tsx watch src/index.ts"
