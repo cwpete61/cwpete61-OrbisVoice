@@ -188,7 +188,7 @@ export default function ReferralsPage() {
                   { label: "Completed", value: stats.completed, color: "#a78bfa" },
                   { label: "Total Earnings", value: `$${stats.totalRewards.toFixed(2)}`, color: "#f97316" },
                   { label: "Available", value: `$${stats.availableRewards.toFixed(2)}`, color: "#10b981" },
-                  { label: "Pending (Hold)", value: `$${stats.pendingRewards.toFixed(2)}`, color: "#f59e0b" },
+                  { label: "Pending (1-Cycle)", value: `$${stats.pendingRewards.toFixed(2)}`, color: "#f59e0b" },
                 ].map((s) => (
                   <div key={s.label} className="flex flex-col rounded-lg border border-white/[0.05] bg-[#05080f] p-4">
                     <span className="text-xs text-[rgba(240,244,250,0.5)]">{s.label}</span>
@@ -244,8 +244,8 @@ export default function ReferralsPage() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {[
               { n: "01", title: "Share Your Code", body: "Send your unique referral code to friends and colleagues" },
-              { n: "02", title: "They Sign Up", body: "When they join MyOrbisVoice with your code, they get $10 credit" },
-              { n: "03", title: "You Earn", body: "You receive $5 for every successful referral" },
+              { n: "02", title: "They Sign Up", body: "When they join MyOrbisVoice with your code, they get immediate access" },
+              { n: "03", title: "You Earn", body: "You receive recurring commission for every successful referral" },
             ].map((step) => (
               <div key={step.n} className="flex flex-col gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#14b8a6]/10 text-xs font-bold text-[#14b8a6]">{step.n}</span>

@@ -106,19 +106,31 @@ class ReferralManager {
 
       if (!referrerId) return false;
 
+      // Get referrer to check their commission level
+      const referrerUser = await prisma.user.findUnique({
+        where: { id: referrerId },
+        select: { commissionLevel: true }
+      });
+      if (!referrerUser) return false;
+
       // Get platform settings for rates and hold period
       const settings = await prisma.platformSettings.findUnique({
         where: { id: "global" }
       });
 
-      // Default to 30%, 14 day hold if settings missing
-      const rate = (settings?.commissionRateDefault ?? 30) / 100;
-      const holdDays = settings?.refundHoldDays ?? 14;
+      // Determine rate based on referrer's commission level
+      const userLevel = referrerUser.commissionLevel || settings?.defaultCommissionLevel || "LOW";
+      let ratePercentage = settings?.lowCommission ?? 10;
+      if (userLevel === "MED") ratePercentage = settings?.medCommission ?? 20;
+      if (userLevel === "HIGH") ratePercentage = settings?.highCommission ?? 30;
+
+      const rate = ratePercentage / 100;
+      const delayMonths = settings?.payoutCycleDelayMonths ?? 1;
 
       const commissionAmount = paymentAmount * rate;
 
       const holdEndsAt = new Date();
-      holdEndsAt.setDate(holdEndsAt.getDate() + holdDays);
+      holdEndsAt.setMonth(holdEndsAt.getMonth() + delayMonths);
 
       // Create pending reward transaction
       await prisma.rewardTransaction.create({

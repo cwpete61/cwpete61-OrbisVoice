@@ -85,7 +85,7 @@ export default function SignupPage() {
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Referral code <span className="font-bold">{referralCode}</span> applied! You'll get $10 credit.
+                  Referral code <span className="font-bold">{referralCode}</span> applied!
                 </div>
               )}
               {error && (

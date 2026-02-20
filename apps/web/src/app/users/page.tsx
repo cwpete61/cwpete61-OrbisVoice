@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import PasswordInput from "../components/PasswordInput";
 
@@ -35,9 +36,10 @@ export default function UsersPage() {
     medCommission: 0,
     highCommission: 0,
     commissionDurationMonths: 0,
-    commissionRateDefault: 30,
+    defaultCommissionLevel: "LOW",
     payoutMinimum: 100,
     refundHoldDays: 14,
+    payoutCycleDelayMonths: 1,
     starterLimit: 1000,
     professionalLimit: 10000,
     enterpriseLimit: 100000,
@@ -47,7 +49,10 @@ export default function UsersPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
-  const [adminTab, setAdminTab] = useState<"users" | "affiliates" | "settings">("users");
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const adminTab = searchParams.get("tab") || "users";
 
   const isAdmin =
     profile?.role === "ADMIN" ||
@@ -91,9 +96,10 @@ export default function UsersPage() {
           medCommission: data.data.medCommission,
           highCommission: data.data.highCommission,
           commissionDurationMonths: data.data.commissionDurationMonths || 0,
-          commissionRateDefault: data.data.commissionRateDefault || 30,
+          defaultCommissionLevel: data.data.defaultCommissionLevel || "LOW",
           payoutMinimum: data.data.payoutMinimum || 100,
           refundHoldDays: data.data.refundHoldDays || 14,
+          payoutCycleDelayMonths: data.data.payoutCycleDelayMonths !== undefined ? data.data.payoutCycleDelayMonths : 1,
           starterLimit: data.data.starterLimit || 1000,
           professionalLimit: data.data.professionalLimit || 10000,
           enterpriseLimit: data.data.enterpriseLimit || 100000,
@@ -399,7 +405,7 @@ export default function UsersPage() {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setAdminTab(tab.id as any)}
+                  onClick={() => router.push(`?tab=${tab.id}`)}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all ${adminTab === tab.id
                     ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
                     : "text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
@@ -464,15 +470,20 @@ export default function UsersPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Default Rate (%)</label>
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Global System Default Commission</label>
                     <div className="relative">
-                      <input
-                        type="number"
-                        value={settingsForm.commissionRateDefault}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, commissionRateDefault: parseFloat(e.target.value) || 0 })}
-                        className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                      />
-                      <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
+                      <select
+                        value={settingsForm.defaultCommissionLevel}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, defaultCommissionLevel: e.target.value })}
+                        className="w-full rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/5 px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/80 focus:bg-[#14b8a6]/10 focus:outline-none transition appearance-none cursor-pointer"
+                      >
+                        <option className="bg-[#05080f] text-[#f0f4fa]" value="LOW">Low Commission (System Default)</option>
+                        <option className="bg-[#05080f] text-[#f0f4fa]" value="MED">Medium Commission (System Default)</option>
+                        <option className="bg-[#05080f] text-[#f0f4fa]" value="HIGH">High Commission (System Default)</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#f0f4fa]/50">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -494,11 +505,11 @@ export default function UsersPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Refund Hold (Days)</label>
+                    <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Payout Delay Cycles (Months)</label>
                     <input
                       type="number"
-                      value={settingsForm.refundHoldDays}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                      value={settingsForm.payoutCycleDelayMonths}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, payoutCycleDelayMonths: parseInt(e.target.value) || 0 })}
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
                     />
                   </div>

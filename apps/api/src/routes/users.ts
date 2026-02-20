@@ -21,7 +21,7 @@ const AdminUpdateUserSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
-  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),
 });
 
@@ -33,7 +33,7 @@ const AdminCreateUserSchema = z.object({
     .min(3)
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
-  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
 });
 
@@ -42,9 +42,10 @@ const PlatformSettingsSchema = z.object({
   medCommission: z.number().min(0),
   highCommission: z.number().min(0),
   commissionDurationMonths: z.number().int().min(0).default(0),
-  commissionRateDefault: z.number().min(0).max(100).default(30),
+  defaultCommissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
   payoutMinimum: z.number().min(0).default(100),
   refundHoldDays: z.number().int().min(0).default(14),
+  payoutCycleDelayMonths: z.number().int().min(0).default(1),
   starterLimit: z.number().int().min(0),
   professionalLimit: z.number().int().min(0),
   enterpriseLimit: z.number().int().min(0),
@@ -1368,9 +1369,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
               medCommission: 20,
               highCommission: 30,
               commissionDurationMonths: 0,
-              commissionRateDefault: 30,
+              defaultCommissionLevel: "LOW",
               payoutMinimum: 100,
               refundHoldDays: 14,
+              payoutCycleDelayMonths: 1,
               starterLimit: 1000,
               professionalLimit: 10000,
               enterpriseLimit: 100000,

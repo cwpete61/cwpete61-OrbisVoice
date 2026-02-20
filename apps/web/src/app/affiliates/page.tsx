@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AffiliateShell from "../components/AffiliateShell";
 import {
   LineChart,
@@ -17,14 +18,17 @@ export default function AffiliatesPage() {
   const [profile, setProfile] = useState<any>(null);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"affiliates" | "payouts" | "overview" | "settings">("affiliates");
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") || "affiliates";
 
   const [platformSettings, setPlatformSettings] = useState<any>(null);
   const [settingsForm, setSettingsForm] = useState({
-    commissionRateDefault: 30,
     commissionDurationMonths: 0,
     payoutMinimum: 100,
     refundHoldDays: 14,
+    payoutCycleDelayMonths: 1,
   });
   const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -85,10 +89,10 @@ export default function AffiliatesPage() {
         const data = await res.json();
         setPlatformSettings(data.data);
         setSettingsForm({
-          commissionRateDefault: data.data.commissionRateDefault || 30,
           commissionDurationMonths: data.data.commissionDurationMonths || 0,
           payoutMinimum: data.data.payoutMinimum || 100,
           refundHoldDays: data.data.refundHoldDays || 14,
+          payoutCycleDelayMonths: data.data.payoutCycleDelayMonths !== undefined ? data.data.payoutCycleDelayMonths : 1,
         });
       }
     } catch (err) {
@@ -204,10 +208,10 @@ export default function AffiliatesPage() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => router.push(`?tab=${tab.id}`)}
               className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
-                  ? "bg-[#14b8a6]/10 text-[#14b8a6] shadow-sm"
-                  : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.05] hover:text-[#f0f4fa]"
+                ? "bg-[#14b8a6]/10 text-[#14b8a6] shadow-sm"
+                : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.05] hover:text-[#f0f4fa]"
                 }`}
             >
               {tab.label}
@@ -275,10 +279,10 @@ export default function AffiliatesPage() {
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${aff.status === "ACTIVE"
-                                ? "bg-green-500/10 text-green-400"
-                                : aff.status === "PENDING"
-                                  ? "bg-yellow-500/10 text-yellow-400"
-                                  : "bg-red-500/10 text-red-400"
+                              ? "bg-green-500/10 text-green-400"
+                              : aff.status === "PENDING"
+                                ? "bg-yellow-500/10 text-yellow-400"
+                                : "bg-red-500/10 text-red-400"
                               }`}
                           >
                             {aff.status}
@@ -375,18 +379,6 @@ export default function AffiliatesPage() {
             </div>
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Default Rate (%)</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={settingsForm.commissionRateDefault}
-                    onChange={(e) => setSettingsForm({ ...settingsForm, commissionRateDefault: parseFloat(e.target.value) || 0 })}
-                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
-                  />
-                  <span className="absolute right-3 top-2.5 text-sm text-[#f0f4fa]/50">%</span>
-                </div>
-              </div>
-              <div className="space-y-2">
                 <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Payout Minimum Threshold</label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-sm text-[#f0f4fa]/50">$</span>
@@ -399,11 +391,11 @@ export default function AffiliatesPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Refund Hold Period (Days)</label>
+                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Payout Delay Cycles (Months)</label>
                 <input
                   type="number"
-                  value={settingsForm.refundHoldDays}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                  value={settingsForm.payoutCycleDelayMonths}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, payoutCycleDelayMonths: parseInt(e.target.value) || 0 })}
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
                 />
               </div>

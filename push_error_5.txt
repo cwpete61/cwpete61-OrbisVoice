@@ -1,0 +1,35 @@
+remote: error: GH013: Repository rule violations found for refs/heads/emergency-backup-2026-02-19-173457.        
+remote: 
+remote: - GITHUB PUSH PROTECTION        
+remote:   —————————————————————————————————————————        
+remote:     Resolve the following violations before pushing again        
+remote: 
+remote:     - Push cannot contain secrets        
+remote: 
+remote:             
+remote:      (?) Learn how to resolve a blocked push        
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push        
+remote:             
+remote:             
+remote:       —— Google OAuth Client ID ————————————————————————————        
+remote:        locations:        
+remote:          - commit: 43d89ff8a75abc388799facc48ee671a30b118ab        
+remote:            path: docker-compose.yml:52        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/cwpete61/cwpete61-OrbisVoice/security/secret-scanning/unblock-secret/39uygMkfNN1CwVHWjDEe1YUk7BZ        
+remote:             
+remote:             
+remote:       —— Google OAuth Client Secret ————————————————————————        
+remote:        locations:        
+remote:          - commit: 43d89ff8a75abc388799facc48ee671a30b118ab        
+remote:            path: docker-compose.yml:53        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/cwpete61/cwpete61-OrbisVoice/security/secret-scanning/unblock-secret/39sVDLQ94dOaMAa427LH204zzNr        
+remote:             
+remote: 
+remote: 
+To https://github.com/cwpete61/cwpete61-OrbisVoice.git
+ ! [remote rejected] HEAD -> emergency-backup-2026-02-19-173457 (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/cwpete61/cwpete61-OrbisVoice.git'

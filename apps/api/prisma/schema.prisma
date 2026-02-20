@@ -224,9 +224,10 @@ model PlatformSettings {
   medCommission   Float  @default(20)
   highCommission  Float  @default(30)
   commissionDurationMonths Int @default(0) // 0 means lifetime
-  commissionRateDefault Float @default(30)
+  defaultCommissionLevel CommissionLevel @default(LOW)
   payoutMinimum Float @default(100)
   refundHoldDays Int @default(14)
+  payoutCycleDelayMonths Int @default(1)
   starterLimit      Int      @default(1000)
   professionalLimit Int      @default(10000)
   enterpriseLimit   Int      @default(100000)
