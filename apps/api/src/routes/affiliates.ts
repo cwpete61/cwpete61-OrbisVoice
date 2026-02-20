@@ -2,8 +2,10 @@ import { FastifyInstance } from "fastify";
 import { authenticate, requireAdmin } from "../middleware/auth";
 import { affiliateManager } from "../services/affiliate";
 import { prisma } from "../db";
+import { env } from "../env";
 import { ApiResponse } from "../types";
 import { z } from "zod";
+import Stripe from "stripe";
 
 export async function affiliateRoutes(fastify: FastifyInstance) {
     // Get current user's affiliate status and stats
@@ -62,6 +64,131 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 }
                 fastify.log.error(err);
                 return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // Get current user's Stripe Connect status
+    fastify.get(
+        "/affiliates/stripe/status",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as any).userId;
+                let affiliate = await prisma.affiliate.findUnique({ where: { userId } });
+
+                if (!affiliate) {
+                    // Create an empty affiliate record so standard users can connect Stripe too
+                    affiliate = await prisma.affiliate.create({
+                        data: {
+                            userId,
+                            status: "PENDING",
+                            balance: 0,
+                            totalPaid: 0,
+                        },
+                    });
+                }
+
+                if (!affiliate.stripeAccountId) {
+                    return reply.send({ ok: true, data: { status: "not_connected", accountId: null } } as ApiResponse);
+                }
+
+                // If pending, check Stripe directly to see if they finished onboarding
+                let currentStatus = affiliate.stripeAccountStatus;
+                if (currentStatus === "pending" && env.STRIPE_API_KEY) {
+                    const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                    const account = await stripe.accounts.retrieve(affiliate.stripeAccountId);
+                    if (account.details_submitted) {
+                        currentStatus = "active";
+                        await prisma.affiliate.update({
+                            where: { id: affiliate.id },
+                            data: { stripeAccountStatus: "active" },
+                        });
+                    }
+                }
+
+                return reply.send({
+                    ok: true,
+                    data: {
+                        status: currentStatus,
+                        accountId: affiliate.stripeAccountId,
+                    },
+                } as ApiResponse);
+            } catch (err) {
+                fastify.log.error("Failed to fetch Stripe Connect status:", err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // Generate Stripe Connect onboarding link
+    fastify.post(
+        "/affiliates/stripe/onboard",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                if (!env.STRIPE_API_KEY) {
+                    return reply.code(400).send({ ok: false, message: "Stripe integration is not configured" });
+                }
+
+                const userId = (request.user as any).userId;
+                let affiliate = await prisma.affiliate.findUnique({
+                    where: { userId },
+                    include: { user: true }
+                });
+
+                if (!affiliate) {
+                    // Create an empty affiliate record for standard users
+                    affiliate = await prisma.affiliate.create({
+                        data: {
+                            userId,
+                            status: "PENDING",
+                            balance: 0,
+                            totalPaid: 0,
+                        },
+                        include: { user: true }
+                    });
+                }
+
+                if (affiliate.stripeAccountStatus === "active") {
+                    return reply.code(400).send({ ok: false, message: "Stripe account is already connected and active." });
+                }
+
+                const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                let accountId = affiliate.stripeAccountId;
+
+                // Create a new connected account if they don't have one
+                if (!accountId) {
+                    const account = await stripe.accounts.create({
+                        type: "express",
+                        email: affiliate.payoutEmail || affiliate.user.email,
+                        capabilities: {
+                            transfers: { requested: true },
+                        },
+                    });
+                    accountId = account.id;
+
+                    await prisma.affiliate.update({
+                        where: { id: affiliate.id },
+                        data: { stripeAccountId: accountId, stripeAccountStatus: "pending" },
+                    });
+                }
+
+                // Generate onboarding link
+                const accountLink = await stripe.accountLinks.create({
+                    account: accountId,
+                    refresh_url: `${env.WEB_URL}/affiliates?stripe_refresh=true`,
+                    return_url: `${env.WEB_URL}/affiliates?stripe_return=true`,
+                    type: "account_onboarding",
+                });
+
+                return reply.send({
+                    ok: true,
+                    data: { url: accountLink.url },
+                } as ApiResponse);
+            } catch (err: any) {
+                fastify.log.error("Failed to generate Stripe onboarding link:", err);
+                return reply.code(500).send({ ok: false, message: `Server error: ${err.message}` });
             }
         }
     );

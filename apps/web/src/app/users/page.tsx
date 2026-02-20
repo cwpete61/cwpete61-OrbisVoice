@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import PasswordInput from "../components/PasswordInput";
 
-export default function UsersPage() {
+function UsersContent() {
   const [profile, setProfile] = useState<any>(null);
   const [tokenEmail, setTokenEmail] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
@@ -945,5 +945,13 @@ export default function UsersPage() {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense>
+      <UsersContent />
+    </Suspense>
   );
 }

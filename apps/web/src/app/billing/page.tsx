@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
@@ -80,7 +80,7 @@ interface SubscriptionData {
 
 type TierLimits = Record<AllTierName, TierInfo>;
 
-export default function BillingPage() {
+function BillingContent() {
   const router = useRouter();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [availableTiers, setAvailableTiers] = useState<TierLimits | null>(null);
@@ -435,5 +435,13 @@ export default function BillingPage() {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense>
+      <BillingContent />
+    </Suspense>
   );
 }

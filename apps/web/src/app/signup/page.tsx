@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 
-export default function SignupPage() {
+function SignupContent() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -170,5 +170,13 @@ export default function SignupPage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupContent />
+    </Suspense>
   );
 }

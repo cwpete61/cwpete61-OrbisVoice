@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import {
@@ -14,7 +14,7 @@ import {
     Legend,
 } from "recharts";
 
-export default function ReferralAgentsPage() {
+function ReferralAgentsContent() {
     const [profile, setProfile] = useState<any>(null);
     const [affiliates, setAffiliates] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -33,6 +33,9 @@ export default function ReferralAgentsPage() {
     });
     const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    const [stripeStatus, setStripeStatus] = useState<any>(null);
+    const [stripeLoading, setStripeLoading] = useState(false);
 
     const isAdmin = profile?.role === "ADMIN" || profile?.isAdmin || profile?.username === "Oadmin";
 
@@ -59,6 +62,50 @@ export default function ReferralAgentsPage() {
             }
         } catch (err) {
             console.error("Failed to fetch profile");
+        }
+    };
+
+    const fetchStripeStatus = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/status`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setStripeStatus(data.data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch Stripe status:", err);
+        }
+    };
+
+    useEffect(() => {
+        if (profile) {
+            fetchStripeStatus();
+        }
+    }, [profile]);
+
+    const handleStripeOnboard = async () => {
+        setStripeLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/onboard`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+
+            if (res.ok && data.data?.url) {
+                window.location.href = data.data.url;
+            } else {
+                alert(data.message || "Failed to generate onboarding link.");
+            }
+        } catch (err) {
+            console.error("Failed to start Stripe onboarding:", err);
+            alert("Network error.");
+        } finally {
+            setStripeLoading(false);
         }
     };
 
@@ -183,8 +230,70 @@ export default function ReferralAgentsPage() {
     if (profile && !isAdmin) {
         return (
             <DashboardShell>
-                <div className="flex h-screen items-center justify-center">
-                    <p className="text-sm text-[rgba(240,244,250,0.4)]">Access restricted. Admins only.</p>
+                <div className="mx-auto max-w-4xl px-8 py-10">
+                    <h1 className="text-2xl font-bold text-[#f0f4fa] mb-6">Partner Portal</h1>
+
+                    {searchParams.get("stripe_return") === "true" && (
+                        <div className="mb-6 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 px-4 py-3 text-sm text-[#10b981]">
+                            Welcome back from Stripe! Your account status is updating.
+                        </div>
+                    )}
+                    {searchParams.get("stripe_refresh") === "true" && (
+                        <div className="mb-6 rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-4 py-3 text-sm text-[#f97316]">
+                            Your Stripe connection session expired. Please try again.
+                        </div>
+                    )}
+
+                    <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 mb-8">
+                        <h2 className="text-lg font-semibold text-[#f0f4fa] mb-4">Payout Method</h2>
+
+                        {stripeStatus?.status === 'active' ? (
+                            <div className="flex items-center gap-3 text-sm text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 p-4 rounded-xl">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#10b981]/20">✓</div>
+                                <div>
+                                    <p className="font-semibold">Stripe Connected</p>
+                                    <p className="text-xs text-[rgba(16,185,129,0.7)]">ID: {stripeStatus.accountId}</p>
+                                </div>
+                            </div>
+                        ) : stripeStatus?.status === 'pending' ? (
+                            <div className="flex flex-col gap-4 bg-[#f97316]/5 border border-[#f97316]/20 p-5 rounded-xl">
+                                <div className="flex items-center gap-3 text-sm text-[#f97316]">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f97316]/20 py-2">⏳</div>
+                                    <div>
+                                        <p className="font-semibold">Verification Pending</p>
+                                        <p className="text-xs text-[rgba(249,115,22,0.7)]">Your Stripe account is created but missing details.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleStripeOnboard}
+                                    disabled={stripeLoading}
+                                    className="rounded-lg bg-[#f97316] px-4 py-2 text-sm font-medium text-white hover:bg-[#ea580c] transition w-fit disabled:opacity-50"
+                                >
+                                    {stripeLoading ? "Loading..." : "Resume Onboarding"}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-4 bg-white/[0.02] border border-white/[0.05] p-5 rounded-xl">
+                                <div>
+                                    <p className="text-sm font-medium text-[#f0f4fa]">Set up automatic payouts</p>
+                                    <p className="text-xs text-[rgba(240,244,250,0.5)] mt-1">Connect your bank account securely via Stripe to receive your earnings automatically.</p>
+                                </div>
+                                <button
+                                    onClick={handleStripeOnboard}
+                                    disabled={stripeLoading}
+                                    className="rounded-lg bg-[#635BFF] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#5851E5] transition w-fit disabled:opacity-50 shadow-md shadow-[#635BFF]/20"
+                                >
+                                    {stripeLoading ? "Connecting..." : "Connect with Stripe"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-6">
+                        <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-5 text-center">
+                            <p className="text-xs text-[rgba(240,244,250,0.5)]">Your Referrals will be shown here when we build the dashboard.</p>
+                        </div>
+                    </div>
                 </div>
             </DashboardShell>
         );
@@ -449,5 +558,13 @@ export default function ReferralAgentsPage() {
 
             </div>
         </DashboardShell>
+    );
+}
+
+export default function ReferralAgentsPage() {
+    return (
+        <Suspense>
+            <ReferralAgentsContent />
+        </Suspense>
     );
 }

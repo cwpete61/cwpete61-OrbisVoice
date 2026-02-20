@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.affiliateManager = exports.AffiliateManager = void 0;
 const db_1 = require("../db");
 const logger_1 = require("../logger");
+const referral_1 = require("./referral");
 class AffiliateManager {
     // Submit an affiliate application
     async applyForAffiliate(userId, status = "PENDING") {
@@ -48,26 +49,23 @@ class AffiliateManager {
     async getStats(userId) {
         try {
             const affiliate = await db_1.prisma.affiliate.findUnique({
-                where: { userId },
-                include: {
-                    referrals: {
-                        orderBy: { createdAt: "desc" },
-                        take: 10,
-                    },
-                },
+                where: { userId }
             });
             if (!affiliate)
                 return null;
-            const totalReferrals = await db_1.prisma.affiliateReferral.count({
-                where: { affiliateId: affiliate.id },
-            });
-            const convertedReferrals = await db_1.prisma.affiliateReferral.count({
-                where: { affiliateId: affiliate.id, status: "CONVERTED" },
-            });
+            const referralStats = await referral_1.referralManager.getReferralStats(userId);
             return {
                 ...affiliate,
-                totalReferrals,
-                convertedReferrals,
+                totalReferrals: referralStats.totalSignups,
+                convertedReferrals: referralStats.transactions.length,
+                balance: referralStats.availableRewards,
+                totalEarnings: referralStats.totalRewards,
+                referrals: referralStats.transactions.map((t) => ({
+                    id: t.id,
+                    status: t.status === 'pending' ? 'PENDING' : 'CONVERTED',
+                    commissionAmount: t.amount,
+                    createdAt: t.createdAt
+                }))
             };
         }
         catch (err) {

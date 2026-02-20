@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function GmailCallbackPage() {
+function GmailCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Processing Gmail authorization...");
@@ -79,5 +79,13 @@ export default function GmailCallbackPage() {
         <p className="text-xs text-[rgba(240,244,250,0.35)] mt-4">This window will close automatically...</p>
       </div>
     </div>
+  );
+}
+
+export default function GmailCallbackPage() {
+  return (
+    <Suspense>
+      <GmailCallbackContent />
+    </Suspense>
   );
 }

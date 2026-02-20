@@ -55,7 +55,7 @@ const AdminUpdateUserSchema = zod_1.z.object({
     username: zod_1.z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
     role: zod_1.z.enum(["ADMIN", "USER"]).optional(),
     isAdmin: zod_1.z.boolean().optional(),
-    tier: zod_1.z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+    tier: zod_1.z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
     commissionLevel: zod_1.z.enum(["LOW", "MED", "HIGH"]).optional(),
 });
 const AdminCreateUserSchema = zod_1.z.object({
@@ -66,13 +66,18 @@ const AdminCreateUserSchema = zod_1.z.object({
         .min(3)
         .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
     password: zod_1.z.string().min(8),
-    tier: zod_1.z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+    tier: zod_1.z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
     commissionLevel: zod_1.z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
 });
 const PlatformSettingsSchema = zod_1.z.object({
     lowCommission: zod_1.z.number().min(0),
     medCommission: zod_1.z.number().min(0),
     highCommission: zod_1.z.number().min(0),
+    commissionDurationMonths: zod_1.z.number().int().min(0).default(0),
+    defaultCommissionLevel: zod_1.z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
+    payoutMinimum: zod_1.z.number().min(0).default(100),
+    refundHoldDays: zod_1.z.number().int().min(0).default(14),
+    payoutCycleDelayMonths: zod_1.z.number().int().min(0).default(1),
     starterLimit: zod_1.z.number().int().min(0),
     professionalLimit: zod_1.z.number().int().min(0),
     enterpriseLimit: zod_1.z.number().int().min(0),
@@ -820,6 +825,257 @@ async function userRoutes(fastify) {
             });
         }
     });
+    // Admin: get System Email configuration
+    fastify.get("/admin/system-email", { onRequest: [auth_js_1.requireAdmin] }, async (request, reply) => {
+        try {
+            const config = await db_js_1.prisma.systemEmailConfig.findUnique({
+                where: { id: "global" },
+            });
+            return reply.send({
+                ok: true,
+                data: config || {
+                    username: "",
+                    password: "",
+                    imapServer: "",
+                    imapPort: "",
+                    imapSecurity: "SSL",
+                    smtpServer: "",
+                    smtpPort: "",
+                    smtpSecurity: "SSL",
+                    pop3Server: "",
+                    pop3Port: "",
+                    pop3Security: "SSL",
+                },
+            });
+        }
+        catch (err) {
+            console.error("Failed to fetch system email config:", err);
+            return reply.code(500).send({
+                ok: false,
+                message: "Internal server error",
+            });
+        }
+    });
+    // Admin: update System Email configuration
+    fastify.put("/admin/system-email", { onRequest: [auth_js_1.requireAdmin] }, async (request, reply) => {
+        try {
+            const body = (request.body || {});
+            const config = await db_js_1.prisma.systemEmailConfig.upsert({
+                where: { id: "global" },
+                update: {
+                    username: body.username,
+                    password: body.password,
+                    imapServer: body.imapServer,
+                    imapPort: body.imapPort,
+                    imapSecurity: body.imapSecurity,
+                    smtpServer: body.smtpServer,
+                    smtpPort: body.smtpPort,
+                    smtpSecurity: body.smtpSecurity,
+                    pop3Server: body.pop3Server,
+                    pop3Port: body.pop3Port,
+                    pop3Security: body.pop3Security,
+                },
+                create: {
+                    id: "global",
+                    username: body.username,
+                    password: body.password,
+                    imapServer: body.imapServer,
+                    imapPort: body.imapPort,
+                    imapSecurity: body.imapSecurity || "SSL",
+                    smtpServer: body.smtpServer,
+                    smtpPort: body.smtpPort,
+                    smtpSecurity: body.smtpSecurity || "SSL",
+                    pop3Server: body.pop3Server,
+                    pop3Port: body.pop3Port,
+                    pop3Security: body.pop3Security || "SSL",
+                },
+            });
+            return reply.send({
+                ok: true,
+                data: config,
+                message: "System email configuration updated",
+            });
+        }
+        catch (err) {
+            console.error("Failed to update system email config:", err);
+            return reply.code(500).send({
+                ok: false,
+                message: "Internal server error",
+            });
+        }
+    });
+    // Admin: get Stripe Connect configuration
+    fastify.get("/admin/stripe-connect", { onRequest: [auth_js_1.requireAdmin] }, async (request, reply) => {
+        try {
+            const config = await db_js_1.prisma.stripeConnectConfig.findUnique({
+                where: { id: "global" },
+            });
+            return reply.send({
+                ok: true,
+                data: config || {
+                    clientId: "",
+                    enabled: false,
+                    minimumPayout: 100,
+                },
+            });
+        }
+        catch (err) {
+            console.error("Failed to fetch Stripe Connect config:", err);
+            return reply.code(500).send({
+                ok: false,
+                message: "Internal server error",
+            });
+        }
+    });
+    // Admin: update Stripe Connect configuration
+    fastify.put("/admin/stripe-connect", { onRequest: [auth_js_1.requireAdmin] }, async (request, reply) => {
+        try {
+            const body = (request.body || {});
+            const config = await db_js_1.prisma.stripeConnectConfig.upsert({
+                where: { id: "global" },
+                update: {
+                    clientId: body.clientId,
+                    enabled: body.enabled,
+                    minimumPayout: body.minimumPayout,
+                },
+                create: {
+                    id: "global",
+                    clientId: body.clientId,
+                    enabled: body.enabled || false,
+                    minimumPayout: body.minimumPayout || 100,
+                },
+            });
+            return reply.send({
+                ok: true,
+                data: config,
+                message: "Stripe Connect configuration updated",
+            });
+        }
+        catch (err) {
+            console.error("Failed to update Stripe Connect config:", err);
+            return reply.code(500).send({
+                ok: false,
+                message: "Internal server error",
+            });
+        }
+    });
+    // Admin: test Stripe Connect connection
+    fastify.post("/admin/stripe-connect/test", { onRequest: [auth_js_1.requireAdmin] }, async (request, reply) => {
+        try {
+            const stripeModule = await Promise.resolve().then(() => __importStar(require("stripe")));
+            const Stripe = stripeModule.default;
+            // Use the environment variable Stripe key
+            const stripeKey = process.env.STRIPE_API_KEY;
+            if (!stripeKey) {
+                return reply.code(400).send({
+                    ok: false,
+                    message: "No STRIPE_API_KEY found in server environment",
+                });
+            }
+            const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+            // Attempt to fetch the account details to verify the key works
+            const account = await stripe.accounts.retrieve();
+            return reply.send({
+                ok: true,
+                data: {
+                    id: account.id,
+                    name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Unknown Account Name",
+                    email: account.email
+                },
+                message: "Successfully connected to Stripe!",
+            });
+        }
+        catch (err) {
+            console.error("Failed to test Stripe Connect connection:", err);
+            return reply.code(400).send({
+                ok: false,
+                message: err.message || "Failed to connect to Stripe",
+            });
+        }
+    });
+    // Admin: test System Email configuration
+    fastify.post("/admin/system-email/test", { onRequest: [auth_js_1.requireAdmin] }, async (request, reply) => {
+        try {
+            const { testEmail, forceDevMode } = request.body || {};
+            if (!testEmail) {
+                return reply.code(400).send({
+                    ok: false,
+                    message: "Test email address is required",
+                });
+            }
+            const config = await db_js_1.prisma.systemEmailConfig.findUnique({
+                where: { id: "global" },
+            });
+            const nodemailer = await Promise.resolve().then(() => __importStar(require("nodemailer")));
+            let transporter;
+            let isDevTest = false;
+            const isDevEnv = process.env.NODE_ENV !== "production";
+            const requiresDevFallback = (!config || !config.smtpServer || !config.username || !config.password);
+            const shouldRunDevMode = isDevEnv && (forceDevMode || requiresDevFallback);
+            if (shouldRunDevMode) {
+                const testAccount = await nodemailer.createTestAccount();
+                transporter = nodemailer.createTransport({
+                    host: "smtp.ethereal.email",
+                    port: 587,
+                    secure: false, // true for 465, false for other ports
+                    auth: {
+                        user: testAccount.user, // generated ethereal user
+                        pass: testAccount.pass, // generated ethereal password
+                    },
+                    tls: {
+                        rejectUnauthorized: false
+                    }
+                });
+                isDevTest = true;
+            }
+            else if (requiresDevFallback) {
+                return reply.code(400).send({
+                    ok: false,
+                    message: "System email is not fully configured. Please save SMTP settings first.",
+                });
+            }
+            else {
+                // Determine secure port logic
+                const port = parseInt(config.smtpPort || "587");
+                const secure = port === 465 || config.smtpSecurity === "SSL";
+                transporter = nodemailer.createTransport({
+                    host: config.smtpServer,
+                    port,
+                    secure,
+                    auth: {
+                        user: config.username,
+                        pass: config.password,
+                    },
+                });
+                // Verify connection for real configs
+                await transporter.verify();
+            }
+            // Send test email
+            const info = await transporter.sendMail({
+                from: `"OrbisVoice System" <${config?.username || "test@orbisvoice.local"}>`,
+                to: testEmail,
+                subject: "Test Email from OrbisVoice",
+                text: "This is a test email sent from the OrbisVoice System Email configuration panel.",
+                html: "<p>This is a test email sent from the <strong>OrbisVoice System Email</strong> configuration panel.</p>",
+            });
+            let successMessage = "Test email sent successfully! Please check your inbox.";
+            if (isDevTest) {
+                const previewUrl = nodemailer.getTestMessageUrl(info);
+                successMessage = `Dev mode: Email sent via Ethereal. ${previewUrl}`;
+            }
+            return reply.send({
+                ok: true,
+                message: successMessage,
+            });
+        }
+        catch (err) {
+            console.error("Test email failed:", err);
+            return reply.code(500).send({
+                ok: false,
+                message: `Failed to send test email: ${err.message || "Unknown error"}`,
+            });
+        }
+    });
     // Get calendar connection status for current user
     fastify.get("/users/me/calendar", { onRequest: [auth_js_1.authenticate] }, async (request, reply) => {
         try {
@@ -1179,6 +1435,11 @@ async function userRoutes(fastify) {
                         lowCommission: 10,
                         medCommission: 20,
                         highCommission: 30,
+                        commissionDurationMonths: 0,
+                        defaultCommissionLevel: "LOW",
+                        payoutMinimum: 100,
+                        refundHoldDays: 14,
+                        payoutCycleDelayMonths: 1,
                         starterLimit: 1000,
                         professionalLimit: 10000,
                         enterpriseLimit: 100000,

@@ -193,6 +193,15 @@ model SystemEmailConfig {
   updatedAt DateTime @updatedAt
 }
 
+model StripeConnectConfig {
+  id String @id @default("global")
+  clientId String?
+  enabled Boolean @default(false)
+  minimumPayout Float @default(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model TenantGoogleConfig {
   id String @id @default(cuid())
   tenantId String @unique
@@ -278,7 +287,16 @@ model Affiliate {
   status          AffiliateStatus  @default(PENDING)
   slug            String           @unique
   paymentInfo     String?          @db.Text // Encrypted or JSON string
+  
+  // Payout preferences
+  payoutMethod    String?          // e.g., 'stripe', 'paypal', 'zelle'
   payoutEmail     String?          // PayPal or preferred payout email
+  payoutPhone     String?          // For Zelle payouts
+  
+  // Stripe Connect
+  stripeAccountId String?          @unique
+  stripeAccountStatus String?      // 'pending', 'active', 'restricted'
+
   totalEarnings   Float            @default(0)
   totalPaid       Float            @default(0)
   balance         Float            @default(0)

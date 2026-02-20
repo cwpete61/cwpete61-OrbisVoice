@@ -20,9 +20,11 @@ const users_1 = __importDefault(require("./routes/users"));
 const twilio_1 = __importDefault(require("./routes/twilio"));
 const google_auth_1 = __importDefault(require("./routes/google-auth"));
 const affiliates_1 = require("./routes/affiliates");
+const stripe_webhooks_1 = __importDefault(require("./routes/stripe-webhooks"));
 const session_1 = require("./services/session");
 const settings_1 = require("./routes/settings");
 const handlers_1 = require("./tools/handlers");
+const referral_1 = require("./services/referral");
 const fastify = (0, fastify_1.default)({
     logger: logger_1.logger.child({ context: "fastify" }),
 });
@@ -58,6 +60,7 @@ fastify.register(twilio_1.default);
 fastify.register(google_auth_1.default);
 fastify.register(settings_1.settingsRoutes);
 fastify.register(affiliates_1.affiliateRoutes);
+fastify.register(stripe_webhooks_1.default);
 // Start server
 const start = async () => {
     try {
@@ -74,6 +77,11 @@ const start = async () => {
         logger_1.logger.info("Tool handlers registered");
         await fastify.listen({ port: env_1.env.PORT, host: "0.0.0.0" });
         logger_1.logger.info(`Server running at http://0.0.0.0:${env_1.env.PORT}`);
+        // Set up background job to process commission holds (every hour)
+        setInterval(() => {
+            logger_1.logger.info("Running scheduled clearPendingHolds...");
+            referral_1.referralManager.clearPendingHolds();
+        }, 1000 * 60 * 60);
     }
     catch (err) {
         logger_1.logger.error(err);

@@ -1019,6 +1019,114 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Admin: get Stripe Connect configuration
+  fastify.get(
+    "/admin/stripe-connect",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const config = await (prisma as any).stripeConnectConfig.findUnique({
+          where: { id: "global" },
+        });
+
+        return reply.send({
+          ok: true,
+          data: config || {
+            clientId: "",
+            enabled: false,
+            minimumPayout: 100,
+          },
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to fetch Stripe Connect config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: update Stripe Connect configuration
+  fastify.put<{ Body: any }>(
+    "/admin/stripe-connect",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const body = (request.body || {}) as any;
+
+        const config = await (prisma as any).stripeConnectConfig.upsert({
+          where: { id: "global" },
+          update: {
+            clientId: body.clientId,
+            enabled: body.enabled,
+            minimumPayout: body.minimumPayout,
+          },
+          create: {
+            id: "global",
+            clientId: body.clientId,
+            enabled: body.enabled || false,
+            minimumPayout: body.minimumPayout || 100,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          data: config,
+          message: "Stripe Connect configuration updated",
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to update Stripe Connect config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: test Stripe Connect connection
+  fastify.post(
+    "/admin/stripe-connect/test",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const stripeModule = await import("stripe");
+        const Stripe = stripeModule.default;
+
+        // Use the environment variable Stripe key
+        const stripeKey = process.env.STRIPE_API_KEY;
+        if (!stripeKey) {
+          return reply.code(400).send({
+            ok: false,
+            message: "No STRIPE_API_KEY found in server environment",
+          } as ApiResponse);
+        }
+
+        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
+        // Attempt to fetch the account details to verify the key works
+        const account = await stripe.accounts.retrieve();
+
+        return reply.send({
+          ok: true,
+          data: {
+            id: account.id,
+            name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Unknown Account Name",
+            email: account.email
+          },
+          message: "Successfully connected to Stripe!",
+        } as ApiResponse);
+      } catch (err: any) {
+        console.error("Failed to test Stripe Connect connection:", err);
+        return reply.code(400).send({
+          ok: false,
+          message: err.message || "Failed to connect to Stripe",
+        } as ApiResponse);
+      }
+    }
+  );
+
   // Admin: test System Email configuration
   fastify.post<{ Body: { testEmail: string; forceDevMode?: boolean } }>(
     "/admin/system-email/test",

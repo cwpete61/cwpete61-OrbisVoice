@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -83,6 +83,17 @@ export default function SettingsPage() {
   const [systemEmailTestResult, setSystemEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [systemTestEmailTarget, setSystemTestEmailTarget] = useState("");
 
+  const [stripeConnectConfig, setStripeConnectConfig] = useState({
+    clientId: "",
+    enabled: false,
+    minimumPayout: 100,
+  });
+  const [stripeConnectSaving, setStripeConnectSaving] = useState(false);
+  const [stripeConnectMessage, setStripeConnectMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [stripeConnectTesting, setStripeConnectTesting] = useState(false);
+  const [stripeConnectTestResult, setStripeConnectTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
+
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -103,6 +114,7 @@ export default function SettingsPage() {
     fetchTenantGoogleConfig();
     fetchTwilioConfig();
     fetchSystemEmailConfig();
+    fetchStripeConnectConfig();
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -419,6 +431,90 @@ export default function SettingsPage() {
       setSystemEmailTestResult({ success: false, message: `Connection failed: ${err.message || "Unknown error"}` });
     } finally {
       setSystemEmailTesting(false);
+    }
+  };
+
+  const fetchStripeConnectConfig = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stripe-connect`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data) {
+          setStripeConnectConfig(data.data);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch Stripe Connect config:", err);
+    }
+  };
+
+  const saveStripeConnectConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStripeConnectSaving(true);
+    setStripeConnectMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stripe-connect`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...stripeConnectConfig,
+          minimumPayout: Number(stripeConnectConfig.minimumPayout) || 100
+        }),
+      });
+
+      if (res.ok) {
+        setStripeConnectMessage({ type: 'success', text: 'Stripe Connect configuration saved successfully' });
+        setTimeout(() => setStripeConnectMessage(null), 3000);
+      } else {
+        const data = await res.json();
+        setStripeConnectMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+      }
+    } catch (err) {
+      console.error("Failed to save Stripe Connect config:", err);
+      setStripeConnectMessage({ type: 'error', text: 'Network error occurred' });
+    } finally {
+      setStripeConnectSaving(false);
+    }
+  };
+
+  const testStripeConnectConnection = async () => {
+    setStripeConnectTesting(true);
+    setStripeConnectTestResult(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stripe-connect/test`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setStripeConnectTestResult({
+          success: true,
+          message: data.message,
+          data: data.data
+        });
+      } else {
+        setStripeConnectTestResult({
+          success: false,
+          message: data.message || "Failed to connect to Stripe"
+        });
+      }
+    } catch (err) {
+      console.error("Failed to test Stripe connection:", err);
+      setStripeConnectTestResult({
+        success: false,
+        message: "Network error occurred while testing connection"
+      });
+    } finally {
+      setStripeConnectTesting(false);
     }
   };
 
@@ -822,6 +918,18 @@ export default function SettingsPage() {
               >
                 Referrals
               </button>
+              <button
+                onClick={() => {
+                  setActiveTab("stripe-connect");
+                  router.replace("/settings?tab=stripe-connect");
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "stripe-connect"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                Stripe Connect
+              </button>
             </>
           )}
         </div>
@@ -890,6 +998,101 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Stripe Connect Section */}
+        {activeTab === "stripe-connect" && isAdmin && (
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Stripe Connect Configuration</h2>
+            <p className="mb-5 text-sm text-[rgba(240,244,250,0.45)]">
+              Configure Stripe Connect to automate agent payouts securely.
+            </p>
+
+            <form onSubmit={saveStripeConnectConfig} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Client ID</label>
+                <input
+                  type="text"
+                  value={stripeConnectConfig.clientId}
+                  onChange={(e) => setStripeConnectConfig({ ...stripeConnectConfig, clientId: e.target.value })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  placeholder="ca_1234567890abcdef"
+                />
+                <p className="mt-1.5 text-[11px] text-[rgba(240,244,250,0.4)]">
+                  Found in your Stripe Dashboard under Settings {'->'} Connect settings.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Minimum Payout Amount ($)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={stripeConnectConfig.minimumPayout}
+                  onChange={(e) => setStripeConnectConfig({ ...stripeConnectConfig, minimumPayout: parseFloat(e.target.value) || 0 })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  placeholder="100"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-[rgba(240,244,250,0.65)] mt-6">
+                <input
+                  type="checkbox"
+                  checked={stripeConnectConfig.enabled}
+                  onChange={(e) => setStripeConnectConfig({ ...stripeConnectConfig, enabled: e.target.checked })}
+                  className="h-4 w-4 rounded border-white/[0.2] bg-[#05080f]"
+                />
+                Enable Stripe Connect Onboarding
+              </label>
+
+              {stripeConnectMessage && (
+                <div
+                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${stripeConnectMessage.type === "success"
+                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                    }`}
+                >
+                  {stripeConnectMessage.type === "success" ? "✓ " : "⚠️ "}{stripeConnectMessage.text}
+                </div>
+              )}
+
+              {stripeConnectTestResult && (
+                <div
+                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${stripeConnectTestResult.success
+                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                    }`}
+                >
+                  <p className="font-semibold">{stripeConnectTestResult.success ? "✓ Connected successfully!" : "⚠️ Connection failed"}</p>
+                  <p className="mt-1 opacity-80">{stripeConnectTestResult.message}</p>
+                  {stripeConnectTestResult.data && (
+                    <div className="mt-2 text-xs opacity-75 font-mono">
+                      Connected to: {stripeConnectTestResult.data.name} ({stripeConnectTestResult.data.email})
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={stripeConnectSaving}
+                  className="btn-primary text-sm disabled:opacity-50"
+                >
+                  {stripeConnectSaving ? "Saving…" : "Save Configuration"}
+                </button>
+                <button
+                  type="button"
+                  onClick={testStripeConnectConnection}
+                  disabled={stripeConnectTesting}
+                  className="rounded-lg border border-white/[0.1] bg-white/[0.05] px-5 py-2 text-sm font-medium text-[#f0f4fa] hover:bg-white/[0.1] disabled:opacity-50 transition"
+                >
+                  {stripeConnectTesting ? "Testing..." : "Test Connection"}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
@@ -1691,5 +1894,13 @@ export default function SettingsPage() {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsContent />
+    </Suspense>
   );
 }

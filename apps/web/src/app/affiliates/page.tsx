@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import AffiliateShell from "../components/AffiliateShell";
+import DashboardShell from "../components/DashboardShell";
 import {
   LineChart,
   Line,
@@ -14,7 +14,7 @@ import {
   Legend,
 } from "recharts";
 
-export default function AffiliatesPage() {
+function AffiliatesContent() {
   const [profile, setProfile] = useState<any>(null);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,22 +180,21 @@ export default function AffiliatesPage() {
 
   if (profile && !isAdmin) {
     return (
-      <AffiliateShell>
+      <DashboardShell>
         <div className="flex h-screen items-center justify-center">
           <p className="text-sm text-[rgba(240,244,250,0.4)]">Access restricted. Admins only.</p>
         </div>
-      </AffiliateShell>
+      </DashboardShell>
     );
   }
 
   const payouts = affiliates.filter((a) => a.balance >= (settingsForm.payoutMinimum || 100));
 
   return (
-    <AffiliateShell>
+    <DashboardShell>
       <div className="mx-auto max-w-6xl px-8 py-10">
         <div className="mb-10">
           <h1 className="text-2xl font-bold text-[#f0f4fa]">Affiliate Ecosystem</h1>
-          <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Manage affiliates, payouts, and analytics.</p>
         </div>
 
         {/* Tab Navigation */}
@@ -466,6 +465,14 @@ export default function AffiliatesPage() {
           </div>
         )}
       </div>
-    </AffiliateShell>
+    </DashboardShell>
+  );
+}
+
+export default function AffiliatesPage() {
+  return (
+    <Suspense>
+      <AffiliatesContent />
+    </Suspense>
   );
 }
