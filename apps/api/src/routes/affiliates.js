@@ -1,22 +1,22 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function (o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
+        desc = { enumerable: true, get: function () { return m[k]; } };
     }
     Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
+}) : (function (o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function (o, v) {
     Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
+}) : function (o, v) {
     o["default"] = v;
 });
 var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
+    var ownKeys = function (o) {
         ownKeys = Object.getOwnPropertyNames || function (o) {
             var ar = [];
             for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
@@ -60,6 +60,44 @@ const PublicApplySchema = zod_1.z.object({
     taxFormUrl: zod_1.z.string().optional(),
 });
 async function affiliateRoutes(fastify) {
+    // Public endpoint to get program details (commission rates)
+    fastify.get("/affiliates/program-details", async (request, reply) => {
+        try {
+            const settings = await db_1.prisma.platformSettings.findUnique({
+                where: { id: "global" },
+                select: {
+                    lowCommission: true,
+                    medCommission: true,
+                    highCommission: true,
+                    defaultCommissionLevel: true,
+                    payoutMinimum: true,
+                }
+            });
+            if (!settings) {
+                return reply.send({
+                    ok: true,
+                    data: {
+                        commissionRate: 30,
+                        payoutMinimum: 100,
+                    },
+                });
+            }
+            let commissionRate = settings.lowCommission;
+            if (settings.defaultCommissionLevel === "MED") commissionRate = settings.medCommission;
+            if (settings.defaultCommissionLevel === "HIGH") commissionRate = settings.highCommission;
+            return reply.send({
+                ok: true,
+                data: {
+                    commissionRate,
+                    payoutMinimum: settings.payoutMinimum,
+                },
+            });
+        }
+        catch (err) {
+            fastify.log.error(err);
+            return reply.code(500).send({ ok: false, message: "Server error" });
+        }
+    });
     // Get current user's affiliate status and stats
     fastify.get("/affiliates/me", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
         try {

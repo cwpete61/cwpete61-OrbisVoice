@@ -230,7 +230,7 @@ function ReferralAgentsContent() {
     if (profile && !isAdmin) {
         return (
             <DashboardShell>
-                <div className="mx-auto max-w-4xl px-8 py-10">
+                <div className="px-8 py-10">
                     <h1 className="text-2xl font-bold text-[#f0f4fa] mb-6">Partner Portal</h1>
 
                     {searchParams.get("stripe_return") === "true" && (
@@ -303,7 +303,7 @@ function ReferralAgentsContent() {
 
     return (
         <DashboardShell>
-            <div className="mx-auto max-w-6xl px-8 py-10">
+            <div className="px-8 py-10">
                 <div className="mb-10">
                     <h1 className="text-2xl font-bold text-[#f0f4fa]">Referral Agents Management</h1>
                     <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Manage affiliates, payouts, and analytics.</p>

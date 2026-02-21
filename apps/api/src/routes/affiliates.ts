@@ -13,18 +13,54 @@ const PublicApplySchema = z.object({
     password: z.string().min(8).optional(), // optional if they already have an account
     firstName: z.string().min(1),
     lastName: z.string().min(1),
-    businessName: z.string().optional(),
-    address: z.string().min(1),
-    unit: z.string().optional(),
-    city: z.string().min(1),
-    state: z.string().min(1),
-    zip: z.string().min(1),
-    phone: z.string().min(1),
-    tinSsn: z.string().min(1),
-    taxFormUrl: z.string().optional(),
 });
 
 export async function affiliateRoutes(fastify: FastifyInstance) {
+    // Public endpoint to get program details (commission rates)
+    fastify.get(
+        "/affiliates/program-details",
+        async (request, reply) => {
+            try {
+                const settings = await prisma.platformSettings.findUnique({
+                    where: { id: "global" },
+                    select: {
+                        lowCommission: true,
+                        medCommission: true,
+                        highCommission: true,
+                        defaultCommissionLevel: true,
+                        payoutMinimum: true,
+                    }
+                });
+
+                if (!settings) {
+                    // Fallback defaults if settings not initialized
+                    return reply.send({
+                        ok: true,
+                        data: {
+                            commissionRate: 30, // Default 30%
+                            payoutMinimum: 100,
+                        },
+                    } as ApiResponse);
+                }
+
+                // Determine the default public commission rate based on the default level
+                let commissionRate = settings.lowCommission;
+                if (settings.defaultCommissionLevel === "MED") commissionRate = settings.medCommission;
+                if (settings.defaultCommissionLevel === "HIGH") commissionRate = settings.highCommission;
+
+                return reply.send({
+                    ok: true,
+                    data: {
+                        commissionRate,
+                        payoutMinimum: settings.payoutMinimum,
+                    },
+                } as ApiResponse);
+            } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
     // Get current user's affiliate status and stats
     fastify.get(
         "/affiliates/me",
@@ -77,15 +113,6 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                         data: {
                             firstName: body.firstName,
                             lastName: body.lastName,
-                            businessName: body.businessName,
-                            address: body.address,
-                            unit: body.unit,
-                            city: body.city,
-                            state: body.state,
-                            zip: body.zip,
-                            phone: body.phone,
-                            tinSsn: body.tinSsn,
-                            taxFormUrl: body.taxFormUrl,
                         },
                     });
                 } else {
@@ -95,6 +122,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     // Create new user
                     const hashedPassword = await bcrypt.hash(body.password, 10);
                     const tenant = await prisma.tenant.create({ data: { name: `${body.firstName}'s Workspace` } });
+                    const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
 
                     user = await prisma.user.create({
                         data: {
@@ -105,15 +133,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             tenantId: tenant.id,
                             firstName: body.firstName,
                             lastName: body.lastName,
-                            businessName: body.businessName,
-                            address: body.address,
-                            unit: body.unit,
-                            city: body.city,
-                            state: body.state,
-                            zip: body.zip,
-                            phone: body.phone,
-                            tinSsn: body.tinSsn,
-                            taxFormUrl: body.taxFormUrl,
+                            commissionLevel: settings?.defaultCommissionLevel || "LOW",
                         } as any,
                     });
                 }
@@ -182,14 +202,11 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
 
                 if (!affiliate) {
                     // Create an empty affiliate record so standard users can connect Stripe too
-                    affiliate = await prisma.affiliate.create({
-                        data: {
-                            userId,
-                            status: "PENDING",
-                            balance: 0,
-                            totalPaid: 0,
-                        } as any,
-                    });
+                    const result = await affiliateManager.applyForAffiliate(userId, "PENDING");
+                    if (!result.success || !result.data) {
+                        return reply.code(500).send({ ok: false, message: "Failed to initialize partner profile" } as ApiResponse);
+                    }
+                    affiliate = result.data;
                 }
 
                 if (!affiliate.stripeAccountId) {
@@ -242,15 +259,14 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
 
                 if (!affiliate) {
                     // Create an empty affiliate record for standard users
-                    affiliate = await prisma.affiliate.create({
-                        data: {
-                            userId,
-                            status: "PENDING",
-                            balance: 0,
-                            totalPaid: 0,
-                        },
+                    const result = await affiliateManager.applyForAffiliate(userId, "PENDING");
+                    if (!result.success) {
+                        return reply.code(500).send({ ok: false, message: "Failed to initialize partner profile" } as ApiResponse);
+                    }
+                    affiliate = await prisma.affiliate.findUnique({
+                        where: { userId },
                         include: { user: true }
-                    } as any) as any;
+                    });
                 }
 
                 if (affiliate.stripeAccountStatus === "active") {
@@ -357,14 +373,33 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 const { id } = request.params;
                 const { status } = UpdateStatusSchema.parse(request.body);
 
+                // When activating, snapshot the current global commission rate
+                // so this partner is immune to future global rate changes
+                let lockData: { lockedCommissionRate?: number } = {};
+                if (status === "ACTIVE") {
+                    const existing = await prisma.affiliate.findUnique({
+                        where: { id },
+                        select: { lockedCommissionRate: true, user: { select: { commissionLevel: true } } }
+                    });
+                    // Only lock if not already locked
+                    if (!existing?.lockedCommissionRate) {
+                        const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+                        const userLevel = existing?.user?.commissionLevel || settings?.defaultCommissionLevel || "LOW";
+                        let rate = settings?.lowCommission ?? 10;
+                        if (userLevel === "MED") rate = settings?.medCommission ?? 20;
+                        if (userLevel === "HIGH") rate = settings?.highCommission ?? 30;
+                        lockData.lockedCommissionRate = rate;
+                    }
+                }
+
                 const updated = await prisma.affiliate.update({
                     where: { id },
-                    data: { status },
+                    data: { status, ...lockData },
                 });
 
                 return reply.send({
                     ok: true,
-                    message: `Affiliate status updated to ${status}`,
+                    message: `Affiliate status updated to ${status}${lockData.lockedCommissionRate ? ` (commission locked at ${lockData.lockedCommissionRate}%)` : ""}`,
                     data: updated,
                 } as ApiResponse);
             } catch (err) {
@@ -410,7 +445,47 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
         }
     );
 
-    // Admin: Process payout for an affiliate
+    // Admin: Set a custom commission rate override for a specific affiliate
+    const CustomRateSchema = z.object({
+        customCommissionRate: z.number().min(0).max(100).nullable(),
+    });
+
+    fastify.patch<{ Params: { id: string }; Body: z.infer<typeof CustomRateSchema> }>(
+        "/admin/affiliates/:id/commission-rate",
+        { onRequest: [requireAdmin] },
+        async (request, reply) => {
+            try {
+                const { id } = request.params as { id: string };
+                const { customCommissionRate } = CustomRateSchema.parse(request.body);
+
+                const affiliate = await prisma.affiliate.findUnique({ where: { id } });
+                if (!affiliate) {
+                    return reply.code(404).send({ ok: false, message: "Affiliate not found" });
+                }
+
+                const updated = await prisma.affiliate.update({
+                    where: { id },
+                    data: { customCommissionRate },
+                });
+
+                return reply.send({
+                    ok: true,
+                    message: customCommissionRate === null
+                        ? "Custom rate cleared — partner will now use their locked/global rate"
+                        : `Custom commission rate set to ${customCommissionRate}%`,
+                    data: updated,
+                } as ApiResponse);
+            } catch (err) {
+                if (err instanceof z.ZodError) {
+                    return reply.code(400).send({ ok: false, message: "Invalid rate value" });
+                }
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+
     fastify.post<{ Params: { id: string } }>(
         "/admin/affiliates/:id/payout",
         { onRequest: [requireAdmin] },

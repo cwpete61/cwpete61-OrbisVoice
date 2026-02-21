@@ -78,7 +78,7 @@ export default function AgentConversationsPage() {
     <div className="min-h-screen bg-gradient-to-br from-orbit-blue via-void to-slate">
       {/* Header */}
       <nav className="border-b border-slate px-6 py-4 bg-orbit-blue/50">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full px-2">
           <a href="/dashboard" className="text-slate hover:text-signal-cyan text-sm mb-2 inline-block">
             ← Back to Dashboard
           </a>
@@ -89,7 +89,7 @@ export default function AgentConversationsPage() {
       </nav>
 
       {/* Main Content */}
-      <section className="max-w-7xl mx-auto px-6 py-12">
+      <section className="w-full px-8 py-12">
         {selectedTranscript ? (
           // Transcript Detail View
           <div className="mb-8">

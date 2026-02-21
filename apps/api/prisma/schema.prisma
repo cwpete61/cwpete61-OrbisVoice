@@ -310,6 +310,10 @@ model Affiliate {
   stripeAccountId String?          @unique
   stripeAccountStatus String?      // 'pending', 'active', 'restricted'
 
+  // Commission rate fields
+  lockedCommissionRate Float?       // Rate snapshotted at approval — never retroactively changes
+  customCommissionRate  Float?       // Admin-set per-partner override (takes priority over everything)
+
   totalEarnings   Float            @default(0)
   totalPaid       Float            @default(0)
   balance         Float            @default(0)

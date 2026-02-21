@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
 import UserInfoCard from "./UserInfoCard";
+import IdleTimeoutModal from "./IdleTimeoutModal";
 
 const NAV = [
   {
@@ -45,7 +46,7 @@ const NAV = [
   },
   {
     href: "/affiliates",
-    label: "Affiliates",
+    label: "Affiliate Partner",
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -145,7 +146,7 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
             if (item.label === "Users" || item.label === "Referral Agents") {
               return profile?.isAdmin;
             }
-            if (item.label === "Affiliates") {
+            if (item.label === "Affiliate Partner") {
               // Show Affiliates tag to admins OR approved affiliates
               return profile?.isAdmin || profile?.isAffiliate;
             }
@@ -192,6 +193,9 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
       {showProfileMenu && (
         <ProfileMenu onClose={() => setShowProfileMenu(false)} />
       )}
+
+      {/* Idle Timeout Modal */}
+      <IdleTimeoutModal isAdmin={profile?.isAdmin} />
     </div>
   );
 }

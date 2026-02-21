@@ -223,7 +223,7 @@ function ReferralsContent() {
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
-      <div className="mx-auto max-w-5xl px-8 py-8">
+      <div className="px-8 py-8">
 
         {/* URL Params feedback */}
         {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get("stripe_return") === "true" && (
@@ -255,8 +255,8 @@ function ReferralsContent() {
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "overview"
-                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
               }`}
           >
             Overview & Stats
@@ -264,8 +264,8 @@ function ReferralsContent() {
           <button
             onClick={() => setActiveTab("settings")}
             className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "settings"
-                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
               }`}
           >
             Banking & Tax Settings

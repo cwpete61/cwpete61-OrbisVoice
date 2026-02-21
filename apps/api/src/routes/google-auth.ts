@@ -39,7 +39,7 @@ const getGoogleConfig = async (tenantId?: string) => {
       redirectUri:
         config?.redirectUri ||
         env.GOOGLE_REDIRECT_URI ||
-        "http://localhost:3000/auth/google/callback",
+        "http://localhost:3000/api/auth/callback/google",
       enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
     };
   } catch (error) {
@@ -239,6 +239,11 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               },
             });
 
+            // Fetch system wide commission default
+            const settings = await prisma.platformSettings.findUnique({
+              where: { id: "global" }
+            });
+
             user = await prisma.user.create({
               data: {
                 tenantId: tenant.id,
@@ -249,6 +254,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
                 googleName,
                 googleProfilePicture,
                 googleAuthProvider: "google",
+                commissionLevel: settings?.defaultCommissionLevel || "LOW",
               } as any,
             });
           }

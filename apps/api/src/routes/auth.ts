@@ -61,6 +61,11 @@ export async function authRoutes(fastify: FastifyInstance) {
           },
         });
 
+        // Fetch system wide commission default
+        const settings = await prisma.platformSettings.findUnique({
+          where: { id: "global" }
+        });
+
         // Create user
         const user = await prisma.user.create({
           data: {
@@ -69,6 +74,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
+            commissionLevel: settings?.defaultCommissionLevel || "LOW",
           } as any,
         });
 

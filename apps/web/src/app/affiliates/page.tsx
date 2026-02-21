@@ -14,6 +14,7 @@ function AffiliateDashboardContent() {
 
   const [stripeStatus, setStripeStatus] = useState<any>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [commissionRate, setCommissionRate] = useState<number>(30);
 
   // Settings form
   const [formData, setFormData] = useState({
@@ -46,7 +47,7 @@ function AffiliateDashboardContent() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const [profileRes, statsRes, stripeRes] = await Promise.all([
+      const [profileRes, statsRes, stripeRes, programRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -56,6 +57,7 @@ function AffiliateDashboardContent() {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/status`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/program-details`),
       ]);
 
       if (profileRes.ok) {
@@ -83,6 +85,11 @@ function AffiliateDashboardContent() {
       if (stripeRes.ok) {
         const stData = await stripeRes.json();
         setStripeStatus(stData.data);
+      }
+
+      if (programRes.ok) {
+        const prData = await programRes.json();
+        setCommissionRate(prData.data?.commissionRate || 30);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load Partner Portal.");
@@ -172,26 +179,11 @@ function AffiliateDashboardContent() {
     );
   }
 
-  // Handle admins viewing the page (they can see layout but have their own admin dash)
-  if (profile?.isAdmin && !stats?.isAffiliate) {
-    return (
-      <DashboardShell tokenLoaded={tokenLoaded}>
-        <div className="flex h-screen flex-col items-center justify-center">
-          <h2 className="text-xl font-bold text-[#f0f4fa]">Admin Redirect</h2>
-          <p className="mt-2 text-sm text-[rgba(240,244,250,0.4)]">
-            Use the Referral Agents tab to manage partners.
-          </p>
-          <a href="/referral-agents" className="mt-6 rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]">
-            Go to Partner Management
-          </a>
-        </div>
-      </DashboardShell>
-    );
-  }
+  // Admins are allowed to view the dashboard layout without being redirected.
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
-      <div className="mx-auto max-w-5xl px-8 py-10">
+      <div className="px-8 py-10">
         <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#f0f4fa]">Partner Portal</h1>
@@ -215,24 +207,42 @@ function AffiliateDashboardContent() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-8 flex space-x-1 border-b border-white/[0.05] pb-px">
+        <div className="mb-8 flex space-x-1 border-b border-white/[0.05] pb-px overflow-x-auto thin-scrollbar">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "overview"
-                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "overview"
+              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
               }`}
           >
             Overview & Stats
           </button>
           <button
-            onClick={() => setActiveTab("settings")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "settings"
-                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+            onClick={() => setActiveTab("profile")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "profile"
+              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
               }`}
           >
-            Banking & Tax Settings
+            Profile & Tax Info
+          </button>
+          <button
+            onClick={() => setActiveTab("banking")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "banking"
+              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              }`}
+          >
+            Banking Setup
+          </button>
+          <button
+            onClick={() => setActiveTab("help")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "help"
+              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              }`}
+          >
+            Help & Resources
           </button>
         </div>
 
@@ -280,37 +290,44 @@ function AffiliateDashboardContent() {
           </div>
         )}
 
-        {activeTab === "settings" && (
-          <div className="space-y-8">
-            {/* Stripe Connect Section */}
+        {activeTab === "banking" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
-              <h2 className="text-lg font-semibold text-[#f0f4fa]">Stripe Connect</h2>
-              <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)] mb-6">
-                Link your bank account via Stripe to receive automated payouts directly to your account.
+              <h2 className="text-xl font-bold text-[#f0f4fa] mb-2">Automated Payouts via Stripe</h2>
+              <p className="text-sm text-[rgba(240,244,250,0.6)] mb-8 max-w-2xl">
+                We use Stripe Connect to route your earned commissions directly and securely into your bank account. Connect your account to enable transfers.
               </p>
 
-              <div className="flex items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-5">
-                <div className="flex items-center gap-4">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${stripeStatus?.payoutsEnabled ? "bg-green-500/10 text-green-500" : "bg-white/[0.05] text-[#f0f4fa]/30"}`}>
-                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-6 gap-6">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div className={`mt-1 sm:mt-0 flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${stripeStatus?.payoutsEnabled ? "bg-green-500/10 text-green-500" : "bg-white/[0.05] text-[#f0f4fa]/30"}`}>
+                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-[#f0f4fa]">{stripeStatus?.payoutsEnabled ? "Connected & Active" : "Not Connected"}</h3>
-                    <p className="text-xs text-[rgba(240,244,250,0.5)]">
-                      {stripeStatus?.payoutsEnabled ? "Ready to receive automated payouts." : "Action required to verify your identity and link a bank."}
+                    <h3 className="text-base font-semibold text-[#f0f4fa]">
+                      {stripeStatus?.payoutsEnabled ? "Stripe Account Active" : "Action Required"}
+                    </h3>
+                    <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)] max-w-md">
+                      {stripeStatus?.payoutsEnabled
+                        ? "Your banking details are verified. Commissions will be automatically deposited."
+                        : "You must complete Stripe onboarding to receive your affiliate payouts."}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleStripeOnboard}
                   disabled={stripeLoading}
-                  className="rounded-lg bg-[#635BFF] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#524ae3] disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white hover:bg-[#524ae3] transition-colors disabled:opacity-50 shadow-[0_4px_14px_0_rgba(99,91,255,0.39)]"
                 >
-                  {stripeLoading ? "Loading..." : (stripeStatus?.payoutsEnabled ? "Manage Stripe Account" : "Connect with Stripe")}
+                  {stripeLoading ? "Loading Secure Portal..." : (stripeStatus?.payoutsEnabled ? "Manage Banking Info" : "Connect Bank Account")}
                 </button>
               </div>
             </div>
+          </div>
+        )}
 
+        {activeTab === "profile" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Manual Banking / Tax Info */}
             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
               <h2 className="text-lg font-semibold text-[#f0f4fa]">Tax & Information Parameters</h2>
@@ -390,9 +407,73 @@ function AffiliateDashboardContent() {
                 </div>
               </form>
             </div>
+
+            {/* Document Upload Area inside Profile */}
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+              <h2 className="text-lg font-semibold text-[#f0f4fa] mb-2">W-9 / 1099 Form Upload</h2>
+              <p className="text-sm text-[rgba(240,244,250,0.6)] mb-6">
+                Please securely upload your completed W-9 form for the current tax year.
+              </p>
+
+              <div className="mt-2 flex justify-center rounded-xl border border-dashed border-white/[0.1] px-6 py-10 hover:border-[#14b8a6]/40 hover:bg-[#14b8a6]/5 transition cursor-pointer group">
+                <div className="text-center">
+                  <svg className="mx-auto h-10 w-10 text-white/20 group-hover:text-[#14b8a6]/50 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <div className="mt-4 flex text-sm leading-6 text-gray-400 justify-center">
+                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-semibold text-[#14b8a6] hover:text-[#0d9488]">
+                      <span>Upload a file</span>
+                      <input id="file-upload" name="file-upload" type="file" className="sr-only" />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs leading-5 text-gray-500 mt-2">PDF, JPG up to 10MB (Coming soon)</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
+        {activeTab === "help" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+              <h2 className="text-xl font-bold text-white mb-6">Partner Program FAQ</h2>
+
+              <div className="space-y-6">
+                <div className="border-b border-white/[0.05] pb-6">
+                  <h3 className="text-base font-semibold text-white mb-2">How does the {commissionRate}% lifetime commission work?</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    Whenever a user clicks your tracking link, we place a multi-month cookie on their device. If they sign up for a paid plan or upgrade from a free tier down the road, {commissionRate}% of their subscription payment is automatically diverted to your account balance. This applies for as long as they remain a paying customer.
+                  </p>
+                </div>
+
+                <div className="border-b border-white/[0.05] pb-6">
+                  <h3 className="text-base font-semibold text-white mb-2">When do payouts happen?</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    Payouts are processed automatically via Stripe Connect. Balances are settled on a Net-30 basis to account for standard SaaS refund periods. Once cleared, funds are directly deposited into your linked bank account. Minimum payout threshold is $50.00.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-semibold text-white mb-2">Why do you need my W-9 / TIN?</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    As a legitimate US-based operation, we are required by the IRS to issue 1099-NEC forms for any partner earning $600 or more in a calendar year. Your information is securely stored and exclusively utilized for end-of-year tax compliance.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/[0.02] p-6 lg:p-8 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-1">Still need help?</h3>
+                <p className="text-sm text-[rgba(240,244,250,0.6)]">Our priority partner support team is standing by.</p>
+              </div>
+              <a href="mailto:support@orbisvoice.com" className="rounded-lg bg-white/[0.05] border border-white/[0.1] px-6 py-3 text-sm font-semibold text-white hover:bg-white/[0.1] transition-colors">
+                Contact Support
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   );

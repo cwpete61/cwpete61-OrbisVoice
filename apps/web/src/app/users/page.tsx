@@ -106,6 +106,10 @@ function UsersContent() {
           ltdLimit: data.data.ltdLimit || 1000,
           aiInfraLimit: data.data.aiInfraLimit || 250000,
         });
+        setCreateForm(prev => ({
+          ...prev,
+          commissionLevel: data.data.defaultCommissionLevel || "LOW"
+        }));
       }
     } catch (err) {
       console.error("Failed to fetch platform settings:", err);
@@ -127,6 +131,7 @@ function UsersContent() {
       if (res.ok) {
         const data = await res.json();
         setPlatformSettings(data.data);
+        await fetchUsers(userFilter);
       }
     } catch (err) {
       console.error("Failed to save settings:", err);
@@ -215,6 +220,46 @@ function UsersContent() {
     }
   };
 
+  const handleSetCustomRate = async (aff: any) => {
+    const currentRate = aff.customCommissionRate !== null ? aff.customCommissionRate : "";
+    const input = window.prompt(`Enter a custom commission rate (%) for ${aff.user?.name}, or leave blank to clear the override and use the global/locked rate:`, String(currentRate));
+    if (input === null) return;
+
+    let customCommissionRate: number | null = null;
+    if (input.trim() !== "") {
+      const parsed = parseFloat(input);
+      if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+        alert("Please enter a valid percentage between 0 and 100.");
+        return;
+      }
+      customCommissionRate = parsed;
+    }
+
+    setActionLoading(`rate-${aff.id}`);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${aff.id}/commission-rate`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ customCommissionRate }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchAffiliates();
+      } else {
+        alert("Failed to update rate: " + data.message);
+      }
+    } catch (err) {
+      console.error("Failed to update custom commission rate:", err);
+      alert("Network error.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleCreateUser = async () => {
     setCreateError(null);
     setCreateLoading(true);
@@ -242,7 +287,7 @@ function UsersContent() {
         return;
       }
 
-      setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: "LOW" });
+      setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
       setCreateOpen(false);
       await fetchUsers(userFilter);
     } catch (err) {
@@ -259,13 +304,13 @@ function UsersContent() {
       name: user.name || "",
       email: user.email || "",
       tier: (user?.tenant?.subscriptionTier as string) || "starter",
-      commissionLevel: user.commissionLevel || "LOW",
+      commissionLevel: user.commissionLevel || platformSettings?.defaultCommissionLevel || "LOW",
     });
   };
 
   const cancelEditUser = () => {
     setEditingUserId(null);
-    setEditForm({ name: "", email: "", tier: "starter", commissionLevel: "LOW" });
+    setEditForm({ name: "", email: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
   };
 
   const saveEditUser = async (userId: string) => {
@@ -593,7 +638,7 @@ function UsersContent() {
                     <thead className="bg-[#111827] text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">
                       <tr>
                         <th className="px-6 py-4">User</th>
-                        <th className="px-6 py-4">Slug</th>
+                        <th className="px-6 py-4">Slug & Rate</th>
                         <th className="px-6 py-4">Status</th>
                         <th className="px-6 py-4">Balance</th>
                         <th className="px-6 py-4 text-right">Actions</th>
@@ -609,7 +654,19 @@ function UsersContent() {
                               <div className="font-medium text-[#f0f4fa]">{aff.user?.name}</div>
                               <div className="text-xs text-[rgba(240,244,250,0.4)]">{aff.user?.email}</div>
                             </td>
-                            <td className="px-6 py-4 font-mono text-xs text-[#14b8a6]">{aff.slug}</td>
+                            <td className="px-6 py-4">
+                              <div className="font-mono text-xs text-[#14b8a6]">{aff.slug}</div>
+                              {(aff.customCommissionRate !== null || aff.lockedCommissionRate !== null) && (
+                                <div className="mt-1 flex flex-col gap-0.5 text-[10px] uppercase tracking-wide font-medium">
+                                  {aff.customCommissionRate !== null ? (
+                                    <span className="text-[#f59e0b]">Custom Override: {aff.customCommissionRate}%</span>
+                                  ) : null}
+                                  {aff.lockedCommissionRate !== null && aff.customCommissionRate === null ? (
+                                    <span className="text-[#14b8a6]/70">Locked Rate: {aff.lockedCommissionRate}%</span>
+                                  ) : null}
+                                </div>
+                              )}
+                            </td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${aff.status === "ACTIVE"
                                 ? "bg-green-500/10 text-green-400"
@@ -637,6 +694,17 @@ function UsersContent() {
                                     className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20"
                                   >
                                     Reject
+                                  </button>
+                                </div>
+                              )}
+                              {aff.status === "ACTIVE" && (
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleSetCustomRate(aff)}
+                                    disabled={actionLoading === `rate-${aff.id}`}
+                                    className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/5 px-3 py-1 text-xs font-medium text-[#f59e0b] hover:bg-[#f59e0b]/10 transition disabled:opacity-50"
+                                  >
+                                    Set Rate
                                   </button>
                                 </div>
                               )}

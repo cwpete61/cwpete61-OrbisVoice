@@ -1719,6 +1719,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const body = PlatformSettingsSchema.parse(request.body);
 
+        const oldSettings = await prisma.platformSettings.findUnique({
+          where: { id: "global" },
+          select: { defaultCommissionLevel: true }
+        });
+        const oldLevel = oldSettings?.defaultCommissionLevel || "LOW";
+
         const settings = await prisma.platformSettings.upsert({
           where: { id: "global" },
           update: body,
@@ -1727,6 +1733,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
             ...body,
           },
         });
+
+        // Dynamically shift all users matching the old default to the new baseline
+        if (body.defaultCommissionLevel && oldLevel !== body.defaultCommissionLevel) {
+          await prisma.user.updateMany({
+            where: { commissionLevel: oldLevel as any },
+            data: { commissionLevel: body.defaultCommissionLevel as any },
+          });
+          fastify.log.info({ oldLevel, newLevel: body.defaultCommissionLevel }, "Dynamically updated users to new default commission level");
+        }
 
         return reply.send({
           ok: true,

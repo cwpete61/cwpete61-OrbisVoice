@@ -85,6 +85,7 @@ class ReferralManager {
 
       // Find the referrer: Check standard referrals first
       let referrerId: string | undefined;
+      let affiliateRecord: any = null;
 
       const referralCode = await prisma.referral.findUnique({
         where: { code: referee.referralCodeUsed },
@@ -93,36 +94,57 @@ class ReferralManager {
 
       if (referralCode) {
         referrerId = referralCode.referrerId;
+        // Try to find their affiliate record for locked/custom rates
+        affiliateRecord = await prisma.affiliate.findUnique({
+          where: { userId: referrerId },
+          select: { customCommissionRate: true, lockedCommissionRate: true }
+        });
       } else {
         // If not found, check if it's an affiliate slug
         const affiliate = await prisma.affiliate.findUnique({
           where: { slug: referee.referralCodeUsed },
-          select: { userId: true }
+          select: { userId: true, customCommissionRate: true, lockedCommissionRate: true }
         });
         if (affiliate) {
           referrerId = affiliate.userId;
+          affiliateRecord = affiliate;
         }
       }
 
       if (!referrerId) return false;
-
-      // Get referrer to check their commission level
-      const referrerUser = await prisma.user.findUnique({
-        where: { id: referrerId },
-        select: { commissionLevel: true }
-      });
-      if (!referrerUser) return false;
 
       // Get platform settings for rates and hold period
       const settings = await prisma.platformSettings.findUnique({
         where: { id: "global" }
       });
 
-      // Determine rate based on referrer's commission level
-      const userLevel = referrerUser.commissionLevel || settings?.defaultCommissionLevel || "LOW";
-      let ratePercentage = settings?.lowCommission ?? 10;
-      if (userLevel === "MED") ratePercentage = settings?.medCommission ?? 20;
-      if (userLevel === "HIGH") ratePercentage = settings?.highCommission ?? 30;
+      // ── Commission rate priority chain ──────────────────────────────────
+      // 1. customCommissionRate  — Per-partner admin override (highest priority)
+      // 2. lockedCommissionRate  — Rate snapshotted at approval (immune to global changes)
+      // 3. Global tier rate      — Current PlatformSettings rate (lowest priority)
+      let ratePercentage: number;
+
+      if (affiliateRecord?.customCommissionRate != null) {
+        // Admin has set a specific custom rate for this partner
+        ratePercentage = affiliateRecord.customCommissionRate;
+        logger.info({ referrerId, ratePercentage }, "Using custom per-partner commission rate");
+      } else if (affiliateRecord?.lockedCommissionRate != null) {
+        // Use the rate that was locked in when this partner was approved
+        ratePercentage = affiliateRecord.lockedCommissionRate;
+        logger.info({ referrerId, ratePercentage }, "Using locked commission rate (immune to global changes)");
+      } else {
+        // Fall back to current global tier rate based on user's assigned level
+        const referrerUser = await prisma.user.findUnique({
+          where: { id: referrerId },
+          select: { commissionLevel: true }
+        });
+        const userLevel = referrerUser?.commissionLevel || settings?.defaultCommissionLevel || "LOW";
+        ratePercentage = settings?.lowCommission ?? 10;
+        if (userLevel === "MED") ratePercentage = settings?.medCommission ?? 20;
+        if (userLevel === "HIGH") ratePercentage = settings?.highCommission ?? 30;
+        logger.info({ referrerId, ratePercentage, userLevel }, "Using user-specific global tier commission rate");
+      }
+      // ───────────────────────────────────────────────────────────────────
 
       const rate = ratePercentage / 100;
       const delayMonths = settings?.payoutCycleDelayMonths ?? 1;
@@ -144,7 +166,7 @@ class ReferralManager {
         }
       });
 
-      logger.info({ referrerId: referrerId, commissionAmount }, "Commission processed");
+      logger.info({ referrerId: referrerId, commissionAmount, ratePercentage }, "Commission processed");
       return true;
     } catch (err) {
       logger.error({ err, refereeId }, "Failed to process commission");

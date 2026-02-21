@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
 import UserInfoCard from "./UserInfoCard";
+import IdleTimeoutModal from "./IdleTimeoutModal";
 
 const AFFILIATE_NAV = [
     {
@@ -147,6 +148,9 @@ export default function AffiliateShell({ children }: { children: React.ReactNode
             {showProfileMenu && (
                 <ProfileMenu onClose={() => setShowProfileMenu(false)} />
             )}
+
+            {/* Idle Timeout Modal */}
+            <IdleTimeoutModal isAdmin={profile?.isAdmin} />
         </div>
     );
 }
