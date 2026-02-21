@@ -6,6 +6,23 @@ import { env } from "../env";
 import { ApiResponse } from "../types";
 import { z } from "zod";
 import Stripe from "stripe";
+import * as bcrypt from "bcryptjs";
+
+const PublicApplySchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(8).optional(), // optional if they already have an account
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    businessName: z.string().optional(),
+    address: z.string().min(1),
+    unit: z.string().optional(),
+    city: z.string().min(1),
+    state: z.string().min(1),
+    zip: z.string().min(1),
+    phone: z.string().min(1),
+    tinSsn: z.string().min(1),
+    taxFormUrl: z.string().optional(),
+});
 
 export async function affiliateRoutes(fastify: FastifyInstance) {
     // Get current user's affiliate status and stats
@@ -32,6 +49,92 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     },
                 } as ApiResponse);
             } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // Public endpoint for users to apply for the affiliate program (creates account if new)
+    fastify.post<{ Body: z.infer<typeof PublicApplySchema> }>(
+        "/affiliates/public-apply",
+        async (request, reply) => {
+            try {
+                const body = PublicApplySchema.parse(request.body);
+                let user = await prisma.user.findUnique({ where: { email: body.email } });
+
+                if (user) {
+                    if (!body.password) {
+                        return reply.code(400).send({ ok: false, message: "Please provide your password to verify your account" });
+                    }
+                    if (!user.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
+                        return reply.code(401).send({ ok: false, message: "Invalid email or password" });
+                    }
+
+                    // Update existing user's billing info
+                    user = await prisma.user.update({
+                        where: { id: user.id },
+                        data: {
+                            firstName: body.firstName,
+                            lastName: body.lastName,
+                            businessName: body.businessName,
+                            address: body.address,
+                            unit: body.unit,
+                            city: body.city,
+                            state: body.state,
+                            zip: body.zip,
+                            phone: body.phone,
+                            tinSsn: body.tinSsn,
+                            taxFormUrl: body.taxFormUrl,
+                        },
+                    });
+                } else {
+                    if (!body.password) {
+                        return reply.code(400).send({ ok: false, message: "Password is required for new accounts" });
+                    }
+                    // Create new user
+                    const hashedPassword = await bcrypt.hash(body.password, 10);
+                    const tenant = await prisma.tenant.create({ data: { name: `${body.firstName}'s Workspace` } });
+
+                    user = await prisma.user.create({
+                        data: {
+                            email: body.email,
+                            name: `${body.firstName} ${body.lastName}`,
+                            username: body.email.split('@')[0] + Math.floor(Math.random() * 1000),
+                            passwordHash: hashedPassword,
+                            tenantId: tenant.id,
+                            firstName: body.firstName,
+                            lastName: body.lastName,
+                            businessName: body.businessName,
+                            address: body.address,
+                            unit: body.unit,
+                            city: body.city,
+                            state: body.state,
+                            zip: body.zip,
+                            phone: body.phone,
+                            tinSsn: body.tinSsn,
+                            taxFormUrl: body.taxFormUrl,
+                        } as any,
+                    });
+                }
+
+                // Apply for affiliate
+                const result = await affiliateManager.applyForAffiliate(user.id, "PENDING");
+                if (!result.success) {
+                    return reply.code(400).send({ ok: false, message: result.message });
+                }
+
+                // Generate Auth JWT so they are logged in seamlessly
+                const token = fastify.jwt.sign(
+                    { userId: user.id, tenantId: user.tenantId, email: user.email },
+                    { expiresIn: "7d" }
+                );
+
+                return reply.send({ ok: true, message: "Application submitted successfully", data: { token } } as ApiResponse);
+            } catch (err) {
+                if (err instanceof z.ZodError) {
+                    return reply.code(400).send({ ok: false, message: "Invalid application data: " + err.errors[0].message });
+                }
                 fastify.log.error(err);
                 return reply.code(500).send({ ok: false, message: "Server error" });
             }
@@ -85,7 +188,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             status: "PENDING",
                             balance: 0,
                             totalPaid: 0,
-                        },
+                        } as any,
                     });
                 }
 
@@ -115,7 +218,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     },
                 } as ApiResponse);
             } catch (err) {
-                fastify.log.error("Failed to fetch Stripe Connect status:", err);
+                fastify.log.error(err, "Failed to fetch Stripe Connect status:");
                 return reply.code(500).send({ ok: false, message: "Server error" });
             }
         }
@@ -132,7 +235,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 }
 
                 const userId = (request.user as any).userId;
-                let affiliate = await prisma.affiliate.findUnique({
+                let affiliate: any = await prisma.affiliate.findUnique({
                     where: { userId },
                     include: { user: true }
                 });
@@ -147,7 +250,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             totalPaid: 0,
                         },
                         include: { user: true }
-                    });
+                    } as any) as any;
                 }
 
                 if (affiliate.stripeAccountStatus === "active") {

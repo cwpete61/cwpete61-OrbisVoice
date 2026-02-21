@@ -1,478 +1,407 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
-function AffiliatesContent() {
+function AffiliateDashboardContent() {
   const [profile, setProfile] = useState<any>(null);
-  const [affiliates, setAffiliates] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") || "affiliates";
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const [platformSettings, setPlatformSettings] = useState<any>(null);
-  const [settingsForm, setSettingsForm] = useState({
-    commissionDurationMonths: 0,
-    payoutMinimum: 100,
-    refundHoldDays: 14,
-    payoutCycleDelayMonths: 1,
+  const [stripeStatus, setStripeStatus] = useState<any>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+
+  // Settings form
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    businessName: "",
+    phone: "",
+    address: "",
+    unit: "",
+    city: "",
+    state: "",
+    zip: "",
+    tinSsn: "",
   });
-  const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const isAdmin = profile?.role === "ADMIN" || profile?.isAdmin || profile?.username === "Oadmin" || profile?.email === "admin@orbisvoice.app";
-
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const tokenLoaded = useTokenFromUrl();
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchAffiliates();
-      fetchPlatformSettings();
+    if (tokenLoaded) {
+      fetchData();
     }
-  }, [isAdmin]);
+  }, [tokenLoaded]);
 
-  const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch profile");
-    }
-  };
-
-  const fetchAffiliates = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAffiliates(data.data || []);
+      if (!token) return;
+
+      const [profileRes, statsRes, stripeRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (profileRes.ok) {
+        const pData = await profileRes.json();
+        setProfile(pData.data);
+        setFormData({
+          firstName: pData.data.firstName || "",
+          lastName: pData.data.lastName || "",
+          businessName: pData.data.businessName || "",
+          phone: pData.data.phone || "",
+          address: pData.data.address || "",
+          unit: pData.data.unit || "",
+          city: pData.data.city || "",
+          state: pData.data.state || "",
+          zip: pData.data.zip || "",
+          tinSsn: pData.data.tinSsn || "",
+        });
       }
-    } catch (err) {
-      console.error("Failed to fetch affiliates");
+
+      if (statsRes.ok) {
+        const sData = await statsRes.json();
+        setStats(sData.data);
+      }
+
+      if (stripeRes.ok) {
+        const stData = await stripeRes.json();
+        setStripeStatus(stData.data);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load Partner Portal.");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPlatformSettings = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPlatformSettings(data.data);
-        setSettingsForm({
-          commissionDurationMonths: data.data.commissionDurationMonths || 0,
-          payoutMinimum: data.data.payoutMinimum || 100,
-          refundHoldDays: data.data.refundHoldDays || 14,
-          payoutCycleDelayMonths: data.data.payoutCycleDelayMonths !== undefined ? data.data.payoutCycleDelayMonths : 1,
-        });
-      }
-    } catch (err) {
-      console.error("Failed to fetch settings");
-    }
-  };
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    setSaveMessage(null);
+    setSaveError(null);
 
-  const handleSaveSettings = async () => {
-    setSaveSettingsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...platformSettings,
-          ...settingsForm,
-        }),
+        body: JSON.stringify(formData),
       });
-      if (res.ok) {
-        // saved
-      }
-    } catch (err) {
-      console.error("Failed to save settings");
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update tax information.");
+
+      setSaveMessage("Partner information updated successfully.");
+    } catch (err: any) {
+      setSaveError(err.message);
     } finally {
-      setSaveSettingsLoading(false);
+      setSavingSettings(false);
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: string) => {
-    setActionLoading(id);
+  const handleStripeOnboard = async () => {
+    setStripeLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${id}/status`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (res.ok) fetchAffiliates();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleProcessPayout = async (id: string) => {
-    if (!confirm("Are you sure you want to mark this payout as complete?")) return;
-    setActionLoading(id);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${id}/payout`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/onboard`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        fetchAffiliates();
+      const data = await res.json();
+
+      if (res.ok && data.data?.url) {
+        window.location.href = data.data.url;
       } else {
-        const d = await res.json();
-        alert(d.message);
+        alert(data.message || "Failed to generate onboarding link.");
       }
     } catch (err) {
-      console.error(err);
+      alert("Network error.");
     } finally {
-      setActionLoading(null);
+      setStripeLoading(false);
     }
   };
 
-  // Mock chart data
-  const chartData = [
-    { name: "Mon", Clicks: 400, Conversions: 24, Revenue: 2400 },
-    { name: "Tue", Clicks: 300, Conversions: 13, Revenue: 1398 },
-    { name: "Wed", Clicks: 200, Conversions: 98, Revenue: 9800 },
-    { name: "Thu", Clicks: 278, Conversions: 39, Revenue: 3908 },
-    { name: "Fri", Clicks: 189, Conversions: 48, Revenue: 4800 },
-    { name: "Sat", Clicks: 239, Conversions: 38, Revenue: 3800 },
-    { name: "Sun", Clicks: 349, Conversions: 43, Revenue: 4300 },
-  ];
-
-  if (profile && !isAdmin) {
+  if (loading) {
     return (
-      <DashboardShell>
+      <DashboardShell tokenLoaded={tokenLoaded}>
         <div className="flex h-screen items-center justify-center">
-          <p className="text-sm text-[rgba(240,244,250,0.4)]">Access restricted. Admins only.</p>
+          <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading Partner Portal...</p>
         </div>
       </DashboardShell>
     );
   }
 
-  const payouts = affiliates.filter((a) => a.balance >= (settingsForm.payoutMinimum || 100));
+  if (profile && !profile.isAffiliate && !profile.isAdmin) {
+    return (
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="flex h-screen flex-col items-center justify-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14b8a6]/10 text-[#14b8a6]">
+            <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-[#f0f4fa]">Access Restricted</h2>
+          <p className="mt-2 text-sm text-[rgba(240,244,250,0.4)]">
+            This dashboard is exclusively for approved Partners.
+          </p>
+          <a href="/partner/apply" className="mt-6 rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]">
+            Apply for Partner Program
+          </a>
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  // Handle admins viewing the page (they can see layout but have their own admin dash)
+  if (profile?.isAdmin && !stats?.isAffiliate) {
+    return (
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="flex h-screen flex-col items-center justify-center">
+          <h2 className="text-xl font-bold text-[#f0f4fa]">Admin Redirect</h2>
+          <p className="mt-2 text-sm text-[rgba(240,244,250,0.4)]">
+            Use the Referral Agents tab to manage partners.
+          </p>
+          <a href="/referral-agents" className="mt-6 rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]">
+            Go to Partner Management
+          </a>
+        </div>
+      </DashboardShell>
+    );
+  }
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-6xl px-8 py-10">
-        <div className="mb-10">
-          <h1 className="text-2xl font-bold text-[#f0f4fa]">Affiliate Ecosystem</h1>
+    <DashboardShell tokenLoaded={tokenLoaded}>
+      <div className="mx-auto max-w-5xl px-8 py-10">
+        <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#f0f4fa]">Partner Portal</h1>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
+              Manage your links, track your stats, and setup your payouts.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {stripeStatus && stripeStatus.payoutsEnabled ? (
+              <span className="inline-flex items-center rounded-full bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-400">
+                <span className="mr-1.5 h-2 w-2 rounded-full bg-green-500"></span>
+                Payouts Active
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-semibold text-yellow-400">
+                <span className="mr-1.5 h-2 w-2 rounded-full bg-yellow-500"></span>
+                Payouts Inactive
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-8 flex space-x-1 rounded-xl bg-white/[0.02] p-1">
-          {[
-            { id: "affiliates", label: "Affiliate List" },
-            { id: "payouts", label: "Payouts Queue", badge: payouts.length },
-            { id: "overview", label: "Overview / Analytics" },
-            { id: "settings", label: "Controls & Management" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => router.push(`?tab=${tab.id}`)}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${activeTab === tab.id
-                ? "bg-[#14b8a6]/10 text-[#14b8a6] shadow-sm"
-                : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.05] hover:text-[#f0f4fa]"
-                }`}
-            >
-              {tab.label}
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="flex h-5 items-center justify-center w-5 rounded-full bg-[#14b8a6] text-[10px] text-white">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="mb-8 flex space-x-1 border-b border-white/[0.05] pb-px">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "overview"
+                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              }`}
+          >
+            Overview & Stats
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "settings"
+                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              }`}
+          >
+            Banking & Tax Settings
+          </button>
         </div>
 
-        {/* ========== OVERVIEW / ANALYTICS TAB ========== */}
         {activeTab === "overview" && (
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="text-sm font-semibold text-[#f0f4fa] mb-6">Traffic & Revenue Ecosystem</h2>
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{ fill: "rgba(255,255,255,0.5)" }} />
-                  <YAxis yAxisId="left" stroke="rgba(255,255,255,0.5)" tick={{ fill: "rgba(255,255,255,0.5)" }} />
-                  <YAxis yAxisId="right" orientation="right" stroke="rgba(255,255,255,0.5)" tick={{ fill: "rgba(255,255,255,0.5)" }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}
-                    itemStyle={{ color: "#f0f4fa" }}
-                  />
-                  <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="Clicks" stroke="#8884d8" activeDot={{ r: 8 }} />
-                  <Line yAxisId="left" type="monotone" dataKey="Conversions" stroke="#82ca9d" />
-                  <Line yAxisId="right" type="monotone" dataKey="Revenue" stroke="#f97316" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* ========== AFFILIATE LIST TAB ========== */}
-        {activeTab === "affiliates" && (
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">Affiliate Roster</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#111827] text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">
-                  <tr>
-                    <th className="px-6 py-4">User</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Balance</th>
-                    <th className="px-6 py-4">Total Paid</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.03]">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="py-12 text-center text-[rgba(240,244,250,0.3)]">Loading...</td>
-                    </tr>
-                  ) : affiliates.length > 0 ? (
-                    affiliates.map((aff) => (
-                      <tr key={aff.id} className="hover:bg-white/[0.02]">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-[#f0f4fa]">{aff.user?.name}</div>
-                          <div className="text-xs text-[#14b8a6]">slug: {aff.slug}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${aff.status === "ACTIVE"
-                              ? "bg-green-500/10 text-green-400"
-                              : aff.status === "PENDING"
-                                ? "bg-yellow-500/10 text-yellow-400"
-                                : "bg-red-500/10 text-red-400"
-                              }`}
-                          >
-                            {aff.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-[#f0f4fa]">${aff.balance?.toFixed(2)}</td>
-                        <td className="px-6 py-4 text-[#f0f4fa]">${aff.totalPaid?.toFixed(2)}</td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          {aff.status === "PENDING" && (
-                            <button
-                              disabled={actionLoading === aff.id}
-                              onClick={() => handleUpdateStatus(aff.id, "ACTIVE")}
-                              className="text-green-500 hover:underline text-xs"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {aff.status === "ACTIVE" && (
-                            <button
-                              disabled={actionLoading === aff.id}
-                              onClick={() => handleUpdateStatus(aff.id, "REJECTED")}
-                              className="text-red-500 hover:underline text-xs"
-                            >
-                              Revoke
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-12 text-center text-[rgba(240,244,250,0.3)]">No affiliates found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ========== PAYOUTS TAB ========== */}
-        {activeTab === "payouts" && (
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <div className="mb-5 flex justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-[#f0f4fa]">Payout Queue</h2>
-                <p className="mt-1 text-xs text-[rgba(240,244,250,0.5)]">
-                  Partners above the ${settingsForm.payoutMinimum} threshold.
-                </p>
+          <div className="space-y-8">
+            <div className="grid gap-6 md:grid-cols-4">
+              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Total Clicks</p>
+                <p className="mt-2 text-3xl font-bold text-[#f0f4fa]">{stats?.clicks || 0}</p>
+              </div>
+              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Conversions</p>
+                <p className="mt-2 text-3xl font-bold text-[#f0f4fa]">{stats?.sales || 0}</p>
+              </div>
+              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Revenue Driven</p>
+                <p className="mt-2 text-3xl font-bold text-[#f0f4fa]">${(stats?.revenue || 0).toFixed(2)}</p>
+              </div>
+              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
+                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Your Balance</p>
+                <p className="mt-2 text-3xl font-bold text-[#14b8a6]">${(stats?.balance || 0).toFixed(2)}</p>
               </div>
             </div>
 
-            <div className="grid gap-4">
-              {payouts.length > 0 ? (
-                payouts.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-5">
-                    <div>
-                      <h3 className="font-semibold text-[#f0f4fa]">
-                        {a.user?.name}{" "}
-                        <span className="text-xs font-normal text-[rgba(240,244,250,0.5)]">({a.user?.email})</span>
-                      </h3>
-                      <p className="mt-1 text-sm text-[#10b981] font-mono">Available Balance: ${a.balance.toFixed(2)}</p>
-                    </div>
-                    <button
-                      onClick={() => handleProcessPayout(a.id)}
-                      disabled={actionLoading === a.id}
-                      className="rounded-lg bg-[#14b8a6] px-4 py-2 text-sm font-medium text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50"
-                    >
-                      Mark as Paid
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-white/[0.1] py-12 text-center text-[rgba(240,244,250,0.5)]">
-                  No partners currently eligible for payout.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ========== CONTROLS & MANAGEMENT TAB ========== */}
-        {activeTab === "settings" && (
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <div className="mb-6 flex justify-between">
-              <h2 className="text-sm font-semibold text-[#f0f4fa]">Global Commission Parameters</h2>
-              <button
-                onClick={handleSaveSettings}
-                disabled={saveSettingsLoading}
-                className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-4 py-2 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:opacity-50"
-              >
-                {saveSettingsLoading ? "Saving..." : "Save Settings"}
-              </button>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Payout Minimum Threshold</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-sm text-[#f0f4fa]/50">$</span>
-                  <input
-                    type="number"
-                    value={settingsForm.payoutMinimum}
-                    onChange={(e) => setSettingsForm({ ...settingsForm, payoutMinimum: parseFloat(e.target.value) || 0 })}
-                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] pl-8 pr-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Payout Delay Cycles (Months)</label>
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+              <h2 className="text-sm font-semibold text-[#f0f4fa] mb-4">Your Partner Link</h2>
+              <div className="flex gap-2">
                 <input
-                  type="number"
-                  value={settingsForm.payoutCycleDelayMonths}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, payoutCycleDelayMonths: parseInt(e.target.value) || 0 })}
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Refund Hold Period (Days)</label>
-                <input
-                  type="number"
-                  value={settingsForm.refundHoldDays}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Lifetime / Term (0 = Infinite)</label>
-                <input
-                  type="number"
-                  value={settingsForm.commissionDurationMonths}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, commissionDurationMonths: parseInt(e.target.value) || 0 })}
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
-                  placeholder="0 for Lifetime"
-                />
-              </div>
-            </div>
-
-            <div className="mt-10 border-t border-white/[0.05] pt-6">
-              <h2 className="text-sm font-semibold text-[#f0f4fa] mb-4">Manual Partner Override</h2>
-              <div className="flex gap-3 max-w-md">
-                <input
+                  readOnly
                   type="text"
-                  placeholder="Enter User ID..."
-                  className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none"
-                  id="overrideUserId"
+                  value={stats?.shareUrl || ""}
+                  className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-3 text-sm text-[#f0f4fa] outline-none"
                 />
                 <button
-                  onClick={async () => {
-                    const input = document.getElementById("overrideUserId") as HTMLInputElement;
-                    const val = input?.value;
-                    if (!val) return;
-                    setActionLoading("override");
-                    try {
-                      const token = localStorage.getItem("token");
-                      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/promote`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ userId: val }),
-                      });
-                      if (res.ok) {
-                        alert("User successfully promoted to affiliate!");
-                        input.value = "";
-                        fetchAffiliates();
-                      } else {
-                        const d = await res.json();
-                        alert(d.message);
-                      }
-                    } catch (e) { }
-                    setActionLoading(null);
+                  onClick={() => {
+                    navigator.clipboard.writeText(stats?.shareUrl || "");
+                    alert("Link copied!");
                   }}
-                  disabled={actionLoading === "override"}
-                  className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-medium text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50"
+                  className="rounded-lg bg-white/[0.05] px-4 py-3 text-sm font-medium text-white hover:bg-white/[0.1] transition"
                 >
-                  Promote
+                  Copy Link
                 </button>
               </div>
-              <p className="mt-2 text-xs text-[rgba(240,244,250,0.4)]">
-                Instantly converts a standard user into an active partner without an application.
-              </p>
             </div>
           </div>
         )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-8">
+            {/* Stripe Connect Section */}
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+              <h2 className="text-lg font-semibold text-[#f0f4fa]">Stripe Connect</h2>
+              <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)] mb-6">
+                Link your bank account via Stripe to receive automated payouts directly to your account.
+              </p>
+
+              <div className="flex items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-5">
+                <div className="flex items-center gap-4">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${stripeStatus?.payoutsEnabled ? "bg-green-500/10 text-green-500" : "bg-white/[0.05] text-[#f0f4fa]/30"}`}>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#f0f4fa]">{stripeStatus?.payoutsEnabled ? "Connected & Active" : "Not Connected"}</h3>
+                    <p className="text-xs text-[rgba(240,244,250,0.5)]">
+                      {stripeStatus?.payoutsEnabled ? "Ready to receive automated payouts." : "Action required to verify your identity and link a bank."}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleStripeOnboard}
+                  disabled={stripeLoading}
+                  className="rounded-lg bg-[#635BFF] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#524ae3] disabled:opacity-50"
+                >
+                  {stripeLoading ? "Loading..." : (stripeStatus?.payoutsEnabled ? "Manage Stripe Account" : "Connect with Stripe")}
+                </button>
+              </div>
+            </div>
+
+            {/* Manual Banking / Tax Info */}
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+              <h2 className="text-lg font-semibold text-[#f0f4fa]">Tax & Information Parameters</h2>
+              <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)] mb-6">
+                Please maintain your accurate personal and corporate intelligence here in order to comply with domestic tax treaties and 1099 distributions.
+              </p>
+
+              {saveError && (
+                <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                  {saveError}
+                </div>
+              )}
+              {saveMessage && (
+                <div className="mb-6 rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
+                  {saveMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">First Name</label>
+                    <input type="text" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Last Name</label>
+                    <input type="text" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Business Name (Optional)</label>
+                    <input type="text" value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Phone / Cell</label>
+                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 gap-4">
+                  <div className="col-span-6 sm:col-span-4 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Street Address</label>
+                    <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="col-span-6 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Unit / Apt</label>
+                    <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 gap-4">
+                  <div className="col-span-6 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">City</label>
+                    <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="col-span-3 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">State</label>
+                    <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="col-span-3 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Zip Code</label>
+                    <input type="text" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">TIN OR SSN</label>
+                  <input type="text" value={formData.tinSsn} onChange={(e) => setFormData({ ...formData, tinSsn: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <button type="submit" disabled={savingSettings} className="rounded-lg bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] transition hover:bg-[#0d9488] disabled:opacity-50">
+                    {savingSettings ? "Saving Settings..." : "Save Information"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     </DashboardShell>
   );
 }
 
-export default function AffiliatesPage() {
+export default function AffiliatePage() {
   return (
     <Suspense>
-      <AffiliatesContent />
+      <AffiliateDashboardContent />
     </Suspense>
   );
 }

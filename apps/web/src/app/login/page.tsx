@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
+import { apiFetch } from "../../lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -19,37 +20,35 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      const { res, data } = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
       if (res.ok) {
-        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("token", (data.data as any).token);
         router.push("/dashboard");
       } else {
         setError(data.message || "Login failed");
       }
     } catch (err) {
-      setError("Error: " + String(err));
+      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
   const handleGoogleLogin = async () => {
     setError("");
     try {
-      // Use the signup URL endpoint as it handles both signup and login
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/url`);
-      const data = await res.json();
+      const { res, data } = await apiFetch("/auth/google/url");
       if (res.ok) {
-        window.location.href = data.data.url;
+        window.location.href = (data.data as any).url;
       } else {
         setError(data.message || "Google login unavailable");
       }
     } catch (err) {
-      setError("Error: " + String(err));
+      setError(err instanceof Error ? err.message : "Google login unavailable. Please try again.");
     }
   };
 

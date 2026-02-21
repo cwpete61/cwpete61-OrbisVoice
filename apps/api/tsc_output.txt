@@ -1,0 +1,14 @@
+src/routes/affiliates.ts(187,25): error TS2322: Type '{ userId: any; status: "PENDING"; balance: number; totalPaid: number; }' is not assignable to type '(Without<AffiliateCreateInput, AffiliateUncheckedCreateInput> & AffiliateUncheckedCreateInput) | (Without<...> & AffiliateCreateInput)'.
+  Type '{ userId: any; status: "PENDING"; balance: number; totalPaid: number; }' is not assignable to type 'Without<AffiliateUncheckedCreateInput, AffiliateCreateInput> & AffiliateCreateInput'.
+    Type '{ userId: any; status: "PENDING"; balance: number; totalPaid: number; }' is missing the following properties from type 'AffiliateCreateInput': slug, user
+src/routes/affiliates.ts(222,77): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(obj: "Failed to fetch Stripe Connect status:", msg?: undefined): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+  Overload 2 of 3, '(obj: "Failed to fetch Stripe Connect status:", msg?: undefined, ...args: unknown[]): void', gave the following error.
+    Argument of type 'unknown' is not assignable to parameter of type 'undefined'.
+src/routes/affiliates.ts(257,21): error TS18047: 'affiliate' is possibly 'null'.
+src/routes/affiliates.ts(262,33): error TS18047: 'affiliate' is possibly 'null'.
+src/routes/affiliates.ts(268,32): error TS18047: 'affiliate' is possibly 'null'.
+src/routes/affiliates.ts(268,57): error TS18047: 'affiliate' is possibly 'null'.
+src/routes/affiliates.ts(276,38): error TS18047: 'affiliate' is possibly 'null'.
+src/routes/users.ts(1128,48): error TS2322: Type '"2023-10-16"' is not assignable to type '"2026-01-28.clover"'.

@@ -21,20 +21,40 @@ interface ReferralStats {
 }
 
 function ReferralsContent() {
+  const [profile, setProfile] = useState<any>(null);
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const [activeTab, setActiveTab] = useState("overview");
+
   const [stripeStatus, setStripeStatus] = useState<any>(null);
   const [stripeLoading, setStripeLoading] = useState(false);
+
+  // Settings form
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    businessName: "",
+    phone: "",
+    address: "",
+    unit: "",
+    city: "",
+    state: "",
+    zip: "",
+    tinSsn: "",
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const tokenLoaded = useTokenFromUrl();
 
   useEffect(() => {
     if (tokenLoaded) {
-      fetchReferralData();
+      fetchData();
       fetchStripeStatus();
     }
   }, [tokenLoaded]);
@@ -79,7 +99,7 @@ function ReferralsContent() {
     }
   };
 
-  async function fetchReferralData() {
+  async function fetchData() {
     try {
       setLoading(true);
       setError("");
@@ -90,7 +110,8 @@ function ReferralsContent() {
       }
 
       const headers = { Authorization: `Bearer ${token}` };
-      const [codeRes, statsRes] = await Promise.all([
+      const [profileRes, codeRes, statsRes] = await Promise.all([
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-code`, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-stats`, { headers }),
       ]);
@@ -106,8 +127,23 @@ function ReferralsContent() {
         throw new Error(errorMsg);
       }
 
+      const pData = await profileRes.json();
       const codeData = await codeRes.json();
       const statsData = await statsRes.json();
+
+      setProfile(pData.data);
+      setFormData({
+        firstName: pData.data.firstName || "",
+        lastName: pData.data.lastName || "",
+        businessName: pData.data.businessName || "",
+        phone: pData.data.phone || "",
+        address: pData.data.address || "",
+        unit: pData.data.unit || "",
+        city: pData.data.city || "",
+        state: pData.data.state || "",
+        zip: pData.data.zip || "",
+        tinSsn: pData.data.tinSsn || "",
+      });
 
       setReferralData(codeData.data);
       setStats(statsData.data);
@@ -118,6 +154,34 @@ function ReferralsContent() {
       setLoading(false);
     }
   }
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    setSaveMessage(null);
+    setSaveError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update tax information.");
+
+      setSaveMessage("Partner information updated successfully.");
+    } catch (err: any) {
+      setSaveError(err.message);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
@@ -159,7 +223,7 @@ function ReferralsContent() {
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
-      <div className="px-8 py-8">
+      <div className="mx-auto max-w-5xl px-8 py-8">
 
         {/* URL Params feedback */}
         {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get("stripe_return") === "true" && (
@@ -173,10 +237,12 @@ function ReferralsContent() {
           </div>
         )}
 
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-[#f0f4fa]">Referral Program</h1>
-            <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">Earn rewards by inviting others to MyOrbisVoice</p>
+            <h1 className="text-2xl font-bold text-[#f0f4fa]">Referral Program</h1>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
+              Earn rewards by inviting others to MyOrbisVoice
+            </p>
           </div>
         </div>
 
@@ -184,185 +250,247 @@ function ReferralsContent() {
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>
         )}
 
-        {referralData && (
-          <div className="mb-6 rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-6 backdrop-blur-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-semibold text-[#f0f4fa]">Your Custom Referral Link</h2>
-                <p className="mt-1 text-xs text-[rgba(240,244,250,0.5)]">Share this link directly with your network</p>
+        {/* Tab Navigation */}
+        <div className="mb-8 flex space-x-1 border-b border-white/[0.05] pb-px">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "overview"
+                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              }`}
+          >
+            Overview & Stats
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`px-4 py-2.5 text-sm font-medium transition-all ${activeTab === "settings"
+                ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+                : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+              }`}
+          >
+            Banking & Tax Settings
+          </button>
+        </div>
+
+        {activeTab === "overview" && (
+          <div className="space-y-8">
+            {referralData && (
+              <div className="rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-6 backdrop-blur-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-sm font-semibold text-[#f0f4fa]">Your Custom Referral Link</h2>
+                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.5)]">Share this link directly with your network</p>
+                  </div>
+                  <div className="flex flex-1 max-w-2xl items-center gap-2 rounded-xl border border-white/[0.08] bg-[#05080f] px-4 py-3">
+                    <span className="flex-1 truncate font-mono text-sm text-[#14b8a6]">
+                      {referralData.shareUrl}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(referralData.shareUrl)}
+                      className="rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition"
+                    >
+                      {copied ? "Copied!" : "Copy Link"}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-1 max-w-2xl items-center gap-2 rounded-xl border border-white/[0.08] bg-[#05080f] px-4 py-3">
-                <span className="flex-1 truncate font-mono text-sm text-[#14b8a6]">
-                  {referralData.shareUrl}
-                </span>
-                <button
-                  onClick={() => copyToClipboard(referralData.shareUrl)}
-                  className="rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition"
-                >
-                  {copied ? "Copied!" : "Copy Link"}
-                </button>
+            )}
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 text-center flex flex-col justify-center">
+                <h2 className="mb-5 text-left text-sm font-semibold text-[#f0f4fa]">Your Referral Code</h2>
+                {referralData ? (
+                  <>
+                    <div className="mb-5 rounded-xl border border-white/[0.07] bg-[#05080f] p-5 font-mono">
+                      <p className="text-2xl font-bold text-[#14b8a6]">{referralData.code}</p>
+                      <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">Share this code with friends</p>
+                    </div>
+                    <div className="flex flex-col gap-3 mt-auto">
+                      <button
+                        onClick={() => copyToClipboard(referralData.code)}
+                        className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]"
+                      >
+                        {copied ? "✓ Copied" : "Copy Code"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-[rgba(240,244,250,0.4)]">No referral code found.</p>
+                )}
               </div>
+
+              <div className="col-span-2 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+                <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">Performance Metrics</h2>
+                {stats ? (
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[
+                      { label: "Referrals", value: stats.totalReferred, color: "#14b8a6" },
+                      { label: "Accepted", value: stats.accepted, color: "#f0f4fa" },
+                      { label: "Completed", value: stats.completed, color: "#a78bfa" },
+                      { label: "Total Earnings", value: `$${stats.totalRewards.toFixed(2)}`, color: "#f97316" },
+                      { label: "Available", value: `$${stats.availableRewards.toFixed(2)}`, color: "#10b981" },
+                      { label: "Pending", value: `$${stats.pendingRewards.toFixed(2)}`, color: "#f59e0b" },
+                    ].map((s) => (
+                      <div key={s.label} className="flex flex-col rounded-lg border border-white/[0.05] bg-[#05080f] p-4">
+                        <span className="text-xs text-[rgba(240,244,250,0.5)]">{s.label}</span>
+                        <span className="mt-1 text-xl font-bold" style={{ color: s.color }}>{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+              <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">Referral History</h2>
+              {stats?.referrals && stats.referrals.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/[0.05] text-[rgba(240,244,250,0.4)]">
+                        <th className="pb-3 pl-2">Date</th>
+                        <th className="pb-3">Referrer</th>
+                        <th className="pb-3">Status</th>
+                        <th className="pb-3 pr-2 text-right">Reward</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.03]">
+                      {stats.referrals.map((ref: any) => (
+                        <tr key={ref.id} className="text-[#f0f4fa]">
+                          <td className="py-4 pl-2 text-[rgba(240,244,250,0.6)]">{new Date(ref.createdAt).toLocaleDateString()}</td>
+                          <td className="py-4">{ref.code}</td>
+                          <td className="py-4">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${ref.status === 'completed'
+                              ? 'border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]'
+                              : 'border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]'
+                              }`}>
+                              {ref.status}
+                            </span>
+                          </td>
+                          <td className="py-4 pr-2 text-right font-semibold text-[#14b8a6]">+${ref.rewardAmount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-[rgba(240,244,250,0.4)]">You haven't referred anyone yet. Start sharing your link!</p>
+              )}
             </div>
           </div>
         )}
 
-        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {/* Payout Method Card */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 text-center flex flex-col justify-center">
-            <h2 className="mb-5 text-left text-sm font-semibold text-[#f0f4fa]">Payout Method</h2>
+        {activeTab === "settings" && (
+          <div className="space-y-8">
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+              <h2 className="text-lg font-semibold text-[#f0f4fa]">Stripe Connect</h2>
+              <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)] mb-6">
+                Link your bank account via Stripe to receive automated payouts directly to your account.
+              </p>
 
-            {stripeStatus?.status === 'active' ? (
-              <div className="flex items-center gap-3 text-sm text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 p-4 rounded-xl text-left">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#10b981]/20">✓</div>
-                <div>
-                  <p className="font-semibold">Stripe Connected</p>
-                  <p className="text-xs text-[rgba(16,185,129,0.7)]">ID: {stripeStatus.accountId}</p>
-                </div>
-              </div>
-            ) : stripeStatus?.status === 'pending' ? (
-              <div className="flex flex-col gap-4 bg-[#f97316]/5 border border-[#f97316]/20 p-5 rounded-xl text-left">
-                <div className="flex items-center gap-3 text-sm text-[#f97316]">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f97316]/20 py-2">⏳</div>
+              <div className="flex items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-5">
+                <div className="flex items-center gap-4">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${stripeStatus?.status === 'active' ? "bg-green-500/10 text-green-500" : "bg-white/[0.05] text-[#f0f4fa]/30"}`}>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                  </div>
                   <div>
-                    <p className="font-semibold">Verification Pending</p>
-                    <p className="text-xs text-[rgba(249,115,22,0.7)]">Your Stripe account is missing some details.</p>
+                    <h3 className="text-sm font-semibold text-[#f0f4fa]">{stripeStatus?.status === 'active' ? "Connected & Active" : "Not Connected"}</h3>
+                    <p className="text-xs text-[rgba(240,244,250,0.5)]">
+                      {stripeStatus?.status === 'active' ? "Ready to receive automated payouts." : "Action required to verify your identity and link a bank."}
+                    </p>
                   </div>
                 </div>
                 <button
                   onClick={handleStripeOnboard}
                   disabled={stripeLoading}
-                  className="rounded-lg bg-[#f97316] px-4 py-2 text-sm font-medium text-white hover:bg-[#ea580c] transition w-fit mx-auto disabled:opacity-50"
+                  className="rounded-lg bg-[#635BFF] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#524ae3] disabled:opacity-50"
                 >
-                  {stripeLoading ? "Loading..." : "Resume Onboarding"}
+                  {stripeLoading ? "Loading..." : (stripeStatus?.status === 'active' ? "Manage Stripe Account" : "Connect with Stripe")}
                 </button>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-4 p-5 rounded-xl border border-dashed border-white/[0.1] bg-white/[0.01]">
-                <div>
-                  <p className="text-sm font-medium text-[#f0f4fa]">Set up automatic payouts</p>
-                  <p className="text-xs text-[rgba(240,244,250,0.5)] mt-1 max-w-[250px] mx-auto text-center">Connect your bank account securely via Stripe to receive your earnings automatically.</p>
-                </div>
-                <button
-                  onClick={handleStripeOnboard}
-                  disabled={stripeLoading}
-                  className="rounded-lg bg-[#635BFF] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#5851E5] transition shadow-md shadow-[#635BFF]/20"
-                >
-                  {stripeLoading ? "Connecting..." : "Connect with Stripe"}
-                </button>
-              </div>
-            )}
-            <p className="mt-4 text-[10px] text-[rgba(240,244,250,0.3)]">Payouts are processed securely by Stripe.</p>
-          </div>
-
-          {/* Referral code card */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 text-center flex flex-col justify-center">
-            <h2 className="mb-5 text-left text-sm font-semibold text-[#f0f4fa]">Your Referral Code</h2>
-            {referralData ? (
-              <>
-                <div className="mb-5 rounded-xl border border-white/[0.07] bg-[#05080f] p-5 font-mono">
-                  <p className="text-2xl font-bold text-[#14b8a6]">{referralData.code}</p>
-                  <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">Share this code with friends</p>
-                </div>
-                <div className="flex flex-col gap-3 mt-auto">
-                  <button
-                    onClick={() => copyToClipboard(referralData.code)}
-                    className="btn-primary w-full text-sm"
-                  >
-                    {copied ? "✓ Copied" : "Copy Code"}
-                  </button>
-                  <button
-                    onClick={() => copyToClipboard(referralData.shareUrl)}
-                    className="btn-secondary w-full text-sm"
-                  >
-                    Copy Share Link
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-[rgba(240,244,250,0.4)]">No referral code found.</p>
-            )}
-          </div>
-
-          {/* Stats card */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">Performance Metrics</h2>
-            {stats ? (
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Referrals", value: stats.totalReferred, color: "#14b8a6" },
-                  { label: "Accepted", value: stats.accepted, color: "#f0f4fa" },
-                  { label: "Completed", value: stats.completed, color: "#a78bfa" },
-                  { label: "Total Earnings", value: `$${stats.totalRewards.toFixed(2)}`, color: "#f97316" },
-                  { label: "Available", value: `$${stats.availableRewards.toFixed(2)}`, color: "#10b981" },
-                  { label: "Pending (1-Cycle)", value: `$${stats.pendingRewards.toFixed(2)}`, color: "#f59e0b" },
-                ].map((s) => (
-                  <div key={s.label} className="flex flex-col rounded-lg border border-white/[0.05] bg-[#05080f] p-4">
-                    <span className="text-xs text-[rgba(240,244,250,0.5)]">{s.label}</span>
-                    <span className="mt-1 text-xl font-bold" style={{ color: s.color }}>{s.value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Referrals Table */}
-        <div className="mb-8 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-          <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">Referral History</h2>
-          {stats?.referrals && stats.referrals.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/[0.05] text-[rgba(240,244,250,0.4)]">
-                    <th className="pb-3 pl-2">Date</th>
-                    <th className="pb-3">Referrer</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 pr-2 text-right">Reward</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.03]">
-                  {stats.referrals.map((ref: any) => (
-                    <tr key={ref.id} className="text-[#f0f4fa]">
-                      <td className="py-4 pl-2 text-[rgba(240,244,250,0.6)]">{new Date(ref.createdAt).toLocaleDateString()}</td>
-                      <td className="py-4">{ref.code}</td>
-                      <td className="py-4">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${ref.status === 'completed'
-                          ? 'border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]'
-                          : 'border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]'
-                          }`}>
-                          {ref.status}
-                        </span>
-                      </td>
-                      <td className="py-4 pr-2 text-right font-semibold text-[#14b8a6]">+${ref.rewardAmount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
-          ) : (
-            <p className="text-xs text-[rgba(240,244,250,0.4)]">You haven't referred anyone yet. Start sharing your link!</p>
-          )}
-        </div>
 
-        {/* How it works */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-          <h2 className="mb-6 text-sm font-semibold text-[#f0f4fa]">How It Works</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {[
-              { n: "01", title: "Share Your Code", body: "Send your unique referral code to friends and colleagues" },
-              { n: "02", title: "They Sign Up", body: "When they join MyOrbisVoice with your code, they get immediate access" },
-              { n: "03", title: "You Earn", body: "You receive recurring commission for every successful referral" },
-            ].map((step) => (
-              <div key={step.n} className="flex flex-col gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#14b8a6]/10 text-xs font-bold text-[#14b8a6]">{step.n}</span>
-                <div>
-                  <p className="text-sm font-semibold text-[#f0f4fa]">{step.title}</p>
-                  <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)] leading-relaxed">{step.body}</p>
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+              <h2 className="text-lg font-semibold text-[#f0f4fa]">Tax & Information Parameters</h2>
+              <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)] mb-6">
+                Please maintain your accurate personal and corporate intelligence here in order to comply with domestic tax treaties and 1099 distributions.
+              </p>
+
+              {saveError && (
+                <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                  {saveError}
                 </div>
-              </div>
-            ))}
+              )}
+              {saveMessage && (
+                <div className="mb-6 rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
+                  {saveMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">First Name</label>
+                    <input type="text" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Last Name</label>
+                    <input type="text" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Business Name (Optional)</label>
+                    <input type="text" value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Phone / Cell</label>
+                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 gap-4">
+                  <div className="col-span-6 sm:col-span-4 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Street Address</label>
+                    <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="col-span-6 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Unit / Apt</label>
+                    <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 gap-4">
+                  <div className="col-span-6 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">City</label>
+                    <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="col-span-3 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">State</label>
+                    <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                  <div className="col-span-3 sm:col-span-2 space-y-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Zip Code</label>
+                    <input type="text" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">TIN OR SSN</label>
+                  <input type="text" value={formData.tinSsn} onChange={(e) => setFormData({ ...formData, tinSsn: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <button type="submit" disabled={savingSettings} className="rounded-lg bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] transition hover:bg-[#0d9488] disabled:opacity-50">
+                    {savingSettings ? "Saving Settings..." : "Save Information"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
+
       </div>
     </DashboardShell>
   );

@@ -8,6 +8,17 @@ import { ApiResponse } from "../types.js";
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  businessName: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  unit: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  tinSsn: z.string().optional(),
+  taxFormUrl: z.string().optional(),
 });
 
 const UpdatePasswordSchema = z.object({
@@ -85,6 +96,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
             commissionLevel: true,
             referralCodeUsed: true,
             referralRewardTotal: true,
+            firstName: true,
+            lastName: true,
+            businessName: true,
+            phone: true,
+            address: true,
+            unit: true,
+            city: true,
+            state: true,
+            zip: true,
+            tinSsn: true,
+            taxFormUrl: true,
             createdAt: true,
             tenant: {
               select: {
@@ -1103,7 +1125,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
 
         // Attempt to fetch the account details to verify the key works
         const account = await stripe.accounts.retrieve();

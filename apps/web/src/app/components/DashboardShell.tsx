@@ -95,9 +95,16 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
 
   useEffect(() => {
     if (tokenLoaded) {
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          router.push("/login");
+          return;
+        }
+      }
       fetchProfile();
     }
-  }, [tokenLoaded]);
+  }, [tokenLoaded, router]);
 
   const fetchProfile = async () => {
     try {
@@ -134,9 +141,13 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 px-3 py-4">
           {NAV.filter(item => {
-            // Hide admin-only tabs if not admin
-            if (item.label === "Users" || item.label === "Affiliates" || item.label === "Referral Agents") {
+            // Hide admin-only tabs
+            if (item.label === "Users" || item.label === "Referral Agents") {
               return profile?.isAdmin;
+            }
+            if (item.label === "Affiliates") {
+              // Show Affiliates tag to admins OR approved affiliates
+              return profile?.isAdmin || profile?.isAffiliate;
             }
             return true;
           }).map((item) => {

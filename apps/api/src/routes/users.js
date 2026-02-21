@@ -44,6 +44,17 @@ const db_js_1 = require("../db.js");
 const UpdateProfileSchema = zod_1.z.object({
     name: zod_1.z.string().min(1).optional(),
     email: zod_1.z.string().email().optional(),
+    firstName: zod_1.z.string().optional(),
+    lastName: zod_1.z.string().optional(),
+    businessName: zod_1.z.string().optional(),
+    phone: zod_1.z.string().optional(),
+    address: zod_1.z.string().optional(),
+    unit: zod_1.z.string().optional(),
+    city: zod_1.z.string().optional(),
+    state: zod_1.z.string().optional(),
+    zip: zod_1.z.string().optional(),
+    tinSsn: zod_1.z.string().optional(),
+    taxFormUrl: zod_1.z.string().optional(),
 });
 const UpdatePasswordSchema = zod_1.z.object({
     currentPassword: zod_1.z.string(),
@@ -110,6 +121,17 @@ async function userRoutes(fastify) {
                     commissionLevel: true,
                     referralCodeUsed: true,
                     referralRewardTotal: true,
+                    firstName: true,
+                    lastName: true,
+                    businessName: true,
+                    phone: true,
+                    address: true,
+                    unit: true,
+                    city: true,
+                    state: true,
+                    zip: true,
+                    tinSsn: true,
+                    taxFormUrl: true,
                     createdAt: true,
                     tenant: {
                         select: {

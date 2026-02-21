@@ -20,7 +20,7 @@ async function GET(request) {
             return server_1.NextResponse.redirect(new URL("/auth/error?error=Missing+authorization+code", request.url));
         }
         // Exchange code for token with our Fastify API
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
         const tokenResponse = await fetch(`${apiUrl}/auth/google/callback`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

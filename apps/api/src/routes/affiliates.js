@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,6 +43,22 @@ const db_1 = require("../db");
 const env_1 = require("../env");
 const zod_1 = require("zod");
 const stripe_1 = __importDefault(require("stripe"));
+const bcrypt = __importStar(require("bcryptjs"));
+const PublicApplySchema = zod_1.z.object({
+    email: zod_1.z.string().email(),
+    password: zod_1.z.string().min(8).optional(), // optional if they already have an account
+    firstName: zod_1.z.string().min(1),
+    lastName: zod_1.z.string().min(1),
+    businessName: zod_1.z.string().optional(),
+    address: zod_1.z.string().min(1),
+    unit: zod_1.z.string().optional(),
+    city: zod_1.z.string().min(1),
+    state: zod_1.z.string().min(1),
+    zip: zod_1.z.string().min(1),
+    phone: zod_1.z.string().min(1),
+    tinSsn: zod_1.z.string().min(1),
+    taxFormUrl: zod_1.z.string().optional(),
+});
 async function affiliateRoutes(fastify) {
     // Get current user's affiliate status and stats
     fastify.get("/affiliates/me", { onRequest: [auth_1.authenticate] }, async (request, reply) => {
@@ -31,6 +80,81 @@ async function affiliateRoutes(fastify) {
             });
         }
         catch (err) {
+            fastify.log.error(err);
+            return reply.code(500).send({ ok: false, message: "Server error" });
+        }
+    });
+    // Public endpoint for users to apply for the affiliate program (creates account if new)
+    fastify.post("/affiliates/public-apply", async (request, reply) => {
+        try {
+            const body = PublicApplySchema.parse(request.body);
+            let user = await db_1.prisma.user.findUnique({ where: { email: body.email } });
+            if (user) {
+                if (!body.password) {
+                    return reply.code(400).send({ ok: false, message: "Please provide your password to verify your account" });
+                }
+                if (!user.passwordHash || !(await bcrypt.compare(body.password, user.passwordHash))) {
+                    return reply.code(401).send({ ok: false, message: "Invalid email or password" });
+                }
+                // Update existing user's billing info
+                user = await db_1.prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        firstName: body.firstName,
+                        lastName: body.lastName,
+                        businessName: body.businessName,
+                        address: body.address,
+                        unit: body.unit,
+                        city: body.city,
+                        state: body.state,
+                        zip: body.zip,
+                        phone: body.phone,
+                        tinSsn: body.tinSsn,
+                        taxFormUrl: body.taxFormUrl,
+                    },
+                });
+            }
+            else {
+                if (!body.password) {
+                    return reply.code(400).send({ ok: false, message: "Password is required for new accounts" });
+                }
+                // Create new user
+                const hashedPassword = await bcrypt.hash(body.password, 10);
+                const tenant = await db_1.prisma.tenant.create({ data: { name: `${body.firstName}'s Workspace` } });
+                user = await db_1.prisma.user.create({
+                    data: {
+                        email: body.email,
+                        name: `${body.firstName} ${body.lastName}`,
+                        username: body.email.split('@')[0] + Math.floor(Math.random() * 1000),
+                        passwordHash: hashedPassword,
+                        tenantId: tenant.id,
+                        firstName: body.firstName,
+                        lastName: body.lastName,
+                        businessName: body.businessName,
+                        address: body.address,
+                        unit: body.unit,
+                        city: body.city,
+                        state: body.state,
+                        zip: body.zip,
+                        phone: body.phone,
+                        tinSsn: body.tinSsn,
+                        taxFormUrl: body.taxFormUrl,
+                    },
+                });
+            }
+            // Apply for affiliate
+            const result = await affiliate_1.affiliateManager.applyForAffiliate(user.id, "PENDING");
+            if (!result.success) {
+                return reply.code(400).send({ ok: false, message: result.message });
+            }
+            // Generate Auth JWT so they are logged in seamlessly
+            const token = fastify.jwt.sign({ userId: user.id, tenantId: user.tenantId, email: user.email }, { expiresIn: "7d" });
+            return reply.send({ ok: true, message: "Application submitted successfully", data: { token } });
+        }
+        catch (err) {
+            if (err instanceof zod_1.z.ZodError) {
+                return reply.code(400).send({ ok: false, message: "Invalid application data: " + err.errors[0].message });
+            }
             fastify.log.error(err);
             return reply.code(500).send({ ok: false, message: "Server error" });
         }
@@ -99,7 +223,7 @@ async function affiliateRoutes(fastify) {
             });
         }
         catch (err) {
-            fastify.log.error("Failed to fetch Stripe Connect status:", err);
+            fastify.log.error(err, "Failed to fetch Stripe Connect status:");
             return reply.code(500).send({ ok: false, message: "Server error" });
         }
     });
