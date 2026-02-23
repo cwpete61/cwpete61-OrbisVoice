@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import DashboardShell from "../components/DashboardShell";
-import PasswordInput from "../components/PasswordInput";
+import DashboardShell from "../../components/DashboardShell";
+import PasswordInput from "../../components/PasswordInput";
 import { API_BASE } from "@/lib/api";
 
 function AffiliateAgentsContent() {
@@ -101,7 +101,7 @@ function AffiliateAgentsContent() {
   const fetchPlatformSettings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/platform-settings`, {
+      const res = await fetch(`${API_BASE}/admin/settings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -136,8 +136,8 @@ function AffiliateAgentsContent() {
     setSaveSettingsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/platform-settings`, {
-        method: "PUT",
+      const res = await fetch(`${API_BASE}/admin/settings`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -340,7 +340,7 @@ function AffiliateAgentsContent() {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -399,8 +399,8 @@ function AffiliateAgentsContent() {
     setActionLoading(key);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users/${user.id}/block`, {
-        method: "PUT",
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,

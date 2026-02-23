@@ -2,10 +2,10 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import DashboardShell from "../components/DashboardShell";
-import {
+import DashboardShell from "../../components/DashboardShell";
 import { API_BASE } from "@/lib/api";
-    LineChart,
+import {
+LineChart,
     Line,
     XAxis,
     YAxis,
@@ -153,7 +153,7 @@ function ReferralAgentsContent() {
     const fetchPlatformSettings = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/admin/platform-settings`, {
+            const res = await fetch(`${API_BASE}/admin/settings`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -178,8 +178,8 @@ function ReferralAgentsContent() {
         setSaveSettingsLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/admin/platform-settings`, {
-                method: "PUT",
+            const res = await fetch(`${API_BASE}/admin/settings`, {
+                method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,

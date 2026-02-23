@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import DashboardShell from "../components/DashboardShell";
+import DashboardShell from "../../components/DashboardShell";
 import { toast } from "react-hot-toast";
 import { API_BASE } from "@/lib/api";
 

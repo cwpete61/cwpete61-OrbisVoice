@@ -25,6 +25,7 @@ import { registerToolHandlers } from "./tools/handlers";
 import { referralManager } from "./services/referral";
 import { leadRoutes } from "./routes/leads";
 import { payoutRoutes } from "./routes/payouts";
+import { adminRoutes } from "./routes/admin";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }) as any,
@@ -88,6 +89,7 @@ fastify.register(packageRoutes);
 fastify.register(stripeWebhookRoutes);
 fastify.register(payoutRoutes);
 fastify.register(leadRoutes, { prefix: "/api/leads" });
+fastify.register(adminRoutes);
 
 // Start server
 const start = async () => {

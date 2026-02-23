@@ -40,7 +40,9 @@ function verifyStripeSignature(payload: string, signature: string, secret: strin
 export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
     // Use a preParsing hook to capture the raw body for signature verification
     fastify.addHook("preParsing", async (request, reply, payload) => {
-        if (request.url === "/webhooks/stripe") {
+        // Robust path matching for webhooks
+        const url = request.url.split('?')[0];
+        if (url.endsWith("/webhooks/stripe")) {
             const chunks: Buffer[] = [];
             for await (const chunk of payload) {
                 chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
@@ -86,17 +88,16 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         const customerId = invoice.customer;
                         const amountPaid = (invoice.amount_paid || 0) / 100; // cents → dollars
                         const invoiceId = invoice.id;
-                        const billingReason = invoice.billing_reason; // e.g. "subscription_cycle", "subscription_create", "manual"
+                        const billingReason = invoice.billing_reason;
 
                         if (amountPaid <= 0) break;
 
-                        // Skip recurring subscription payments (e.g. $20/mo) — commission only on one-time charges
+                        // Skip recurring subscription payments for commissions
                         if (billingReason === "subscription_cycle" || billingReason === "subscription_update") {
                             logger.info({ invoiceId, billingReason, amount: amountPaid }, "Skipping commission for recurring subscription payment");
                             break;
                         }
 
-                        // Find tenant by Stripe customer ID
                         const tenant = await prisma.tenant.findFirst({
                             where: { stripeCustomerId: customerId },
                         });
@@ -140,7 +141,6 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                             if (updated.count > 0) {
                                 logger.info({ invoiceId, count: updated.count }, "Commission(s) refunded");
 
-                                // Adjust affiliate balances for refunded commissions
                                 const refundedTxs = await prisma.rewardTransaction.findMany({
                                     where: { sourcePaymentId: invoiceId, status: "refunded" },
                                 });
@@ -185,20 +185,29 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         });
                         if (!user) break;
 
-                        // Process commission on the one-time payment
+                        // Process commission
                         await referralManager.processCommission(user.id, amountTotal, sessionId);
-                        logger.info({ userId: user.id, amount: amountTotal, tier }, "Commission from checkout session");
 
-                        // Update the tenant's subscription tier
+                        // Update the tenant's subscription tier and usage limits
                         if (tier) {
+                            const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+                            let newUsageLimit = 100; // default
+
+                            if (tier === 'ltd') newUsageLimit = settings?.ltdLimit ?? 1000;
+                            else if (tier === 'starter') newUsageLimit = settings?.starterLimit ?? 1000;
+                            else if (tier === 'professional') newUsageLimit = settings?.professionalLimit ?? 10000;
+                            else if (tier === 'enterprise') newUsageLimit = settings?.enterpriseLimit ?? 100000;
+                            else if (tier === 'ai-revenue-infrastructure') newUsageLimit = settings?.aiInfraLimit ?? 250000;
+
                             await prisma.tenant.update({
                                 where: { id: tenant.id },
                                 data: {
                                     subscriptionTier: tier,
                                     subscriptionStatus: "active",
+                                    usageLimit: newUsageLimit
                                 },
                             });
-                            logger.info({ tenantId: tenant.id, tier }, "Tenant tier updated");
+                            logger.info({ tenantId: tenant.id, tier, newUsageLimit }, "Tenant upgraded via checkout");
                         }
 
                         // For LTD: auto-create the $20/month recurring subscription
@@ -212,8 +221,8 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                     },
                                     body: new URLSearchParams({
                                         customer: customerId,
-                                        "items[0][price]": "price_1T2kHaEFjM4hGTWYOvNxHr89", // $20/month
-                                        "trial_period_days": "30", // First month is free (covered by $497)
+                                        "items[0][price]": "price_1T2kHaEFjM4hGTWYOvNxHr89",
+                                        "trial_period_days": "30",
                                         "metadata[tier]": "ltd",
                                         "metadata[tenantId]": tenant.id,
                                     }).toString(),
@@ -222,9 +231,6 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                 if (subRes.ok) {
                                     const sub = (await subRes.json()) as any;
                                     logger.info({ subscriptionId: sub.id }, "Auto-created $20/month LTD subscription");
-                                } else {
-                                    const err = await subRes.text();
-                                    logger.error({ err }, "Failed to create LTD recurring subscription");
                                 }
                             } catch (err) {
                                 logger.error({ err }, "Error creating LTD recurring subscription");
@@ -271,24 +277,10 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                             data: {
                                 subscriptionStatus: "canceled",
                                 subscriptionTier: "free",
+                                usageLimit: 100 // Reset to free limit
                             },
                         });
                         logger.info({ tenantId: tenant.id }, "Tenant subscription deleted/canceled");
-                        break;
-                    }
-
-                    // ─── CONNECT ACCOUNT UPDATED ───────────────────────────
-                    case "account.updated": {
-                        const account = event.data.object;
-                        if (account.details_submitted) {
-                            const updated = await prisma.affiliate.updateMany({
-                                where: { stripeAccountId: account.id },
-                                data: { stripeAccountStatus: "active" },
-                            });
-                            if (updated.count > 0) {
-                                logger.info({ accountId: account.id }, "Affiliate Stripe account activated via webhook");
-                            }
-                        }
                         break;
                     }
 
@@ -297,7 +289,6 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                 }
             } catch (err) {
                 logger.error({ err, eventType: event.type }, "Error processing Stripe webhook");
-                // Still return 200 to prevent Stripe from retrying
             }
 
             return reply.code(200).send({ received: true });

@@ -35,8 +35,8 @@ const TIER_CONFIG: Record<AllTierName, {
   ltd: {
     name: "LTD (Lifetime Deal)",
     accent: "#ef4444",
-    description: "First Month, then $20/month for Twilio and API Costs",
-    limitText: "Limited to first 100 accounts",
+    description: "One-time payment for lifetime engine access + hosting costs.",
+    limitText: "Limited to first 100",
     frequencyText: "One-Time Payment"
   },
   starter: {
@@ -76,6 +76,7 @@ interface SubscriptionData {
   stripeSubscriptionId: string | null;
   usagePercent: number;
   shouldReset: boolean;
+  creditBalance: number;
   tierInfo: TierInfo;
 }
 
@@ -115,15 +116,15 @@ function BillingContent() {
         return;
       }
 
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setSubscription(data.data);
         setBillingEmail(data.data.billingEmail || "");
       } else {
-        setError("Failed to load subscription");
+        setError(data.message || "Failed to load subscription data");
       }
     } catch (err: any) {
-      setError(err.message);
+      setError("Unable to connect to billing service");
     } finally {
       setLoading(false);
     }
@@ -248,8 +249,14 @@ function BillingContent() {
     return (
       <DashboardShell tokenLoaded={tokenLoaded}>
         <div className="px-8 py-8">
-          <div className="text-center py-12">
-            <p className="text-red-500">{error}</p>
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+            <p className="text-red-400 font-medium mb-4">{error}</p>
+            <button
+              onClick={() => { setError(""); setLoading(true); fetchData(); }}
+              className="text-xs font-bold uppercase tracking-widest text-[#14b8a6] hover:text-[#0ea5e9] transition"
+            >
+              Retry Connection
+            </button>
           </div>
         </div>
       </DashboardShell>
@@ -261,7 +268,7 @@ function BillingContent() {
       <DashboardShell tokenLoaded={tokenLoaded}>
         <div className="px-8 py-8">
           <div className="text-center py-12">
-            <p className="text-[rgba(240,244,250,0.5)]">Loading billing information...</p>
+            <p className="text-[rgba(240,244,250,0.5)]">No subscription data found.</p>
           </div>
         </div>
       </DashboardShell>
@@ -274,7 +281,7 @@ function BillingContent() {
   const currentTierInfo = availableTiers[currentTier] ?? availableTiers.starter;
   const currentTierConfig = TIER_CONFIG[currentTier];
   const usagePercent = subscription.usagePercent;
-  const isOverLimit = usagePercent >= 100;
+  const isOverLimit = usagePercent >= 100 && subscription.creditBalance <= 0;
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
@@ -288,38 +295,50 @@ function BillingContent() {
         </div>
 
         {/* Current Subscription */}
-        <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 mb-8">
+        <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 mb-8 shadow-xl">
           <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Current Subscription</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Plan</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Active Plan</p>
               <p className="text-2xl font-bold" style={{ color: currentTierConfig.accent }}>
                 {currentTierConfig.name}
               </p>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
                 ${currentTierInfo.price}/month
               </p>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-2">
+              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-2 italic">
                 {currentTierConfig.description}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Status</p>
+
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Status & Renewal</p>
               <p className="text-lg font-semibold text-[#f0f4fa] capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
               {subscription.subscriptionEnds && (
                 <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
-                  Renews {new Date(subscription.subscriptionEnds).toLocaleDateString()}
+                  Next payment: {new Date(subscription.subscriptionEnds).toLocaleDateString()}
                 </p>
               )}
+              {subscription.billingEmail && (
+                <p className="text-xs text-[rgba(240,244,250,0.3)] mt-2">{subscription.billingEmail}</p>
+              )}
             </div>
-            <div>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Usage</p>
+
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide">Usage Monthly</p>
+                {subscription.creditBalance > 0 && (
+                  <span className="bg-[#14b8a6]/10 text-[#14b8a6] text-[10px] px-2 py-0.5 rounded-full border border-[#14b8a6]/30 font-bold">
+                    {subscription.creditBalance} EXTRA CREDITS
+                  </span>
+                )}
+              </div>
               <div className="flex justify-between text-sm mb-3">
                 <span className="text-[rgba(240,244,250,0.5)]">Conversations</span>
-                <span className={isOverLimit && !(subscription as any).creditBalance ? "text-red-400 font-bold" : "font-semibold text-[#f0f4fa]"}>
-                  {subscription.usageCount} / {subscription.usageLimit} {(subscription as any).creditBalance > 0 && `(+${(subscription as any).creditBalance} extra)`}
+                <span className={isOverLimit ? "text-red-400 font-bold" : "font-semibold text-[#f0f4fa]"}>
+                  {subscription.usageCount} / {subscription.usageLimit}
                 </span>
               </div>
               <div className="h-3 bg-[#080c16] rounded-full overflow-hidden mb-2">
@@ -329,7 +348,7 @@ function BillingContent() {
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-[rgba(240,244,250,0.4)]">
+              <p className="text-[10px] text-[rgba(240,244,250,0.3)]">
                 Resets on {new Date(subscription.usageResetAt).toLocaleDateString()}
               </p>
             </div>
@@ -344,7 +363,7 @@ function BillingContent() {
                 Usage Limit Exceeded
               </p>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
-                Upgrade your plan to continue creating conversations
+                Your monthly conversation limit has been reached. Upgrade your plan or purchase a one-time package to continue.
               </p>
             </div>
           )}
@@ -364,7 +383,7 @@ function BillingContent() {
               return (
                 <div
                   key={tier}
-                  className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 ${isCurrent ? "border-[#14b8a6]" : "border-white/[0.07]"
+                  className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 hover:shadow-lg ${isCurrent ? "border-[#14b8a6] bg-[#14b8a6]/[0.02]" : "border-white/[0.07]"
                     }`}
                 >
                   {config.popular && !isCurrent && (
@@ -386,7 +405,7 @@ function BillingContent() {
                     <h3 className="text-lg font-bold text-[#f0f4fa]">
                       {config.name}
                     </h3>
-                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">{config.description}</p>
+                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)] leading-relaxed">{config.description}</p>
                   </div>
                   <div className="mb-4">
                     <p className="text-4xl font-bold" style={{ color: config.accent }}>
@@ -436,7 +455,7 @@ function BillingContent() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {packages.map((pkg) => (
-                  <div key={pkg.id} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition-all hover:border-white/[0.15]">
+                  <div key={pkg.id} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition-all hover:border-white/[0.15] hover:shadow-lg">
                     <h3 className="text-lg font-bold text-[#f0f4fa]">{pkg.name}</h3>
                     <p className="text-xs text-[rgba(240,244,250,0.45)] mt-1">One-time purchase</p>
                     <div className="my-4">

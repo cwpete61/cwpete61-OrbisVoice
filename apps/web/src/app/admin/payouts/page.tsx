@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import DashboardShell from "../components/DashboardShell";
+import DashboardShell from "../../components/DashboardShell";
 import { API_BASE } from "@/lib/api";
 
 function PayoutsContent() {
@@ -40,7 +40,7 @@ function PayoutsContent() {
     const fetchPlatformSettings = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/admin/platform-settings`, {
+            const res = await fetch(`${API_BASE}/admin/settings`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
