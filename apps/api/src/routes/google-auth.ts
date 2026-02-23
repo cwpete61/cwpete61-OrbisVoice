@@ -34,13 +34,17 @@ const getGoogleConfig = async (tenantId?: string) => {
     }
 
     return {
-      clientId: config?.clientId || env.GOOGLE_CLIENT_ID,
+      clientId:
+        config?.clientId ||
+        (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_ID !== "654179326800-927mn2k7cskii5r3drg4on47574632qk.apps.googleusercontent.com"
+          ? env.GOOGLE_CLIENT_ID
+          : "11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com"),
       clientSecret: config?.clientSecret || env.GOOGLE_CLIENT_SECRET,
       redirectUri:
         config?.redirectUri ||
         env.GOOGLE_REDIRECT_URI ||
         "https://myorbisvoice.com/auth/google/callback",
-      enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
+      enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID || true),
     };
   } catch (error) {
     console.error("getGoogleConfig error:", error);
@@ -59,9 +63,6 @@ const GoogleAuthTokenSchema = z.object({
 export default async function googleAuthRoutes(fastify: FastifyInstance) {
   // Simple test endpoint
   fastify.get("/auth/test", async (request, reply) => {
-    // FORCE DELETE STALE CONFIG FOR DEBUGGING
-    await prisma.googleAuthConfig.deleteMany({});
-
     const config = await getGoogleConfig();
     return reply.send({
       ok: true,
