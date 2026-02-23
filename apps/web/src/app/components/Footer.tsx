@@ -21,22 +21,22 @@ export default function Footer() {
             <h3 className="mb-4 text-sm font-semibold text-[#f0f4fa]">Legal</h3>
             <ul className="space-y-3 text-sm text-[rgba(240,244,250,0.55)]">
               <li>
-                <Link href="/privacy" className="hover:text-[#14b8a6] transition">
+                <Link href="/privacy" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-[#14b8a6] transition">
+                <Link href="/terms" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/cookies" className="hover:text-[#14b8a6] transition">
+                <Link href="/cookies" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Cookie Policy
                 </Link>
               </li>
               <li>
-                <Link href="/compliance" className="hover:text-[#14b8a6] transition">
+                <Link href="/compliance" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Compliance
                 </Link>
               </li>
@@ -48,22 +48,22 @@ export default function Footer() {
             <h3 className="mb-4 text-sm font-semibold text-[#f0f4fa]">Resources</h3>
             <ul className="space-y-3 text-sm text-[rgba(240,244,250,0.55)]">
               <li>
-                <Link href="/blog" className="hover:text-[#14b8a6] transition">
+                <Link href="/blog" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/docs" className="hover:text-[#14b8a6] transition">
+                <Link href="/docs" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Documentation
                 </Link>
               </li>
               <li>
-                <Link href="/api" className="hover:text-[#14b8a6] transition">
+                <Link href="/api" prefetch={false} className="hover:text-[#14b8a6] transition">
                   API Reference
                 </Link>
               </li>
               <li>
-                <Link href="/support" className="hover:text-[#14b8a6] transition">
+                <Link href="/support" prefetch={false} className="hover:text-[#14b8a6] transition">
                   Support Center
                 </Link>
               </li>
