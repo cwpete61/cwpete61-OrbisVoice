@@ -6,17 +6,12 @@ RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/a
 
 WORKDIR /app/apps/api
 
-# Copy API package files and Prisma schema
-COPY apps/api/package*.json ./
-COPY apps/api/prisma ./prisma
-
-# Install dependencies
-RUN npm install --legacy-peer-deps
-
-# Copy source and config files
-COPY apps/api/src ./src
-COPY apps/api/tsconfig.json ./
+# Copy everything from apps/api and the base config
+COPY apps/api ./
 COPY tsconfig.base.json ../../
+
+# Install dependencies (including devDeps for building)
+RUN npm install --legacy-peer-deps
 
 # Generate Prisma client and build the app
 RUN npx prisma generate && npm run build
@@ -38,7 +33,7 @@ COPY --from=builder /app/apps/api/package*.json ./
 COPY --from=builder /app/apps/api/prisma ./prisma
 
 # Expose API port
-EXPOSE 5000
+EXPOSE 4001
 
 # Run Prisma db push to ensure schema is synced, then start the server
 CMD sh -c "npx prisma db push --skip-generate && node dist/index.js"

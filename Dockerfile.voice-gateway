@@ -6,17 +6,12 @@ RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/a
 
 WORKDIR /app/apps/voice-gateway
 
-# Copy package files and Prisma schema
-COPY apps/voice-gateway/package*.json ./
-COPY apps/voice-gateway/prisma ./prisma
-
-# Install dependencies
-RUN npm install --legacy-peer-deps
-
-# Copy source and config files
-COPY apps/voice-gateway/src ./src
-COPY apps/voice-gateway/tsconfig.json ./
+# Copy everything from apps/voice-gateway and the base config
+COPY apps/voice-gateway ./
 COPY tsconfig.base.json ../../
+
+# Install dependencies (including devDeps for building)
+RUN npm install --legacy-peer-deps
 
 # Generate Prisma client and build the app
 RUN npx prisma generate && npm run build
