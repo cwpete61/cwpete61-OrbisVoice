@@ -4,20 +4,17 @@ description: Automatically generate and renew SSL certificates via Cloudflare DN
 
 # Workflow: SSL Cert Management (Cloudflare)
 
-This workflow describes how to use the `get-cert-cloudflare` GitHub Action to automatically generate and renew SSL certificates using Cloudflare DNS.
+This workflow describes how to use the `shibme/cloudflare-letsencrypt-certbot-generate` GitHub Action to automatically generate and renew SSL certificates using Cloudflare DNS.
 
 ## 1. Prerequisites
 - Your domain must be managed by **Cloudflare**.
 - You need a Cloudflare **API Token** with the following permissions:
     - **Zone**: `DNS:Edit`
     - **Zone**: `Zone:Read`
+- Add the token to GitHub Secrets as `CLOUDFLARE_API_TOKEN`.
 
-## 2. Setup GitHub Secrets
-In your GitHub repository, go to `Settings > Secrets and variables > Actions` and add the following secret:
-- `CLOUDFLARE_API_TOKEN`: Your Cloudflare API token.
-
-## 3. GitHub Actions Workflow
-Create a file at `.github/workflows/ssl-cert.yml` with the following content:
+## 2. GitHub Actions Workflow
+Create a file at `.github/workflows/ssl-cert.yml` with the following content. This version includes **dynamic inputs** to allow you to specify domains and toggle dry-run mode directly from the GitHub UI.
 
 ```yaml
 name: Generate SSL Certificate
@@ -26,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       domain_names:
-        description: 'Domains to include (comma-separated)'
+        description: 'Domains to include (comma-separated, e.g., example.com,*.example.com)'
         required: true
         default: 'example.com,*.example.com'
       email:
@@ -42,7 +39,7 @@ on:
           - 'true'
           - 'false'
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '0 0 1 * *' # Auto-renewal on the 1st of every month
 
 jobs:
   get-cert:
@@ -57,21 +54,26 @@ jobs:
           cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           domain_names: ${{ github.event.inputs.domain_names || 'example.com,*.example.com' }}
           email: ${{ github.event.inputs.email || 'admin@example.com' }}
-          cert_file_name: 'cert'
+          cert_file_name: 'ssl_cert'
           dry_run: ${{ github.event.inputs.dry_run || 'false' }}
 
       - name: Upload Certificate Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ssl-certificate
-          path: cert.zip
+          path: ssl_cert.zip
 ```
 
-## 4. Usage Notes
-- **Wildcard Certificates**: Works perfectly with wildcard domains (e.g., `*.example.com`).
-- **Artifacts**: The generated certificate and keys are packed into `cert.zip` and uploaded as a GitHub Action artifact for you to download or deploy.
-- **Persistence**: You may want to modify the workflow to upload the certificate to a secure location (e.g., AWS S3, a server via SSH, or GitHub Secrets) for automatic deployment to your web servers.
+## 3. Usage & Troubleshooting
 
-## Best Practices
-- **Token Scoping**: Limit your Cloudflare API token to only the specific zones required.
-- **Dry Run**: Set `dry_run: true` when testing the workflow for the first time to avoid hitting Let's Encrypt rate limits.
+### Common Error: "Unable to determine zone_id"
+This usually happens if your `domain_names` input doesn't match the **Zone Name** in your Cloudflare dashboard.
+- **Fix**: Check if your domain is `example.com` or `myexample.org` in Cloudflare. Wildcards (e.g., `*.domain.com`) are supported but the root domain must be correct.
+
+### Error: "Required property is missing: shell"
+This happens if using an older or broken "composite" action handle.
+- **Fix**: Always use the Docker-based action `shibme/cloudflare-letsencrypt-certbot-generate@main`.
+
+### Best Practices
+- **Dry Run First**: Always run with `dry_run: true` the first time to ensure DNS records can be created before trying to issue a real certificate.
+- **Artifacts**: The generated certificate (`fullchain.pem`) and private key (`privkey.pem`) will be inside the downloaded zip file.
