@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get SSL Certificate
-        uses: cwpete61/get-cert-cloudflare@master
+        uses: pswalia2u/ssl-cert@v1.0.0
         with:
           cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           domain_names: 'example.com,*.example.com' # Comma-separated list
