@@ -7,8 +7,9 @@
 
 const DEV_SSR_URL = process.env.NODE_ENV === "production" ? "http://api:5000" : "http://localhost:4001";
 const API_BASE =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" ? "/api" : DEV_SSR_URL);
+    (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== "undefined") ?
+        process.env.NEXT_PUBLIC_API_URL :
+        (typeof window !== "undefined" ? "/api" : DEV_SSR_URL);
 
 export interface ApiResponse<T = unknown> {
     ok: boolean;
