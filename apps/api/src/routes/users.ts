@@ -1657,7 +1657,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             throw new Error(`Gmail API returned ${response.status}`);
           }
 
-          const profile = await response.json();
+          const profile = (await response.json()) as any;
 
           // Update verified status
           await prisma.gmailCredentials.update({

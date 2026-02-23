@@ -140,7 +140,7 @@ class GeminiVoiceClient {
         throw new Error(`Gemini API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.debug({ model: this.model }, "Gemini API response received");
 
       // Extract content from response

@@ -70,11 +70,11 @@ class GoogleCalendarClient {
         throw new Error(`Calendar token exchange failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return {
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresAt: Date.now() + data.expires_in * 1000,
+        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
       };
     } catch (err) {
       logger.error({ err }, "Failed to exchange Calendar authorization code");
@@ -102,11 +102,11 @@ class GoogleCalendarClient {
         throw new Error(`Calendar token refresh failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return {
         accessToken: data.access_token,
         refreshToken: refreshToken,
-        expiresAt: Date.now() + data.expires_in * 1000,
+        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
       };
     } catch (err) {
       logger.error({ err }, "Failed to refresh Calendar token");
@@ -131,7 +131,7 @@ class GoogleCalendarClient {
 
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
-          `timeMin=${startOfDay.toISOString()}&timeMax=${endOfDay.toISOString()}&singleEvents=true&orderBy=startTime`,
+        `timeMin=${startOfDay.toISOString()}&timeMax=${endOfDay.toISOString()}&singleEvents=true&orderBy=startTime`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -143,7 +143,7 @@ class GoogleCalendarClient {
         throw new Error(`Calendar availability check failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       const events = data.items || [];
 
       // Calculate free slots
@@ -216,7 +216,7 @@ class GoogleCalendarClient {
         throw new Error(`Calendar event creation failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ eventId: data.id }, "Calendar event created");
       return data.id;
     } catch (err) {
@@ -232,7 +232,7 @@ class GoogleCalendarClient {
     try {
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
-          `maxResults=${maxResults}&orderBy=startTime&singleEvents=true&timeMin=${new Date().toISOString()}`,
+        `maxResults=${maxResults}&orderBy=startTime&singleEvents=true&timeMin=${new Date().toISOString()}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -244,7 +244,7 @@ class GoogleCalendarClient {
         throw new Error(`Calendar list failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return data.items || [];
     } catch (err) {
       logger.error({ err }, "Failed to get upcoming calendar events");

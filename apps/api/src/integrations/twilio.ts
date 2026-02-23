@@ -72,7 +72,7 @@ class TwilioClient {
         throw new Error(`Twilio error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ messageSid: data.sid, to: message.to }, "SMS sent successfully");
       return data.sid;
     } catch (err) {
@@ -129,7 +129,7 @@ class TwilioClient {
         throw new Error(`Twilio error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ callSid: data.sid, to: config.to }, "Call initiated");
       return data.sid;
     } catch (err) {
@@ -157,7 +157,7 @@ class TwilioClient {
         throw new Error(`Twilio call retrieval failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return data;
     } catch (err) {
       logger.error({ err, callSid }, "Failed to get call information");
@@ -184,7 +184,7 @@ class TwilioClient {
         throw new Error(`Twilio phone numbers retrieval failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return data.incoming_phone_numbers || [];
     } catch (err) {
       logger.error({ err }, "Failed to get Twilio phone numbers");

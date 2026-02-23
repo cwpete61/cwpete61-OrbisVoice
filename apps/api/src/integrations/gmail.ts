@@ -65,11 +65,11 @@ class GmailClient {
         throw new Error(`Gmail token exchange failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return {
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
-        expiresAt: Date.now() + data.expires_in * 1000,
+        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
       };
     } catch (err) {
       logger.error({ err }, "Failed to exchange Gmail authorization code");
@@ -97,11 +97,11 @@ class GmailClient {
         throw new Error(`Gmail token refresh failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return {
         accessToken: data.access_token,
         refreshToken: refreshToken, // refresh token stays the same
-        expiresAt: Date.now() + data.expires_in * 1000,
+        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
       };
     } catch (err) {
       logger.error({ err }, "Failed to refresh Gmail token");
@@ -153,7 +153,7 @@ class GmailClient {
         throw new Error(`Gmail send failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ messageId: data.id }, "Email sent successfully");
       return data.id;
     } catch (err) {
@@ -188,7 +188,7 @@ class GmailClient {
         throw new Error(`Gmail list failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       return data.messages || [];
     } catch (err) {
       logger.error({ err }, "Failed to list Gmail messages");

@@ -76,7 +76,7 @@ class StripeClient {
         throw new Error(`Stripe error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ intentId: data.id, amount: payment.amount }, "Payment intent created");
       return data;
     } catch (err) {
@@ -120,7 +120,7 @@ class StripeClient {
         throw new Error(`Stripe error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ chargeId: data.id, amount }, "Charge created");
       return data;
     } catch (err) {
@@ -167,7 +167,7 @@ class StripeClient {
         throw new Error(`Stripe error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ customerId: data.id }, "Customer created");
       return data;
     } catch (err) {
@@ -194,7 +194,7 @@ class StripeClient {
         throw new Error(`Stripe error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ subscriptionId, status: data.status }, "Subscription retrieved");
       return data;
     } catch (err) {
@@ -238,7 +238,7 @@ class StripeClient {
         throw new Error(`Stripe error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ subscriptionId: data.id }, "Subscription created");
       return data;
     } catch (err) {
@@ -283,7 +283,7 @@ class StripeClient {
         throw new Error(`Stripe error: ${response.status} - ${error}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       logger.info({ transferId: data.id, destination: transfer.destination, amount: transfer.amount }, "Transfer created");
       return data;
     } catch (err) {

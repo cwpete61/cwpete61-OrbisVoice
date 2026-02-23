@@ -123,7 +123,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
             return reply.code(500).send({ error: "Failed to create Stripe customer" });
           }
 
-          const customer = await customerRes.json();
+          const customer = (await customerRes.json()) as any;
           stripeCustomerId = customer.id;
 
           // Save Stripe customer ID to tenant
@@ -179,7 +179,7 @@ export default async function billingRoutes(fastify: FastifyInstance) {
           return reply.code(400).send({ error: "Failed to create checkout session", details: errText });
         }
 
-        const session = await sessionRes.json();
+        const session = (await sessionRes.json()) as any;
         logger.info({ sessionId: session.id, tier }, "Checkout session created");
 
         return reply.send({ url: session.url });

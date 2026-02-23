@@ -220,7 +220,7 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                 });
 
                                 if (subRes.ok) {
-                                    const sub = await subRes.json();
+                                    const sub = (await subRes.json()) as any;
                                     logger.info({ subscriptionId: sub.id }, "Auto-created $20/month LTD subscription");
                                 } else {
                                     const err = await subRes.text();
