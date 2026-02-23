@@ -40,6 +40,10 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("noreply@orbisvoice.app"),
   EMAIL_FROM_NAME: z.string().default("OrbisVoice"),
+  // Firebase Configuration
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
 });
 
 const result = envSchema.safeParse(process.env);

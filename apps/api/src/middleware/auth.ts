@@ -17,6 +17,29 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   }
 }
 
+/**
+ * Firebase ID Token Verification Middleware
+ */
+export async function verifyFirebaseToken(request: FastifyRequest, reply: FastifyReply) {
+  const authHeader = request.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    reply.code(401).send({ ok: false, message: "No Firebase token provided" });
+    return;
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const { auth } = await import("../lib/firebase");
+    const decodedToken = await auth.verifyIdToken(token);
+
+    // Attach the decoded token to the request object
+    (request as any).firebaseUser = decodedToken;
+  } catch (err) {
+    reply.code(401).send({ ok: false, message: "Invalid or expired Firebase token" });
+    return;
+  }
+}
+
 export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();

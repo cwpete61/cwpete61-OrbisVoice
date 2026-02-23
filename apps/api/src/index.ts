@@ -26,6 +26,7 @@ import { referralManager } from "./services/referral";
 import { leadRoutes } from "./routes/leads";
 import { payoutRoutes } from "./routes/payouts";
 import { adminRoutes } from "./routes/admin";
+import { firebaseAuthRoutes } from "./routes/firebase-auth";
 import { prisma } from "./db";
 
 const fastify = Fastify({
@@ -50,6 +51,7 @@ fastify.register(helmet, {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://*.firebaseio.com", "https://*.googleapis.com"],
     },
   },
 });
@@ -70,8 +72,6 @@ fastify.get("/api", async () => {
   return { message: "OrbisVoice API v1", version: "1.0.0" };
 });
 
-// ... imports
-
 // Register route groups
 fastify.register(authRoutes);
 fastify.register(transcriptRoutes);
@@ -91,6 +91,7 @@ fastify.register(stripeWebhookRoutes);
 fastify.register(payoutRoutes);
 fastify.register(leadRoutes, { prefix: "/api/leads" });
 fastify.register(adminRoutes);
+fastify.register(firebaseAuthRoutes);
 
 // Start server
 const start = async () => {
