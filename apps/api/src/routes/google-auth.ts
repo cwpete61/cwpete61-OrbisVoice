@@ -59,7 +59,13 @@ const GoogleAuthTokenSchema = z.object({
 export default async function googleAuthRoutes(fastify: FastifyInstance) {
   // Simple test endpoint
   fastify.get("/auth/test", async (request, reply) => {
-    return reply.send({ ok: true, message: "API is working" });
+    const config = await getGoogleConfig();
+    return reply.send({
+      ok: true,
+      config,
+      envClientId: env.GOOGLE_CLIENT_ID,
+      envRedirectUri: env.GOOGLE_REDIRECT_URI
+    });
   });
 
   // Get Google Auth URL for frontend
