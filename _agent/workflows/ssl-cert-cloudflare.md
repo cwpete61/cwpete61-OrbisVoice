@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get SSL Certificate
-        uses: shibme/cloudflare-letsencrypt-certbot-generate@v1
+        uses: shibme/cloudflare-letsencrypt-certbot-generate@main
         with:
           cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           domain_names: 'example.com,*.example.com' # Comma-separated list
