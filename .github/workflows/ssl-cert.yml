@@ -1,0 +1,37 @@
+name: Generate SSL Certificate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no actual cert issued)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  schedule:
+    - cron: '0 0 1 * *'
+
+jobs:
+  get-cert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get SSL Certificate
+        uses: cwpete61/get-cert-cloudflare@master
+        with:
+          cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          domain_names: 'orbisvoice.app,*.orbisvoice.app'
+          email: 'admin@orbisvoice.app'
+          cert_file_name: 'orbis_cert.zip'
+          dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+
+      - name: Upload Certificate Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-ssl-certificate
+          path: orbis_cert.zip
