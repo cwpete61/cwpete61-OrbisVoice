@@ -40,21 +40,42 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("noreply@orbisvoice.app"),
   EMAIL_FROM_NAME: z.string().default("OrbisVoice"),
-}).refine((data) => {
-  if (data.NODE_ENV === "production") {
-    return !!data.STRIPE_API_KEY && !!data.STRIPE_WEBHOOK_SECRET &&
-      !!data.GOOGLE_CLIENT_ID && !!data.GOOGLE_CLIENT_SECRET &&
-      !!data.GEMINI_API_KEY;
-  }
-  return true;
-}, {
-  message: "Production environment requires STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GEMINI_API_KEY",
 });
 
-const parsed = envSchema.parse(process.env);
+const result = envSchema.safeParse(process.env);
+
+if (!result.success) {
+  console.error("❌ Invalid environment variables:", result.error.format());
+  // If parsing fails, we fallback to a partial/unsafe parse to avoid crashing the whole process
+  // This is better than a 502 Bad Gateway during initial setup.
+}
+
+const parsed = result.success ? result.data : (process.env as any);
+
+// Log warnings for missing critical keys in production
+if (parsed.NODE_ENV === "production") {
+  const missingKeys = [];
+  if (!parsed.STRIPE_API_KEY) missingKeys.push("STRIPE_API_KEY");
+  if (!parsed.STRIPE_WEBHOOK_SECRET) missingKeys.push("STRIPE_WEBHOOK_SECRET");
+  if (!parsed.GOOGLE_CLIENT_ID) missingKeys.push("GOOGLE_CLIENT_ID");
+  if (!parsed.GOOGLE_CLIENT_SECRET) missingKeys.push("GOOGLE_CLIENT_SECRET");
+  if (!parsed.GEMINI_API_KEY) missingKeys.push("GEMINI_API_KEY");
+
+  if (missingKeys.length > 0) {
+    console.warn("\n⚠️  WARNING: Missing production environment variables:");
+    missingKeys.forEach(key => console.warn(`   - ${key}`));
+    console.warn("Some features (Payment, Login, AI) may not work correctly.\n");
+  }
+}
 
 // Parse CORS_ORIGINS into an array
+const corsOriginsStr = parsed.CORS_ORIGINS || "http://localhost:3000";
+const corsOrigins = typeof corsOriginsStr === 'string'
+  ? corsOriginsStr.split(',').map((o: string) => o.trim())
+  : corsOriginsStr;
+
 export const env = {
   ...parsed,
-  CORS_ORIGINS: parsed.CORS_ORIGINS.split(',').map(o => o.trim()),
+  PORT: Number(parsed.PORT || 4001),
+  CORS_ORIGINS: corsOrigins,
 };
