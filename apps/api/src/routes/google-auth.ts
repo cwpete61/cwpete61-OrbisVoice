@@ -59,6 +59,9 @@ const GoogleAuthTokenSchema = z.object({
 export default async function googleAuthRoutes(fastify: FastifyInstance) {
   // Simple test endpoint
   fastify.get("/auth/test", async (request, reply) => {
+    // FORCE DELETE STALE CONFIG FOR DEBUGGING
+    await prisma.googleAuthConfig.deleteMany({});
+
     const config = await getGoogleConfig();
     return reply.send({
       ok: true,
