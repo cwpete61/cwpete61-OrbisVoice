@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -37,7 +39,6 @@ services:
       - orbisvoice-prod-network
 
   api:
-    image: ghcr.io/cwpete61/orbisvoice-api:latest
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -54,7 +55,6 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     depends_on:
       postgres:
@@ -65,7 +65,6 @@ services:
       - orbisvoice-prod-network
 
   web:
-    image: ghcr.io/cwpete61/orbisvoice-web:latest
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -82,7 +81,6 @@ services:
       - orbisvoice-prod-network
 
   voice-gateway:
-    image: ghcr.io/cwpete61/orbisvoice-voice-gateway:latest
     build:
       context: .
       dockerfile: Dockerfile.voice-gateway
@@ -108,10 +106,8 @@ services:
     restart: always
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - web
       - api

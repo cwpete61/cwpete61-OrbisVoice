@@ -39,7 +39,7 @@ const getGoogleConfig = async (tenantId?: string) => {
       redirectUri:
         config?.redirectUri ||
         env.GOOGLE_REDIRECT_URI ||
-        "http://localhost:3000/api/auth/callback/google",
+        "https://myorbisvoice.com/auth/google/callback",
       enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
     };
   } catch (error) {

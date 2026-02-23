@@ -1,0 +1,1 @@
+docker exec orbisvoice-postgres-prod psql -U postgres -d orbisvoice -c "UPDATE \"User\" SET \"passwordHash\" = '$2a$10$4FCdufYtymx/HExreRPFZ.9qKARt4fH3g9E2i2wf4BE6dCIpETBp.' WHERE email = 'admin@orbisvoice.app';"
