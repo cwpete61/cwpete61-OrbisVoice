@@ -59,46 +59,20 @@ const GoogleAuthTokenSchema = z.object({
   message: "Token or code is required",
 });
 
-// Test endpoint to verify endpoint is working
+// Google Auth Routes
 export default async function googleAuthRoutes(fastify: FastifyInstance) {
-  // Simple test endpoint
-  fastify.get("/auth/test", async (request, reply) => {
-    const config = await getGoogleConfig();
-    return reply.send({
-      ok: true,
-      config,
-      env: {
-        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? "****" : undefined,
-        GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
-        WEB_URL: process.env.WEB_URL,
-      }
-    });
-  });
-
   // Get Google Auth URL for frontend
   fastify.get("/auth/google/url", async (request, reply) => {
     try {
-      // First, log that we received the request
-      console.log("DEBUG: /auth/google/url endpoint called");
-      fastify.log.info("DEBUG: /auth/google/url endpoint called");
-
       // Try to get the config  
-      console.log("DEBUG: Calling getGoogleConfig()...");
       let googleConfig;
       try {
         googleConfig = await getGoogleConfig();
-        console.log("DEBUG: googleConfig result:", {
-          clientIdExists: !!googleConfig.clientId,
-          enabled: googleConfig.enabled
-        });
       } catch (configErr) {
-        console.error("DEBUG: Error in getGoogleConfig:", configErr);
         throw configErr;
       }
 
       if (!googleConfig.clientId || !googleConfig.enabled) {
-        console.log("DEBUG: Missing clientId or not enabled");
         return reply.code(503).send({
           ok: false,
           message: "Google OAuth not configured",
@@ -111,14 +85,12 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
         "https://www.googleapis.com/auth/userinfo.email",
       ];
 
-      console.log("DEBUG: Creating OAuth2Client...");
       const client = new OAuth2Client(
         googleConfig.clientId,
         googleConfig.clientSecret,
         redirectUrl
       );
 
-      console.log("DEBUG: Generating auth URL...");
       const url = client.generateAuthUrl({
         client_id: googleConfig.clientId,
         redirect_uri: redirectUrl,
@@ -126,17 +98,12 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
         scope: scopes,
       });
 
-      console.log("DEBUG: Successfully generated URL, length:", url.length);
-
       return reply.send({
         ok: true,
         data: { url },
       } as ApiResponse);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error("DEBUG: Caught error:", errorMsg);
-      console.error("DEBUG: Full error:", err);
-
       fastify.log.error({ message: errorMsg }, "Error in /auth/google/url");
       return reply.code(500).send({
         ok: false,
