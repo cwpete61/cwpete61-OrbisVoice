@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
@@ -9,6 +9,18 @@ interface TierInfo {
   conversations: number;
   price: number;
 }
+
+const tierNames = ["starter", "professional", "enterprise"] as const;
+type TierName = (typeof tierNames)[number];
+
+const allTierNames = ["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
+type AllTierName = (typeof allTierNames)[number];
+
+const isTierName = (tier: string): tier is TierName =>
+  tierNames.includes(tier as TierName);
+
+const isAllTierName = (tier: string): tier is AllTierName =>
+  allTierNames.includes(tier as AllTierName);
 
 // Tier display configuration
 const TIER_CONFIG: Record<AllTierName, {
@@ -22,9 +34,9 @@ const TIER_CONFIG: Record<AllTierName, {
   ltd: {
     name: "LTD (Lifetime Deal)",
     accent: "#ef4444",
-    description: "One-time payment for lifetime access",
+    description: "First Month, then $20/month for Twilio and API Costs",
     limitText: "Limited to first 100 accounts",
-    frequencyText: "One-time payment"
+    frequencyText: "One-Time Payment"
   },
   starter: {
     name: "Starter",
@@ -49,18 +61,6 @@ const TIER_CONFIG: Record<AllTierName, {
   }
 };
 
-const tierNames = ["starter", "professional", "enterprise"] as const;
-type TierName = (typeof tierNames)[number];
-
-const allTierNames = ["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
-type AllTierName = (typeof allTierNames)[number];
-
-const isTierName = (tier: string): tier is TierName =>
-  tierNames.includes(tier as TierName);
-
-const isAllTierName = (tier: string): tier is AllTierName =>
-  allTierNames.includes(tier as AllTierName);
-
 interface SubscriptionData {
   id: string;
   name: string;
@@ -80,13 +80,15 @@ interface SubscriptionData {
 
 type TierLimits = Record<AllTierName, TierInfo>;
 
-export default function BillingPage() {
+function BillingContent() {
   const router = useRouter();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [availableTiers, setAvailableTiers] = useState<TierLimits | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedTier, setSelectedTier] = useState<AllTierName | null>(null);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [purchasingPackage, setPurchasingPackage] = useState<string | null>(null);
   const [billingEmail, setBillingEmail] = useState("");
 
   // Extract token from URL if present (from OAuth callback)
@@ -96,6 +98,7 @@ export default function BillingPage() {
     if (tokenLoaded) {
       fetchSubscription();
       fetchAvailableTiers();
+      fetchPackages();
     }
   }, [tokenLoaded]);
 
@@ -137,31 +140,43 @@ export default function BillingPage() {
     }
   };
 
-  const handleUpgrade = async (tier: AllTierName) => {
-    if (!billingEmail) {
-      setError("Billing email is required");
-      return;
-    }
-
+  const fetchPackages = async () => {
     try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/packages`);
+      if (res.ok) {
+        const data = await res.json();
+        setPackages(data.data || []);
+      }
+    } catch (err: any) {
+      console.error("Failed to load packages:", err);
+    }
+  };
+
+  const handleUpgrade = async (tier: AllTierName) => {
+    try {
+      setError("");
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/subscription`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier, billingEmail }),
+        body: JSON.stringify({ tier }),
       });
 
-      if (res.ok) {
-        setSelectedTier(null);
-        fetchSubscription();
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
       } else {
-        const data = await res.json();
-        setError(data.error || "Failed to update subscription");
+        console.error("Checkout error:", data);
+        setError(data.error || "Failed to start checkout");
+        setSelectedTier(null);
       }
     } catch (err: any) {
+      console.error("Checkout exception:", err);
       setError(err.message);
     }
   };
@@ -184,6 +199,35 @@ export default function BillingPage() {
       }
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const handleBuyPackage = async (pkg: any) => {
+    if (!confirm(`Are you sure you want to purchase ${pkg.name} for $${pkg.price}?`)) return;
+
+    setPurchasingPackage(pkg.id);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/purchase-package`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ packageId: pkg.id }),
+      });
+
+      if (res.ok) {
+        alert(`Successfully purchased ${pkg.name}. Credits have been added to your account.`);
+        fetchSubscription(); // Refresh to show new credit balance
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to purchase package");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setPurchasingPackage(null);
     }
   };
 
@@ -273,8 +317,8 @@ export default function BillingPage() {
               <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Usage</p>
               <div className="flex justify-between text-sm mb-3">
                 <span className="text-[rgba(240,244,250,0.5)]">Conversations</span>
-                <span className={isOverLimit ? "text-red-400 font-bold" : "font-semibold text-[#f0f4fa]"}>
-                  {subscription.usageCount} / {subscription.usageLimit}
+                <span className={isOverLimit && !(subscription as any).creditBalance ? "text-red-400 font-bold" : "font-semibold text-[#f0f4fa]"}>
+                  {subscription.usageCount} / {subscription.usageLimit} {(subscription as any).creditBalance > 0 && `(+${(subscription as any).creditBalance} extra)`}
                 </span>
               </div>
               <div className="h-3 bg-[#080c16] rounded-full overflow-hidden mb-2">
@@ -347,7 +391,9 @@ export default function BillingPage() {
                     <p className="text-4xl font-bold" style={{ color: config.accent }}>
                       ${info.price}
                     </p>
-                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">{config.frequencyText || "per month"}</p>
+                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">
+                      {tier === 'ltd' ? "One-Time Payment" : (config.frequencyText || "per month")}
+                    </p>
                   </div>
                   <div className="mb-6 pb-6 border-b border-white/[0.05]">
                     <p className="text-sm font-medium" style={{ color: config.accent }}>
@@ -379,23 +425,64 @@ export default function BillingPage() {
           </div>
         </section>
 
+        {/* Conversation Packages */}
+        {packages.length > 0 && (
+          <>
+            <div className="my-10 border-t border-white/[0.05]"></div>
+            <section>
+              <h2 className="text-lg font-bold text-[#f0f4fa] mb-2">Conversation Packages</h2>
+              <p className="text-sm text-[rgba(240,244,250,0.45)] mb-6">Need more conversations? Purchase one-time packages that roll over until used.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {packages.map((pkg) => (
+                  <div key={pkg.id} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition-all hover:border-white/[0.15]">
+                    <h3 className="text-lg font-bold text-[#f0f4fa]">{pkg.name}</h3>
+                    <p className="text-xs text-[rgba(240,244,250,0.45)] mt-1">One-time purchase</p>
+                    <div className="my-4">
+                      <p className="text-3xl font-bold text-[#14b8a6]">${pkg.price}</p>
+                    </div>
+                    <div className="mb-6 pb-6 border-b border-white/[0.05]">
+                      <p className="text-sm font-medium text-[#f0f4fa]">+{pkg.credits.toLocaleString()} conversations</p>
+                    </div>
+                    <button
+                      onClick={() => handleBuyPackage(pkg)}
+                      disabled={purchasingPackage === pkg.id}
+                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full disabled:opacity-50"
+                    >
+                      {purchasingPackage === pkg.id ? "Processing..." : "Buy Package"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
         {/* Upgrade Modal */}
         {selectedTier && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8 max-w-md w-full shadow-2xl">
               <h3 className="text-xl font-bold text-[#f0f4fa] mb-2">
-                Change to {TIER_CONFIG[selectedTier].name}
+                {TIER_CONFIG[selectedTier].name}
               </h3>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">
                 {TIER_CONFIG[selectedTier].description}
               </p>
               <div className="bg-[#080c16] rounded-xl p-4 mb-6 border border-white/[0.05]">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-[rgba(240,244,250,0.5)]">Monthly Price</span>
+                  <span className="text-sm text-[rgba(240,244,250,0.5)]">
+                    {selectedTier === "ltd" ? "One-Time Payment" : "Monthly Price"}
+                  </span>
                   <span className="text-2xl font-bold" style={{ color: TIER_CONFIG[selectedTier].accent }}>
                     ${availableTiers[selectedTier].price}
                   </span>
                 </div>
+                {selectedTier === "ltd" && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-[rgba(240,244,250,0.5)]">+ Monthly Hosting</span>
+                    <span className="text-sm font-semibold text-[#f0f4fa]">$20/mo</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[rgba(240,244,250,0.5)]">Conversations</span>
                   <span className="text-sm font-semibold text-[#f0f4fa]">
@@ -403,38 +490,35 @@ export default function BillingPage() {
                   </span>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-[rgba(240,244,250,0.5)] uppercase tracking-wide block mb-2">
-                    Billing Email
-                  </label>
-                  <input
-                    type="email"
-                    value={billingEmail}
-                    onChange={(e) => setBillingEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#080c16] border border-white/[0.07] rounded-lg text-[#f0f4fa] focus:outline-none focus:border-[#14b8a6] transition"
-                    placeholder="billing@company.com"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => handleUpgrade(selectedTier)}
-                    className="btn-primary flex-1"
-                  >
-                    Confirm Change
-                  </button>
-                  <button
-                    onClick={() => setSelectedTier(null)}
-                    className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex-1"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <p className="text-xs text-[rgba(240,244,250,0.4)] mb-4">
+                You&apos;ll be redirected to Stripe&apos;s secure checkout to complete your purchase.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleUpgrade(selectedTier)}
+                  className="btn-primary flex-1"
+                >
+                  Proceed to Checkout →
+                </button>
+                <button
+                  onClick={() => setSelectedTier(null)}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex-1"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense>
+      <BillingContent />
+    </Suspense>
   );
 }
