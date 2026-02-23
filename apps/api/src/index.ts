@@ -26,6 +26,7 @@ import { referralManager } from "./services/referral";
 import { leadRoutes } from "./routes/leads";
 import { payoutRoutes } from "./routes/payouts";
 import { adminRoutes } from "./routes/admin";
+import { prisma } from "./db";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }) as any,
@@ -105,6 +106,17 @@ const start = async () => {
     // Register tool handlers
     registerToolHandlers();
     logger.info("Tool handlers registered");
+
+    // Bootstrap admin user
+    try {
+      await (prisma as any).user.updateMany({
+        where: { email: "admin@orbisvoice.app" },
+        data: { isAdmin: true, role: "ADMIN" }
+      });
+      logger.info("Admin bootstrap completed");
+    } catch (err) {
+      logger.error({ err }, "Admin bootstrap failed");
+    }
 
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });
     logger.info(`Server running at http://0.0.0.0:${env.PORT}`);
