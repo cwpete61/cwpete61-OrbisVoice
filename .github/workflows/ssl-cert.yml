@@ -44,16 +44,20 @@ jobs:
           name: orbis-ssl-certificate
           path: orbis_cert.zip
 
-      - name: Copy Certificate to VPS
-        uses: appleboy/scp-action@v0.1.7
-        # Only run deployment if not dry_run
+      - name: Install rsync
         if: ${{ github.event.inputs.dry_run == 'false' || github.event_name == 'schedule' }}
-        with:
-          host: ${{ secrets.VPS_IP }}
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "orbis_cert.zip"
-          target: "/opt/orbisvoice/nginx/certs"
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Deploy with rsync
+        if: ${{ github.event.inputs.dry_run == 'false' || github.event_name == 'schedule' }}
+        env:
+          HOST: ${{ secrets.SERVER_HOST || secrets.VPS_IP }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          rsync -avz orbis_cert.zip root@"$HOST":/opt/orbisvoice/nginx/certs/
 
       - name: Extract Certificate and Reload Nginx
         uses: appleboy/ssh-action@v1.0.3
