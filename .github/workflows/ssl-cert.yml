@@ -3,6 +3,14 @@ name: Generate SSL Certificate
 on:
   workflow_dispatch:
     inputs:
+      domain_names:
+        description: 'Domains to include (comma-separated)'
+        required: true
+        default: 'myorbisvoice.com,*.myorbisvoice.com'
+      email:
+        description: 'Email for Let''s Encrypt'
+        required: true
+        default: 'admin@orbisvoice.app'
       dry_run:
         description: 'Run in dry-run mode (no actual cert issued)'
         required: true
@@ -25,8 +33,8 @@ jobs:
         uses: shibme/cloudflare-letsencrypt-certbot-generate@main
         with:
           cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          domain_names: 'orbisvoice.app,*.orbisvoice.app'
-          email: 'admin@orbisvoice.app'
+          domain_names: ${{ github.event.inputs.domain_names || 'myorbisvoice.com,*.myorbisvoice.com' }}
+          email: ${{ github.event.inputs.email || 'admin@orbisvoice.app' }}
           cert_file_name: 'orbis_cert'
           dry_run: ${{ github.event.inputs.dry_run || 'false' }}
 
