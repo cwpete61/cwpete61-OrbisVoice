@@ -159,3 +159,13 @@ a {
   color: #14b8a6;
   font-style: italic;
 }
+
+/* Override default browser autofill white background for dark mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #111827 inset !important;
+  -webkit-text-fill-color: #f0f4fa !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

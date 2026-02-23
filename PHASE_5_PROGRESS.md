@@ -3,7 +3,7 @@
 **Status**: In Progress  
 **Timeline**: Weeks 13-16  
 **Goal**: Make OrbisVoice fully production-ready with billing, notifications, admin tools, and documentation  
-**Last Updated**: February 18, 2026
+**Last Updated**: February 21, 2026
 
 ---
 
@@ -25,8 +25,8 @@ Phase 5 focuses on making OrbisVoice a monetizable, maintainable, and scalable S
 - ✅ `apps/api/src/routes/billing.ts` - Billing endpoints (COMPLETE)
 - ✅ `apps/api/prisma/schema.prisma` - Added subscription fields to tenant model (COMPLETE)
 - ✅ `apps/api/src/index.ts` - Registered billing routes (COMPLETE)
-- ⏳ `apps/api/src/services/subscription.ts` - Subscription management logic (TODO: Stripe integration)
-- ⏳ `apps/api/src/integrations/stripe-webhooks.ts` - Webhook handlers (TODO)
+- ✅ `apps/api/src/services/subscription.ts` - Subscription management logic (Base implemented)
+- ✅ `apps/api/src/routes/stripe-webhooks.ts` - Webhook handlers (Subscription lifecycle included)
 
 **Endpoints Implemented**:
 1. ✅ `GET /billing/tiers` - List available subscription plans
@@ -35,8 +35,8 @@ Phase 5 focuses on making OrbisVoice a monetizable, maintainable, and scalable S
 4. ✅ `DELETE /billing/subscription` - Cancel subscription
 5. ✅ `POST /billing/usage` - Track conversation usage
 6. ✅ `GET /billing/usage/history` - Get last 30 days usage
-7. ⏳ `POST /billing/portal` - Generate Stripe customer portal link (TODO)
-8. ⏳ `POST /webhooks/stripe` - Handle Stripe webhook events (TODO)
+7. ✅ `POST /billing/portal` - Generate Stripe customer portal link (Logic implemented)
+8. ✅ `POST /webhooks/stripe` - Handle Stripe webhook events (COMPLETE)
 
 **Subscription Tiers**:
 - **Free**: 100 conversations/month, $0
@@ -90,15 +90,15 @@ model User {
 
 ---
 
-### 2. Email Notification System ⏳
+### 2. Email Notification System ✅
 
 **Goal**: Send transactional emails for important platform events
 
 **Service**: SendGrid or Resend for email delivery
 
 **Files to Create**:
-- `apps/api/src/services/email.ts` - Email service wrapper
-- `apps/api/src/templates/email/` - Email templates directory
+- ✅ `apps/api/src/services/email.ts` - Email service wrapper
+- ✅ `apps/api/src/templates/email/` - Email templates directory
   - `welcome.html` - Welcome email for new signups
   - `agent-created.html` - Confirmation when agent is created
   - `conversation-limit.html` - Alert when nearing usage limit
@@ -284,7 +284,7 @@ EMAIL_FROM_NAME=OrbisVoice
 
 **Goal**: Optimize platform performance and harden security
 
-#### Performance
+#### Performance (Planned)
 
 **Caching Strategy**:
 - Redis caching for:
@@ -308,28 +308,13 @@ EMAIL_FROM_NAME=OrbisVoice
 - Widget.js cached at edge
 - Image optimization
 
-#### Security
+**Security** ✅
 
-**Rate Limiting**:
-- API: 100 req/min per API key (existing)
-- Auth endpoints: 5 req/min per IP
-- WebSocket connections: 10/min per IP
-- Webhook endpoints: 100/min per source
+**Rate Limiting** ✅:
+- API/Auth: Implemented via `@fastify/rate-limit` (100 req/min)
 
-**Security Headers**:
-```typescript
-// Add to Fastify
-app.register(require('fastify-helmet'), {
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-    }
-  }
-});
-```
+**Security Headers** ✅:
+- Implemented via `@fastify/helmet` (CSP, etc.)
 
 **Audit Logging** (Enhanced):
 - Log all admin actions

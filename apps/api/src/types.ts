@@ -56,7 +56,7 @@ export interface AuthPayload {
   exp?: number;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   ok: boolean;
   message?: string;
   data?: T;

@@ -7,7 +7,7 @@ import path from 'path';
 // Load env from api
 dotenv.config({ path: path.join(__dirname, '../apps/api/.env') });
 
-const API_URL = 'http://localhost:4000';
+const API_URL = 'http://localhost:4001';
 const SECRET = process.env.JWT_SECRET;
 
 if (!SECRET) {

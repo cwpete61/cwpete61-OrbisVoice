@@ -7,7 +7,7 @@ export interface ToolInput {
 
 export interface ToolResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -52,10 +52,10 @@ class ToolExecutor {
     try {
       logger.info({ toolName, userId: context.userId }, "Executing tool");
       const result = await handler(input, context);
-      
+
       const executionTime = Date.now() - startTime;
       logger.info({ toolName, success: result.success, executionTimeMs: executionTime }, "Tool execution completed");
-      
+
       // Log to audit
       await toolAuditLogger.log({
         agentId: context.agentId,
@@ -67,12 +67,12 @@ class ToolExecutor {
         errorMessage: result.error,
         executionTimeMs: executionTime,
       });
-      
+
       return result;
     } catch (err) {
       const executionTime = Date.now() - startTime;
       logger.error({ err, toolName }, "Tool execution failed");
-      
+
       await toolAuditLogger.log({
         agentId: context.agentId,
         userId: context.userId,
@@ -82,7 +82,7 @@ class ToolExecutor {
         errorMessage: `Tool execution failed: ${String(err)}`,
         executionTimeMs: executionTime,
       });
-      
+
       return {
         success: false,
         error: `Tool execution failed: ${String(err)}`,

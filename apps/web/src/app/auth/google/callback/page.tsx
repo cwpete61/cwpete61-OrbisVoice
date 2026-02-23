@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function GoogleCallbackPage() {
+function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Completing Google sign-in...");
@@ -29,8 +29,8 @@ export default function GoogleCallbackPage() {
     const completeLogin = async () => {
       try {
         let endpoint = "/auth/google/callback"; // Default to sign-in
-        let body = { code };
-        let method = "POST";
+        let body: any = { code };
+        const method = "POST";
 
         // Check for state to determine if this is Gmail or Calendar linking
         const state = searchParams.get("state");
@@ -39,11 +39,11 @@ export default function GoogleCallbackPage() {
             const decodedState = JSON.parse(atob(state));
             if (decodedState.type === 'gmail') {
               endpoint = "/auth/google/gmail/callback";
-              body = { code, state } as any; // Pass state back for verification
+              body = { code, state }; // Pass state back for verification
               setStatus("Linking Gmail...");
             } else if (decodedState.type === 'calendar') {
               endpoint = "/auth/google/calendar/callback";
-              body = { code, state } as any;
+              body = { code, state };
               setStatus("Linking Calendar...");
             }
           } catch (e) {
@@ -92,5 +92,13 @@ export default function GoogleCallbackPage() {
         <p className="mt-2 text-sm text-[rgba(240,244,250,0.5)]">{status}</p>
       </div>
     </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense>
+      <GoogleCallbackContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
-import { ApiResponse } from "../types";
+import { ApiResponse, AuthPayload } from "../types";
 import { authenticate } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 import { randomBytes } from "crypto";
@@ -15,7 +15,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // List API keys for tenant
   fastify.get("/api-keys", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
     try {
-      const tenantId = (request as any).user.tenantId;
+      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
       const keys = await prisma.apiKey.findMany({
         where: { tenantId },
         select: {
@@ -47,7 +47,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const body = CreateApiKeySchema.parse(request.body);
-        const tenantId = (request as any).user.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
         // Generate unique API key
         const key = `orbis_${randomBytes(32).toString("hex")}`;
@@ -95,7 +95,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
-        const tenantId = (request as any).user.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
         const result = await prisma.apiKey.deleteMany({
           where: { id, tenantId },

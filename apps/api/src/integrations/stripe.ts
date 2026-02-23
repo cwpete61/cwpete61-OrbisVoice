@@ -19,6 +19,14 @@ export interface StripeCustomer {
   metadata?: Record<string, any>;
 }
 
+export interface StripeTransfer {
+  amount: number;
+  currency: string;
+  destination: string;
+  description?: string;
+  metadata?: Record<string, any>;
+}
+
 class StripeClient {
   private apiKey: string;
   private webhookSecret?: string;
@@ -235,6 +243,51 @@ class StripeClient {
       return data;
     } catch (err) {
       logger.error({ err }, "Failed to create Stripe subscription");
+      throw err;
+    }
+  }
+
+  /**
+   * Create a transfer (e.g. to a connected account)
+   */
+  async createTransfer(transfer: StripeTransfer): Promise<any> {
+    try {
+      const params = new URLSearchParams({
+        amount: Math.round(transfer.amount * 100).toString(), // Convert to cents and ensure integer
+        currency: transfer.currency,
+        destination: transfer.destination,
+      });
+
+      if (transfer.description) {
+        params.append("description", transfer.description);
+      }
+
+      if (transfer.metadata) {
+        Object.entries(transfer.metadata).forEach(([key, value]) => {
+          params.append(`metadata[${key}]`, String(value));
+        });
+      }
+
+      const response = await fetch(`${this.baseUrl}/transfers`, {
+        method: "POST",
+        headers: {
+          Authorization: this.getAuthHeader(),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        logger.error({ status: response.status, error }, "Stripe transfer creation failed");
+        throw new Error(`Stripe error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json();
+      logger.info({ transferId: data.id, destination: transfer.destination, amount: transfer.amount }, "Transfer created");
+      return data;
+    } catch (err) {
+      logger.error({ err }, "Failed to create Stripe transfer");
       throw err;
     }
   }

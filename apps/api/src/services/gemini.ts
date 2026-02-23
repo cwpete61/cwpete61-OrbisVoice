@@ -11,6 +11,18 @@ export interface GeminiConfig {
   };
 }
 
+export interface GeminiTool {
+  function_declarations: Array<{
+    name: string;
+    description: string;
+    parameters: {
+      type: "OBJECT";
+      properties: Record<string, any>;
+      required?: string[];
+    };
+  }>;
+}
+
 export interface GeminiAudioRequest {
   audio: {
     data: string; // base64-encoded audio data
@@ -19,7 +31,7 @@ export interface GeminiAudioRequest {
   system_instruction?: {
     parts: Array<{ text: string }>;
   };
-  tools?: any[];
+  tools?: GeminiTool[];
   tool_config?: {
     function_calling_config: {
       mode: "MODE_UNSPECIFIED" | "AUTO" | "ANY" | "NONE";
@@ -57,7 +69,7 @@ class GeminiVoiceClient {
   async processAudio(
     audioData: string,
     systemPrompt: string,
-    tools?: any[]
+    tools?: GeminiTool[]
   ): Promise<GeminiAudioResponse> {
     if (!this.apiKey) {
       throw new Error("Gemini API key not configured");
@@ -115,8 +127,8 @@ class GeminiVoiceClient {
             tools: tools,
             generationConfig: tools
               ? {
-                  temperature: 0.7,
-                }
+                temperature: 0.7,
+              }
               : undefined,
           }),
         }
@@ -134,7 +146,7 @@ class GeminiVoiceClient {
       // Extract content from response
       let textContent = "";
       let audioContent = "";
-      let toolCalls = [];
+      const toolCalls = [];
 
       if (data.candidates?.[0]?.content?.parts) {
         for (const part of data.candidates[0].content.parts) {

@@ -6,19 +6,23 @@ const logger_1 = require("../logger");
 class GeminiVoiceClient {
     constructor() {
         this.model = "gemini-2.0-flash-exp";
-        this.apiKey = env_1.env.GEMINI_API_KEY;
-        if (!this.apiKey) {
-            logger_1.logger.warn("GEMINI_API_KEY not set - Gemini Voice will not work");
+        if (!env_1.env.GEMINI_API_KEY) {
+            logger_1.logger.warn("GEMINI_API_KEY not set - Gemini Voice will default to failing if no key provided in request");
         }
     }
-    async processAudio(audioData, systemPrompt) {
-        if (!this.apiKey) {
+    getEffectiveKey(apiKey) {
+        const key = apiKey || env_1.env.GEMINI_API_KEY;
+        if (!key) {
             throw new Error("Gemini API key not configured");
         }
+        return key;
+    }
+    async processAudio(apiKey, audioData, systemPrompt) {
+        const key = this.getEffectiveKey(apiKey);
         try {
             logger_1.logger.debug({ audioLength: audioData.length }, "Processing audio with Gemini");
             // Call Gemini API with audio input
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${key}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -71,14 +75,12 @@ class GeminiVoiceClient {
             throw err;
         }
     }
-    async processText(text, agentId) {
-        if (!this.apiKey) {
-            throw new Error("Gemini API key not configured");
-        }
+    async processText(apiKey, text, agentId) {
+        const key = this.getEffectiveKey(apiKey);
         try {
             logger_1.logger.debug({ agentId }, "Processing text with Gemini");
             // Call Gemini API with text input
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${key}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

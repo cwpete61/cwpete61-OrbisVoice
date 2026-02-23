@@ -75,7 +75,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
 
                 const { clientId, clientSecret, geminiApiKey } = GoogleConfigSchema.parse(request.body);
 
-                const config = await prisma.tenantGoogleConfig.upsert({
+                await prisma.tenantGoogleConfig.upsert({
                     where: { tenantId },
                     update: {
                         clientId,

@@ -78,8 +78,15 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
           <div className="text-sm font-semibold text-[#f0f4fa] truncate">
             {profile?.name}
           </div>
-          <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">
-            @{profile?.username || "user"}
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">
+              @{profile?.username || "user"}
+            </div>
+            {profile?.tenant?.creditBalance > 0 && (
+              <div className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-[#14b8a6]/10 text-[#14b8a6] text-[10px] font-bold">
+                {profile.tenant.creditBalance} credits
+              </div>
+            )}
           </div>
         </div>
 

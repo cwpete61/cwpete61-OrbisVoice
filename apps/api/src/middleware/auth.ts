@@ -11,7 +11,6 @@ declare module "fastify" {
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // @ts-ignore - jwtVerify is added by @fastify/jwt plugin
     await request.jwtVerify();
   } catch (err) {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
@@ -20,14 +19,13 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 
 export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // @ts-ignore - jwtVerify is added by @fastify/jwt plugin
     await request.jwtVerify();
   } catch (err) {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
   }
 
-  const user = (request as any).user as AuthPayload | undefined;
+  const user = (request as unknown as { user: AuthPayload }).user;
   if (!user?.userId) {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
@@ -37,7 +35,7 @@ export async function requireAdmin(request: FastifyRequest, reply: FastifyReply)
     const dbUser = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { isAdmin: true, role: true },
-    } as any);
+    }) as { isAdmin: boolean; role: string } | null;
 
     if (!dbUser || (!dbUser.isAdmin && dbUser.role !== "ADMIN")) {
       reply.code(403).send({ ok: false, message: "Forbidden" });
@@ -51,24 +49,30 @@ export async function requireAdmin(request: FastifyRequest, reply: FastifyReply)
 
 export async function requireNotBlocked(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // @ts-ignore - jwtVerify is added by @fastify/jwt plugin
     await request.jwtVerify();
   } catch (err) {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
   }
 
-  const user = (request as any).user as AuthPayload | undefined;
+  const user = (request as unknown as { user: AuthPayload }).user;
   if (!user?.userId) {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
   }
 
+  // Optimization: Check JWT payload first
+  if ((user as AuthPayload & { isBlocked?: boolean }).isBlocked) {
+    reply.code(403).send({ ok: false, message: "Account is blocked from accessing agents" });
+    return;
+  }
+
   try {
+    // DB check for consistency (in case block happened after token issuance)
     const dbUser = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { isBlocked: true },
-    } as any);
+    }) as { isBlocked: boolean } | null;
 
     if (dbUser?.isBlocked) {
       reply.code(403).send({ ok: false, message: "Account is blocked from accessing agents" });
@@ -82,7 +86,7 @@ export async function requireNotBlocked(request: FastifyRequest, reply: FastifyR
 
 export function decodeToken(token: string, secret: string): AuthPayload | null {
   try {
-    // @ts-ignore - jwt.verify is available at runtime
+    // @ts-expect-error - jwt.verify is available at runtime
     return jwt.verify(token, secret) as AuthPayload;
   } catch {
     return null;

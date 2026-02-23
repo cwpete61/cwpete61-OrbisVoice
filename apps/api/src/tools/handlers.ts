@@ -57,7 +57,8 @@ function getTwilioClient(): TwilioClient {
 }
 
 // Communication Agent Tools
-const escalateToHumanHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const escalateToHumanHandler: ToolHandler = async (input, _context) => {
   // TODO: Integrate with support routing system
   return {
     success: true,
@@ -139,7 +140,8 @@ const sendMessageHandler: ToolHandler = async (input, context) => {
 const budgetMap = { low: 30, medium: 60, high: 100 };
 const timelineMap = { "90days": 40, "30days": 70, immediate: 100 };
 
-const scoreLeadHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const scoreLeadHandler: ToolHandler = async (input, _context) => {
   // Simple scoring algorithm
   const engagement = Math.min(100, input.engagement_level || 50);
   const budgetFit = input.budget_fit || "medium";
@@ -164,7 +166,8 @@ const scoreLeadHandler: ToolHandler = async (input, context) => {
 };
 
 // Product Agent Tools
-const getProductInfoHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const getProductInfoHandler: ToolHandler = async (input, _context) => {
   // TODO: Integrate with product database
   return {
     success: true,
@@ -178,7 +181,8 @@ const getProductInfoHandler: ToolHandler = async (input, context) => {
   };
 };
 
-const checkInventoryHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const checkInventoryHandler: ToolHandler = async (input, _context) => {
   // TODO: Integrate with inventory system
   return {
     success: true,
@@ -193,7 +197,8 @@ const checkInventoryHandler: ToolHandler = async (input, context) => {
 };
 
 // Google Calendar Agent Tools
-const checkAvailabilityHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const checkAvailabilityHandler: ToolHandler = async (input, _context) => {
   try {
     const calendar = getCalendarClient();
     const accessToken = input.accessToken || process.env.GOOGLE_CALENDAR_TEST_TOKEN;
@@ -237,7 +242,8 @@ const checkAvailabilityHandler: ToolHandler = async (input, context) => {
   }
 };
 
-const createEventHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const createEventHandler: ToolHandler = async (input, _context) => {
   try {
     const calendar = getCalendarClient();
     const accessToken = input.accessToken || process.env.GOOGLE_CALENDAR_TEST_TOKEN;
@@ -287,7 +293,8 @@ const createEventHandler: ToolHandler = async (input, context) => {
 };
 
 // Gmail Agent Tools
-const sendEmailHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const sendEmailHandler: ToolHandler = async (input, _context) => {
   try {
     const gmail = getGmailClient();
     const accessToken = input.accessToken || process.env.GMAIL_TEST_TOKEN;
@@ -336,7 +343,8 @@ const sendEmailHandler: ToolHandler = async (input, context) => {
 };
 
 // Stripe Agent Tools
-const createPaymentHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const createPaymentHandler: ToolHandler = async (input, _context) => {
   try {
     const stripe = getStripeClient();
     const apiKey = env.STRIPE_API_KEY;
@@ -381,7 +389,8 @@ const createPaymentHandler: ToolHandler = async (input, context) => {
   }
 };
 
-const getSubscriptionHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const getSubscriptionHandler: ToolHandler = async (input, _context) => {
   try {
     const stripe = getStripeClient();
     const apiKey = env.STRIPE_API_KEY;
@@ -421,7 +430,8 @@ const getSubscriptionHandler: ToolHandler = async (input, context) => {
 };
 
 // Twilio Agent Tools
-const sendSmsHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const sendSmsHandler: ToolHandler = async (input, _context) => {
   try {
     const twilio = getTwilioClient();
     const accountSid = env.TWILIO_ACCOUNT_SID;
@@ -463,7 +473,8 @@ const sendSmsHandler: ToolHandler = async (input, context) => {
   }
 };
 
-const initiateCallHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const initiateCallHandler: ToolHandler = async (input, _context) => {
   try {
     const twilio = getTwilioClient();
     const accountSid = env.TWILIO_ACCOUNT_SID;
@@ -508,7 +519,8 @@ const initiateCallHandler: ToolHandler = async (input, context) => {
 };
 
 // Phone Tones Agent Tools
-const generateToneHandler: ToolHandler = async (input, context) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const generateToneHandler: ToolHandler = async (input, _context) => {
   // DTMF tone generation
   const toneFrequencies: Record<string, [number, number]> = {
     "0": [941, 1336],

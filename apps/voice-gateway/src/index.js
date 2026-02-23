@@ -34,6 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const WebSocket = __importStar(require("ws"));
+const jwt = __importStar(require("jsonwebtoken"));
+// @ts-ignore - uuid types
 const uuid_1 = require("uuid");
 const env_1 = require("./env");
 const logger_1 = require("./logger");
@@ -69,7 +71,59 @@ class VoiceGateway {
     }
     async handleMessage(ws, message, sessionId) {
         if (message.type === "control") {
-            if (message.data === "init") {
+            if (message.data.startsWith("{")) {
+                // Handle init with JSON payload containing token
+                try {
+                    const payload = JSON.parse(message.data);
+                    if (payload.event === "init" && payload.token) {
+                        const token = payload.token;
+                        // Fetch config from API
+                        let apiKey;
+                        try {
+                            const response = await fetch(`${env_1.env.API_URL}/api/settings/google-config?include_secrets=true`, {
+                                headers: {
+                                    Authorization: `Bearer ${token}`
+                                }
+                            });
+                            if (response.status === 401) {
+                                ws.send(JSON.stringify({ error: "Unauthorized" }));
+                                return;
+                            }
+                            if (response.ok) {
+                                const configResponse = await response.json();
+                                if (configResponse.ok && configResponse.data) {
+                                    apiKey = configResponse.data.geminiApiKey;
+                                }
+                            }
+                        }
+                        catch (err) {
+                            logger_1.logger.error({ err }, "Failed to fetch config");
+                        }
+                        // Decode token to get userId/agentId
+                        const decoded = jwt.decode(token);
+                        if (!decoded || !decoded.userId) {
+                            ws.send(JSON.stringify({ error: "Invalid token" }));
+                            return;
+                        }
+                        const client = {
+                            sessionId,
+                            userId: decoded.userId,
+                            agentId: decoded.agentId || "default-agent", // Fallback
+                            connectedAt: new Date(),
+                            apiKey: apiKey, // Will be undefined for now, using global fallback
+                        };
+                        this.clients.set(sessionId, client);
+                        logger_1.logger.info({ sessionId, userId: client.userId }, "Client initialized");
+                        ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+                    }
+                }
+                catch (e) {
+                    logger_1.logger.error({ err: e }, "Failed to handle init message");
+                    ws.send(JSON.stringify({ error: "Initialization failed" }));
+                }
+            }
+            else if (message.data === "init") {
+                // Legacy/Test init
                 const client = {
                     sessionId,
                     userId: "test-user", // TODO: extract from JWT header
@@ -77,7 +131,7 @@ class VoiceGateway {
                     connectedAt: new Date(),
                 };
                 this.clients.set(sessionId, client);
-                logger_1.logger.info({ client }, "Client initialized");
+                logger_1.logger.info({ client }, "Client initialized (test mode)");
                 ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
             }
         }
@@ -89,7 +143,7 @@ class VoiceGateway {
             }
             try {
                 // Forward to Gemini API
-                const response = await this.forwardToGemini(message.data, client.agentId);
+                const response = await this.forwardToGemini(message.data, client.agentId, client.apiKey);
                 // Send response back to client
                 ws.send(JSON.stringify({
                     type: "audio",
@@ -110,7 +164,7 @@ class VoiceGateway {
             }
             try {
                 // For text input, synthesize to audio then process
-                const response = await gemini_client_1.geminiVoiceClient.processText(message.data, client.agentId);
+                const response = await gemini_client_1.geminiVoiceClient.processText(client.apiKey, message.data, client.agentId);
                 ws.send(JSON.stringify({
                     type: "text",
                     data: response.text,
@@ -123,7 +177,7 @@ class VoiceGateway {
             }
         }
     }
-    async forwardToGemini(audioData, agentId) {
+    async forwardToGemini(audioData, agentId, apiKey) {
         // TODO: Fetch agent details from API using agentId
         // TODO: Get system prompt from agent
         // TODO: Get tool definitions from agent
@@ -131,20 +185,7 @@ class VoiceGateway {
         const systemPrompt = "You are a helpful AI assistant with access to various tools.";
         try {
             // For now, process without tools. Phase 4.5 will integrate tool definitions and execution
-            return await gemini_client_1.geminiVoiceClient.processAudio(audioData, systemPrompt);
-            // Future: Tool execution flow
-            // const toolDefs = await fetchToolDefinitions(agentId);
-            // const geminiResponse = await geminiVoiceClient.processAudio(audioData, systemPrompt, toolDefs);
-            // if (geminiResponse.toolCalls?.length > 0) {
-            //   const toolResults = await geminiVoiceClient.executeToolCalls(geminiResponse.toolCalls, {
-            //     agentId,
-            //     userId: client.userId,
-            //     tenantId: client.tenantId,
-            //     sessionId: client.sessionId,
-            //   });
-            //   // Send tool results back to Gemini for follow-up response
-            //   // return await geminiVoiceClient.processWithToolResults(toolResults, ...);
-            // }
+            return await gemini_client_1.geminiVoiceClient.processAudio(apiKey, audioData, systemPrompt);
         }
         catch (err) {
             logger_1.logger.error({ err, agentId }, "Gemini processing failed");

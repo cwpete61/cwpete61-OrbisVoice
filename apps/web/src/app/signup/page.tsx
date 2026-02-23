@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 
-export default function SignupPage() {
+function SignupContent() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -23,10 +23,18 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
     try {
+      const affiliateSlug = localStorage.getItem("affiliate_slug") || "";
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, username, password, referralCode }),
+        body: JSON.stringify({
+          email,
+          name,
+          username,
+          password,
+          referralCode,
+          affiliateSlug
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -77,7 +85,7 @@ export default function SignupPage() {
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Referral code <span className="font-bold">{referralCode}</span> applied! You'll get $10 credit.
+                  Referral code <span className="font-bold">{referralCode}</span> applied!
                 </div>
               )}
               {error && (
@@ -162,5 +170,13 @@ export default function SignupPage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupContent />
+    </Suspense>
   );
 }

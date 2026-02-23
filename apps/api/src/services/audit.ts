@@ -5,8 +5,8 @@ export interface AuditLogData {
   agentId: string;
   userId?: string;
   toolName: string;
-  toolInput: Record<string, any>;
-  toolOutput?: Record<string, any>;
+  toolInput: unknown;
+  toolOutput?: unknown;
   status: "pending" | "success" | "failed";
   errorMessage?: string;
   executionTimeMs?: number;
@@ -42,7 +42,7 @@ class ToolAuditLogger {
   /**
    * Get audit logs for an agent
    */
-  async getAgentLogs(agentId: string, limit: number = 50): Promise<any[]> {
+  async getAgentLogs(agentId: string, limit: number = 50): Promise<Array<Omit<AuditLogData, 'toolInput' | 'toolOutput' | 'userId' | 'errorMessage'> & { id: string; createdAt: Date; userId: string | null; errorMessage: string | null; toolInput: unknown; toolOutput: unknown | null }>> {
     try {
       const audits = await prisma.toolExecutionAudit.findMany({
         where: { agentId },
@@ -52,6 +52,7 @@ class ToolAuditLogger {
 
       return audits.map((audit) => ({
         ...audit,
+        status: audit.status as "pending" | "success" | "failed",
         toolInput: JSON.parse(audit.toolInput),
         toolOutput: audit.toolOutput ? JSON.parse(audit.toolOutput) : null,
       }));
@@ -64,7 +65,14 @@ class ToolAuditLogger {
   /**
    * Get tool execution stats
    */
-  async getToolStats(agentId: string): Promise<any> {
+  async getToolStats(agentId: string): Promise<{
+    totalExecutions: number;
+    successfulExecutions: number;
+    failedExecutions: number;
+    successRate: string;
+    avgExecutionTimeMs: number;
+    toolBreakdown: Array<{ toolName: string; count: number }>;
+  }> {
     try {
       const [total, successful, failed, avgTime] = await Promise.all([
         prisma.toolExecutionAudit.count({

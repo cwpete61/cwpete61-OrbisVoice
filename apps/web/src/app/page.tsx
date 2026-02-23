@@ -134,8 +134,8 @@ export default function Home() {
         {/* ── Hero ── */}
         <section className="relative overflow-hidden pb-24 pt-20">
           {/* ambient glows */}
-          <div className="hero-glow h-[500px] w-[500px] bg-[#14b8a6]/20 left-[-10%] top-[-15%]" style={{position:"absolute"}} />
-          <div className="hero-glow h-[400px] w-[400px] bg-[#f97316]/10 right-[-8%] top-[10%]" style={{position:"absolute"}} />
+          <div className="hero-glow h-[500px] w-[500px] bg-[#14b8a6]/20 left-[-10%] top-[-15%]" style={{ position: "absolute" }} />
+          <div className="hero-glow h-[400px] w-[400px] bg-[#f97316]/10 right-[-8%] top-[10%]" style={{ position: "absolute" }} />
 
           <div className="ov-container relative text-center">
             <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs font-medium text-[#14b8a6]">
@@ -184,7 +184,7 @@ export default function Home() {
               The Four Voice Agent Deltas
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-[rgba(240,244,250,0.55)]">
-              We analyse every voice session through four critical lenses to find exactly where you're losing calls and revenue.
+              We analyse every voice session through four critical lenses to find exactly where you&apos;re losing calls and revenue.
             </p>
           </div>
 
@@ -296,7 +296,7 @@ export default function Home() {
               <p className="label mb-4">FAQ</p>
               <h2 className="text-3xl font-bold text-[#f0f4fa]">Frequently Asked Questions</h2>
               <p className="mt-4 text-sm text-[rgba(240,244,250,0.5)]">
-                Everything you need to know about MyOrbisVoice's AI voice agent platform.
+                Everything you need to know about MyOrbisVoice&apos;s AI voice agent platform.
               </p>
               <div className="mt-8">
                 <Link href="/signup" className="btn-primary">
@@ -321,7 +321,7 @@ export default function Home() {
               <span className="text-[#14b8a6] italic">can&rsquo;t hear.</span>
             </h2>
             <p className="mx-auto mt-5 max-w-lg text-[rgba(240,244,250,0.55)]">
-              Deploy your first AI voice agent and discover exactly where calls are dropping — and how much revenue it's costing you.
+              Deploy your first AI voice agent and discover exactly where calls are dropping — and how much revenue it&apos;s costing you.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <Link href="/signup" className="btn-primary px-10 py-3.5 text-base">

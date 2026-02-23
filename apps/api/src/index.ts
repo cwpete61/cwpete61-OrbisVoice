@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import { env } from "./env";
 import { logger } from "./logger";
 import { authRoutes } from "./routes/auth";
@@ -14,9 +16,15 @@ import billingRoutes from "./routes/billing";
 import userRoutes from "./routes/users";
 import twilioRoutes from "./routes/twilio";
 import googleAuthRoutes from "./routes/google-auth";
+import { affiliateRoutes } from "./routes/affiliates";
+import stripeWebhookRoutes from "./routes/stripe-webhooks";
 import { sessionManager } from "./services/session";
 import { settingsRoutes } from "./routes/settings";
+import { packageRoutes } from "./routes/packages";
 import { registerToolHandlers } from "./tools/handlers";
+import { referralManager } from "./services/referral";
+import { leadRoutes } from "./routes/leads";
+import { payoutRoutes } from "./routes/payouts";
 
 const fastify = Fastify({
   logger: logger.child({ context: "fastify" }) as any,
@@ -33,13 +41,30 @@ fastify.register(jwt, {
   secret: env.JWT_SECRET,
 });
 
+// Register Helmet for security headers
+fastify.register(helmet, {
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+});
+
+// Register Rate Limiting
+fastify.register(rateLimit, {
+  max: 100,
+  timeWindow: "1 minute",
+});
+
 // Health check endpoint
-fastify.get("/health", async (request, reply) => {
+fastify.get("/health", async () => {
   return { status: "ok", timestamp: new Date().toISOString() };
 });
 
 // Base API endpoint
-fastify.get("/api", async (request, reply) => {
+fastify.get("/api", async () => {
   return { message: "OrbisVoice API v1", version: "1.0.0" };
 });
 
@@ -58,6 +83,11 @@ fastify.register(userRoutes);
 fastify.register(twilioRoutes);
 fastify.register(googleAuthRoutes);
 fastify.register(settingsRoutes);
+fastify.register(affiliateRoutes);
+fastify.register(packageRoutes);
+fastify.register(stripeWebhookRoutes);
+fastify.register(payoutRoutes);
+fastify.register(leadRoutes, { prefix: "/api/leads" });
 
 // Start server
 const start = async () => {
@@ -76,6 +106,13 @@ const start = async () => {
 
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });
     logger.info(`Server running at http://0.0.0.0:${env.PORT}`);
+
+    // Set up background job to process commission holds (every hour)
+    setInterval(() => {
+      logger.info("Running scheduled clearPendingHolds...");
+      referralManager.clearPendingHolds();
+    }, 1000 * 60 * 60);
+
   } catch (err) {
     logger.error(err);
     process.exit(1);

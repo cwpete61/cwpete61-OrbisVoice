@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
 import { referralManager } from "../services/referral";
+import { affiliateManager } from "../services/affiliate";
 
 const SignupSchema = z.object({
   email: z.string().email(),
@@ -12,6 +13,7 @@ const SignupSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
   referralCode: z.string().optional(),
+  affiliateSlug: z.string().optional(),
 });
 
 const LoginSchema = z.object({
@@ -59,6 +61,11 @@ export async function authRoutes(fastify: FastifyInstance) {
           },
         });
 
+        // Fetch system wide commission default
+        const settings = await prisma.platformSettings.findUnique({
+          where: { id: "global" }
+        });
+
         // Create user
         const user = await prisma.user.create({
           data: {
@@ -67,8 +74,18 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
+            commissionLevel: settings?.defaultCommissionLevel || "LOW",
           } as any,
         });
+
+        // Handle affiliate if provided
+        if ((body as any).affiliateSlug) {
+          try {
+            await affiliateManager.recordReferral((body as any).affiliateSlug, user.id);
+          } catch (err) {
+            logger.error({ err, slug: (body as any).affiliateSlug, userId: user.id }, "Affiliate referral recording failed");
+          }
+        }
 
         // Handle referral if provided
         if (body.referralCode) {
@@ -123,7 +140,16 @@ export async function authRoutes(fastify: FastifyInstance) {
               { username: body.email }
             ]
           },
-        });
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            username: true,
+            passwordHash: true,
+            isBlocked: true,
+            tenantId: true
+          }
+        }) as any;
         if (!user) {
           return reply.code(401).send({
             ok: false,
@@ -147,9 +173,22 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
+        // Check if blocked
+        if (user.isBlocked) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Account is blocked. Please contact support.",
+          } as ApiResponse);
+        }
+
         // Generate JWT
         const token = fastify.jwt.sign(
-          { userId: user.id, tenantId: user.tenantId, email: user.email },
+          {
+            userId: user.id,
+            tenantId: user.tenantId,
+            email: user.email,
+            isBlocked: user.isBlocked
+          },
           { expiresIn: "7d" }
         );
 

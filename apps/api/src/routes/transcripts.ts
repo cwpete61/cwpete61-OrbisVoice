@@ -1,5 +1,4 @@
 import { FastifyInstance } from "fastify";
-import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";

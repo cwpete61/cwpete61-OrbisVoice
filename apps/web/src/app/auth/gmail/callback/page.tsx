@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function GmailCallbackPage() {
+function GmailCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Processing Gmail authorization...");
@@ -15,7 +15,8 @@ export default function GmailCallbackPage() {
     if (error) {
       setStatus(`Gmail authorization failed: ${error}`);
       setTimeout(() => {
-        window.close() || router.push("/settings");
+        window.close();
+        router.push("/settings");
       }, 2000);
       return;
     }
@@ -23,7 +24,8 @@ export default function GmailCallbackPage() {
     if (!code) {
       setStatus("Missing authorization code.");
       setTimeout(() => {
-        window.close() || router.push("/settings");
+        window.close();
+        router.push("/settings");
       }, 2000);
       return;
     }
@@ -31,7 +33,7 @@ export default function GmailCallbackPage() {
     const completeEmailConnect = async () => {
       try {
         const token = localStorage.getItem("token");
-        
+
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/connect`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -42,23 +44,26 @@ export default function GmailCallbackPage() {
         if (res.ok) {
           const data = await res.json();
           setStatus(`✓ Gmail connected successfully! Email: ${data.data?.gmailEmail || ""}`);
-          
+
           // Close popup or redirect back to settings
           setTimeout(() => {
-            window.close() || router.push("/settings?tab=gmail");
+            window.close();
+            router.push("/settings?tab=gmail");
           }, 1500);
         } else {
           const errorData = await res.json().catch(() => ({}));
           setStatus(`Connection failed: ${errorData.message || "Unknown error"}`);
-          
+
           setTimeout(() => {
-            window.close() || router.push("/settings");
+            window.close();
+            router.push("/settings");
           }, 2000);
         }
       } catch (err) {
         setStatus("Gmail connection failed. Please try again.");
         setTimeout(() => {
-          window.close() || router.push("/settings");
+          window.close();
+          router.push("/settings");
         }, 2000);
       }
     };
@@ -74,5 +79,13 @@ export default function GmailCallbackPage() {
         <p className="text-xs text-[rgba(240,244,250,0.35)] mt-4">This window will close automatically...</p>
       </div>
     </div>
+  );
+}
+
+export default function GmailCallbackPage() {
+  return (
+    <Suspense>
+      <GmailCallbackContent />
+    </Suspense>
   );
 }

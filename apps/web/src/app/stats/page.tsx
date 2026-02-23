@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 
@@ -22,7 +22,7 @@ interface AgentStats {
   last30DaysTrend: Record<string, number>;
 }
 
-export default function StatsPage() {
+function StatsContent() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [agentStats, setAgentStats] = useState<AgentStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ export default function StatsPage() {
       setLoading(true);
       setError("");
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         throw new Error("Not authenticated. Please log in again.");
       }
@@ -159,5 +159,13 @@ export default function StatsPage() {
         ) : null}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function StatsPage() {
+  return (
+    <Suspense>
+      <StatsContent />
+    </Suspense>
   );
 }

@@ -25,7 +25,8 @@
 - **ORM**: Prisma 5+ (or Drizzle ORM for lighter footprint)
 - **Validation**: Zod
 - **Authentication**: JWT tokens (signed with RS256 or HS256)
-- **Rate Limiting**: Token-bucket algorithm via Redis
+- **Rate Limiting**: `@fastify/rate-limit` (Redis-backed)
+- **Security Headers**: `@fastify/helmet`
 - **Logging**: Pino (structured JSON logs)
 - **Testing**: Vitest + Supertest (API integration tests)
 
@@ -145,3 +146,5 @@
 - Zod: ^3.20.0
 - Prisma: ^5.0.0
 - ws: ^8.14.0
+- @fastify/helmet: ^11.0.0
+- @fastify/rate-limit: ^9.0.0

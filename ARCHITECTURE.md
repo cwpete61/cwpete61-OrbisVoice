@@ -7,6 +7,7 @@ OrbisVoice is a multi-service monorepo SaaS where businesses deploy AI voice age
 - **Web App** (public marketing + authenticated dashboard)
 - **Backend API** (core business logic, multi-tenancy, tooling)
 - **Voice Gateway** (WebSocket proxy for real-time audio streaming to Gemini)
+- **Email System** (transactional notifications and templating)
 - **Referrals** (affiliate/referral attribution and tracking)
 - **Shared Libraries** (types, configs, utilities)
 
@@ -39,6 +40,8 @@ OrbisVoice is a multi-service monorepo SaaS where businesses deploy AI voice age
 - `POST /events` (webhook receiver for RefRef: signup, subscription, invoice)
 - `GET /usage` (tenant usage metrics)
 - `GET /referrals/me` (current user's referral/affiliate data)
+- **Security**: Rate limiting (100 req/min), Helmet security headers, `isBlocked` JWT enforcement.
+- **Email**: `EmailService` with template support (console mock for dev).
 - Rate limiting per tenant/API key
 
 **Technology**: Fastify, TypeScript, PostgreSQL, Redis

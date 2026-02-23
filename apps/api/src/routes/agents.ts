@@ -1,10 +1,9 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
-import { ApiResponse } from "../types";
+import { AuthPayload, ApiResponse } from "../types";
 import { requireNotBlocked } from "../middleware/auth";
-import { FastifyRequest } from "fastify";
 
 const CreateAgentSchema = z.object({
   name: z.string().min(1),
@@ -18,7 +17,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
   // List agents for tenant
   fastify.get("/agents", { onRequest: [requireNotBlocked] }, async (request: FastifyRequest, reply) => {
     try {
-      const tenantId = (request as any).user.tenantId;
+      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
       const agents = await prisma.agent.findMany({
         where: { tenantId },
       });
@@ -43,8 +42,31 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const body = CreateAgentSchema.parse(request.body);
-        const tenantId = (request as any).user.tenantId;
-        const userId = (request as any).user.userId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: {
+            subscriptionStatus: true,
+            usageCount: true,
+            usageLimit: true,
+            creditBalance: true,
+          },
+        }) as { subscriptionStatus: string; usageCount: number; usageLimit: number; creditBalance: number } | null;
+
+        if (!tenant) {
+          return reply.code(404).send({ ok: false, message: "Tenant not found" });
+        }
+
+        const hasActivePlan = tenant.subscriptionStatus === "active" && tenant.usageCount < tenant.usageLimit;
+        const hasCredits = tenant.creditBalance > 0;
+
+        if (!hasActivePlan && !hasCredits) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Insufficient credits or inactive plan. Please purchase a plan or conversation credits to create agents.",
+          } as ApiResponse);
+        }
 
         const agent = await prisma.agent.create({
           data: {
@@ -85,7 +107,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
-        const tenantId = (request as any).user.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
         const agent = await prisma.agent.findFirst({
           where: { id, tenantId },
@@ -120,7 +142,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       try {
         const { id } = request.params as { id: string };
         const body = UpdateAgentSchema.parse(request.body);
-        const tenantId = (request as any).user.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
         const agent = await prisma.agent.updateMany({
           where: { id, tenantId },
@@ -164,7 +186,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
-        const tenantId = (request as any).user.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
         const result = await prisma.agent.deleteMany({
           where: { id, tenantId },

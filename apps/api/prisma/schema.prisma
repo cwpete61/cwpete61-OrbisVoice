@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "./client"
 }
 
 datasource db {
@@ -27,6 +28,7 @@ model Tenant {
   users User[]
   agents Agent[]
   apiKeys ApiKey[]
+  leads Lead[]
   
   // Billing & Subscription fields
   stripeCustomerId     String?   @unique
@@ -38,6 +40,7 @@ model Tenant {
   usageCount           Int       @default(0)   // current month usage
   usageResetAt         DateTime  @default(now())
   billingEmail         String?
+  creditBalance        Int       @default(0) // Extra conversations purchased
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -83,8 +86,24 @@ model User {
   referralCodeUsed String?
   referralRewardTotal Float @default(0)
   referralsCreated Referral[] @relation("referrer")
+  affiliate Affiliate?
+  isAffiliate Boolean @default(false)
+  rewards RewardTransaction[] @relation("referrer_rewards")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Custom user fields for Referral / Affiliate programs
+  firstName String?
+  lastName String?
+  businessName String?
+  phone String?
+  address String?
+  unit String?
+  city String?
+  state String?
+  zip String?
+  tinSsn String?
+  taxFormUrl String?
 
   @@unique([tenantId, email])
 }
@@ -98,6 +117,7 @@ model Agent {
   voiceId String @default("default")
   transcripts Transcript[]
   toolAudits ToolExecutionAudit[]
+  leads Lead[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -136,6 +156,19 @@ model Referral {
   updatedAt DateTime @updatedAt
 }
 
+model RewardTransaction {
+  id              String           @id @default(cuid())
+  referrerId      String
+  referrer        User             @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId       String?
+  amount          Float
+  status          String           @default("pending") // pending, available, paid, refunded
+  sourcePaymentId String?          // e.g., Stripe charge ID
+  holdEndsAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
 model ToolExecutionAudit {
   id    String     @id @default(cuid())
   agentId String
@@ -148,6 +181,23 @@ model ToolExecutionAudit {
   errorMessage String?
   executionTimeMs Int @default(0)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  email     String?
+  summary   String?  @db.Text
+  isBooked  Boolean  @default(false)
+  metadata  String?  // JSON for extra info
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model GoogleAuthConfig {
@@ -156,6 +206,32 @@ model GoogleAuthConfig {
   clientSecret String?
   redirectUri String?
   enabled Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemEmailConfig {
+  id String @id @default("global")
+  username String? // email address
+  password String? // encrypted or plaintext
+  imapServer String?
+  imapPort String?
+  imapSecurity String? @default("SSL")
+  smtpServer String?
+  smtpPort String?
+  smtpSecurity String? @default("SSL")
+  pop3Server String?
+  pop3Port String?
+  pop3Security String? @default("SSL")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StripeConnectConfig {
+  id String @id @default("global")
+  clientId String?
+  enabled Boolean @default(false)
+  minimumPayout Float @default(100)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -207,7 +283,106 @@ model PlatformSettings {
   lowCommission   Float  @default(10)
   medCommission   Float  @default(20)
   highCommission  Float  @default(30)
+  commissionDurationMonths Int @default(0) // 0 means lifetime
+  defaultCommissionLevel CommissionLevel @default(HIGH)
+  payoutMinimum Float @default(100)
+  refundHoldDays Int @default(14)
+  payoutCycleDelayMonths Int @default(1)
+  transactionFeePercent Float @default(3.4)
+  starterLimit      Int      @default(1000)
+  professionalLimit Int      @default(10000)
+  enterpriseLimit   Int      @default(100000)
+  ltdLimit          Int      @default(1000)
+  aiInfraLimit      Int      @default(250000)
   updatedAt       DateTime @updatedAt
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum AffiliateReferralStatus {
+  PENDING
+  CONVERTED
+  REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model Affiliate {
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          AffiliateStatus  @default(PENDING)
+  slug            String           @unique
+  paymentInfo     String?          @db.Text // Encrypted or JSON string
+  
+  // Payout preferences
+  payoutMethod    String?          // e.g., 'stripe', 'paypal', 'zelle'
+  payoutEmail     String?          // PayPal or preferred payout email
+  payoutPhone     String?          // For Zelle payouts
+  
+  // Stripe Connect
+  stripeAccountId String?          @unique
+  stripeAccountStatus String?      // 'pending', 'active', 'restricted'
+
+  // Compliance
+  taxFormCompleted    Boolean      @default(false)
+  tax1099Uploaded     Boolean      @default(false)
+  lastPayoutAt        DateTime?
+
+  // Commission rate fields
+  lockedCommissionRate Float?       // Rate snapshotted at approval — never retroactively changes
+  customCommissionRate  Float?       // Admin-set per-partner override (takes priority over everything)
+
+  totalEarnings   Float            @default(0)
+  totalPaid       Float            @default(0)
+  balance         Float            @default(0)
+  referrals       AffiliateReferral[]
+  payouts         AffiliatePayout[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model AffiliateReferral {
+  id              String                  @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate               @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  refereeId       String?                 @unique
+  status          AffiliateReferralStatus @default(PENDING)
+  commissionAmount Float                  @default(0)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+}
+
+model AffiliatePayout {
+  id              String           @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amount          Float
+  feeAmount       Float            @default(0)
+  netAmount       Float            @default(0)
+  status          PayoutStatus     @default(PENDING)
+  method          String           @default("stripe") // stripe, paypal, manual
+  transactionId   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model ConversationPackage {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  credits   Int      // number of conversations
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 

@@ -3,11 +3,22 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../db.js";
-import { ApiResponse } from "../types.js";
+import { ApiResponse, AuthPayload } from "../types.js";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  businessName: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  unit: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  tinSsn: z.string().optional(),
+  taxFormUrl: z.string().optional(),
 });
 
 const UpdatePasswordSchema = z.object({
@@ -21,7 +32,7 @@ const AdminUpdateUserSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
   role: z.enum(["ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
-  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),
 });
 
@@ -33,14 +44,26 @@ const AdminCreateUserSchema = z.object({
     .min(3)
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
-  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure"]).optional(),
+  tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
+  isAffiliate: z.boolean().optional(),
 });
 
 const PlatformSettingsSchema = z.object({
   lowCommission: z.number().min(0),
   medCommission: z.number().min(0),
   highCommission: z.number().min(0),
+  commissionDurationMonths: z.number().int().min(0).default(0),
+  defaultCommissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
+  payoutMinimum: z.number().min(0).default(100),
+  refundHoldDays: z.number().int().min(0).default(14),
+  payoutCycleDelayMonths: z.number().int().min(0).default(1),
+  transactionFeePercent: z.number().min(0).max(100).default(3.4),
+  starterLimit: z.number().int().min(0),
+  professionalLimit: z.number().int().min(0),
+  enterpriseLimit: z.number().int().min(0),
+  ltdLimit: z.number().int().min(0),
+  aiInfraLimit: z.number().int().min(0),
 });
 
 const AdminBlockUserSchema = z.object({
@@ -58,7 +81,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
 
         const user = await prisma.user.findUnique({
           where: { id: userId },
@@ -75,17 +98,29 @@ export default async function userRoutes(fastify: FastifyInstance) {
             commissionLevel: true,
             referralCodeUsed: true,
             referralRewardTotal: true,
+            firstName: true,
+            lastName: true,
+            businessName: true,
+            phone: true,
+            address: true,
+            unit: true,
+            city: true,
+            state: true,
+            zip: true,
+            tinSsn: true,
+            taxFormUrl: true,
             createdAt: true,
             tenant: {
               select: {
                 id: true,
                 name: true,
+                creditBalance: true,
                 createdAt: true,
                 updatedAt: true,
               },
             },
           },
-        } as any) as any;
+        });
 
         if (!user) {
           return reply.code(404).send({
@@ -114,7 +149,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request, reply) => {
       try {
-        const userId = (request as any).user.userId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
         const body = UpdateProfileSchema.parse(request.body);
 
         // Get current user to verify they exist
@@ -151,7 +186,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             email: true,
             name: true,
           },
-        }) as any;
+        });
 
         return reply.send({
           ok: true,
@@ -174,7 +209,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request, reply) => {
       try {
-        const userId = (request as any).user.userId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
         const body = UpdatePasswordSchema.parse(request.body);
 
         // Get current user
@@ -234,8 +269,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const body = request.body as any;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const body = request.body;
 
         if (!body || !body.avatarData) {
           return reply.code(400).send({
@@ -265,14 +300,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         // Update user avatar
         const user = await prisma.user.update({
           where: { id: userId },
-          data: { avatar: avatarData } as any,
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            avatar: true,
-          } as any,
-        }) as any;
+          data: { avatar: avatarData },
+        });
 
         return reply.send({
           ok: true,
@@ -295,16 +324,38 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
-        const filter = (request.query as any)?.filter as string | undefined;
-        const paidFilter = {
-          tenant: { subscriptionStatus: "active" },
-        } as any;
-        const where =
-          filter === "paid"
-            ? paidFilter
-            : filter === "free"
-              ? { NOT: paidFilter }
-              : undefined;
+        const query = (request.query as any);
+        const filter = query.filter as string | undefined;
+        const search = query.search as string | undefined;
+
+        let where: any = {};
+
+        // Search filter
+        if (search) {
+          where.OR = [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ];
+        }
+
+        // Base filters
+        if (filter === "affiliates") {
+          where.isAffiliate = true;
+        } else if (filter === "referrers") {
+          where.isAffiliate = false;
+          where.affiliate = { isNot: null };
+        }
+
+        // Status filters (can be combined with base filters in a future update, 
+        // for now we'll support both via specialized query params or logic)
+        const subFilter = query.subFilter as string | undefined;
+        const paidFilter = { tenant: { subscriptionStatus: "active" } };
+
+        if (subFilter === "paid" || filter === "paid") {
+          where = { ...where, ...paidFilter };
+        } else if (subFilter === "free" || filter === "free") {
+          where = { ...where, NOT: paidFilter };
+        }
 
         const users = await prisma.user.findMany({
           where,
@@ -328,9 +379,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 subscriptionTier: true,
               },
             },
+            affiliate: {
+              select: {
+                id: true,
+                status: true,
+                slug: true,
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
-        } as any);
+        });
 
         return reply.send({
           ok: true,
@@ -366,7 +424,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
 
         const existingUsername = await prisma.user.findUnique({
-          where: { username: body.username } as any,
+          where: { username: body.username },
         });
         if (existingUsername) {
           return reply.code(400).send({
@@ -380,9 +438,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const tenant = await prisma.tenant.create({
           data: {
             name: `${body.name}'s Workspace`,
-            subscriptionTier: tier as any,
+            subscriptionTier: tier,
             subscriptionStatus: "active",
-          } as any,
+          },
         });
 
         const user = await prisma.user.create({
@@ -393,7 +451,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             passwordHash,
             tenantId: tenant.id,
             commissionLevel: body.commissionLevel,
-          } as any,
+          },
           select: {
             id: true,
             email: true,
@@ -410,7 +468,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
               },
             },
           },
-        } as any);
+        });
+
+        if (body.isAffiliate) {
+          try {
+            const { affiliateManager } = require("../services/affiliate.js");
+            await affiliateManager.applyForAffiliate(user.id, "ACTIVE");
+          } catch (e) {
+            fastify.log.error("Failed to automatically grant affiliate status to newly created user.");
+          }
+        }
 
         return reply.code(201).send({
           ok: true,
@@ -472,7 +539,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
               },
             },
           },
-        } as any);
+        });
 
         if (!user) {
           return reply.code(404).send({
@@ -507,7 +574,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const targetUser = await prisma.user.findUnique({
           where: { id: targetId },
           select: { id: true, email: true, username: true, isAdmin: true, role: true, tenantId: true },
-        } as any);
+        });
 
         if (!targetUser) {
           return reply.code(404).send({
@@ -553,7 +620,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         if (body.username && body.username !== targetUser.username) {
           const existingUsername = await prisma.user.findUnique({
-            where: { username: body.username } as any,
+            where: { username: body.username },
           });
           if (existingUsername) {
             return reply.code(400).send({
@@ -579,23 +646,23 @@ export default async function userRoutes(fastify: FastifyInstance) {
               subscriptionTier: true,
             },
           },
-        } as any;
+        };
 
-        const operations = [] as any[];
+        const operations = [];
         if (Object.keys(userData).length > 0) {
           operations.push(
             prisma.user.update({
               where: { id: targetId },
-              data: userData as any,
+              data: userData,
               select: userSelect,
-            } as any)
+            })
           );
         } else {
           operations.push(
             prisma.user.findUnique({
               where: { id: targetId },
               select: userSelect,
-            } as any)
+            })
           );
         }
 
@@ -604,10 +671,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
             prisma.tenant.update({
               where: { id: targetUser.tenantId },
               data: {
-                subscriptionTier: tier as any,
+                subscriptionTier: tier,
                 subscriptionStatus: "active",
-              } as any,
-            } as any)
+              },
+            })
           );
         }
 
@@ -648,7 +715,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const targetUser = await prisma.user.findUnique({
           where: { id: targetId },
           select: { id: true, username: true },
-        } as any);
+        });
 
         if (!targetUser) {
           return reply.code(404).send({
@@ -666,7 +733,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         const user = await prisma.user.update({
           where: { id: targetId },
-          data: { isBlocked: body.isBlocked } as any,
+          data: { isBlocked: body.isBlocked },
           select: {
             id: true,
             email: true,
@@ -677,7 +744,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             isBlocked: true,
             commissionLevel: true,
           },
-        } as any);
+        });
 
         return reply.send({
           ok: true,
@@ -714,7 +781,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const targetUser = await prisma.user.findUnique({
           where: { id: targetId },
           select: { id: true, username: true },
-        } as any);
+        });
 
         if (!targetUser) {
           return reply.code(404).send({
@@ -727,7 +794,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         await prisma.user.update({
           where: { id: targetId },
-          data: { passwordHash } as any,
+          data: { passwordHash },
         });
 
         return reply.send({
@@ -768,7 +835,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             tenantId: true,
             username: true,
           },
-        } as any);
+        });
 
         if (!user) {
           return reply.code(404).send({
@@ -808,7 +875,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const targetUser = await prisma.user.findUnique({
           where: { id: targetId },
           select: { id: true, username: true },
-        } as any);
+        });
 
         if (!targetUser) {
           return reply.code(404).send({
@@ -826,7 +893,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         await prisma.user.delete({
           where: { id: targetId },
-        } as any);
+        });
 
         return reply.send({
           ok: true,
@@ -850,7 +917,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const config = await prisma.googleAuthConfig.findUnique({
           where: { id: "google-auth-config" },
-        } as any);
+        });
 
         return reply.send({
           ok: true,
@@ -887,14 +954,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
             clientSecret: body.clientSecret,
             redirectUri: body.redirectUri,
             enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
-          } as any,
+          },
           create: {
             id: "google-auth-config",
             clientId: body.clientId || null,
             clientSecret: body.clientSecret || null,
             redirectUri: body.redirectUri || null,
             enabled: body.enabled ?? false,
-          } as any,
+          },
         });
 
         return reply.send({
@@ -912,14 +979,307 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Admin: get System Email configuration
+  fastify.get(
+    "/admin/system-email",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const config = await prisma.systemEmailConfig.findUnique({
+          where: { id: "global" },
+        });
+
+        return reply.send({
+          ok: true,
+          data: config || {
+            username: "",
+            password: "",
+            imapServer: "",
+            imapPort: "",
+            imapSecurity: "SSL",
+            smtpServer: "",
+            smtpPort: "",
+            smtpSecurity: "SSL",
+            pop3Server: "",
+            pop3Port: "",
+            pop3Security: "SSL",
+          },
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to fetch system email config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: update System Email configuration
+  fastify.put<{ Body: any }>(
+    "/admin/system-email",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const body = (request.body as any) || {};
+
+        const config = await prisma.systemEmailConfig.upsert({
+          where: { id: "global" },
+          update: {
+            username: body.username,
+            password: body.password,
+            imapServer: body.imapServer,
+            imapPort: body.imapPort,
+            imapSecurity: body.imapSecurity,
+            smtpServer: body.smtpServer,
+            smtpPort: body.smtpPort,
+            smtpSecurity: body.smtpSecurity,
+            pop3Server: body.pop3Server,
+            pop3Port: body.pop3Port,
+            pop3Security: body.pop3Security,
+          },
+          create: {
+            id: "global",
+            username: body.username,
+            password: body.password,
+            imapServer: body.imapServer,
+            imapPort: body.imapPort,
+            imapSecurity: body.imapSecurity || "SSL",
+            smtpServer: body.smtpServer,
+            smtpPort: body.smtpPort,
+            smtpSecurity: body.smtpSecurity || "SSL",
+            pop3Server: body.pop3Server,
+            pop3Port: body.pop3Port,
+            pop3Security: body.pop3Security || "SSL",
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          data: config,
+          message: "System email configuration updated",
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to update system email config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: get Stripe Connect configuration
+  fastify.get(
+    "/admin/stripe-connect",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const config = await (prisma).stripeConnectConfig.findUnique({
+          where: { id: "global" },
+        });
+
+        return reply.send({
+          ok: true,
+          data: config || {
+            clientId: "",
+            enabled: false,
+            minimumPayout: 100,
+          },
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to fetch Stripe Connect config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: update Stripe Connect configuration
+  fastify.put<{ Body: any }>(
+    "/admin/stripe-connect",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const body = (request.body as any) || {};
+
+        const config = await (prisma).stripeConnectConfig.upsert({
+          where: { id: "global" },
+          update: {
+            clientId: body.clientId,
+            enabled: body.enabled,
+            minimumPayout: body.minimumPayout,
+          },
+          create: {
+            id: "global",
+            clientId: body.clientId,
+            enabled: body.enabled || false,
+            minimumPayout: body.minimumPayout || 100,
+          },
+        });
+
+        return reply.send({
+          ok: true,
+          data: config,
+          message: "Stripe Connect configuration updated",
+        } as ApiResponse);
+      } catch (err) {
+        console.error("Failed to update Stripe Connect config:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: test Stripe Connect connection
+  fastify.post(
+    "/admin/stripe-connect/test",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const stripeModule = await import("stripe");
+        const Stripe = stripeModule.default;
+
+        // Use the environment variable Stripe key
+        const stripeKey = process.env.STRIPE_API_KEY;
+        if (!stripeKey) {
+          return reply.code(400).send({
+            ok: false,
+            message: "No STRIPE_API_KEY found in server environment",
+          } as ApiResponse);
+        }
+
+        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
+
+        // Attempt to fetch the account details to verify the key works
+        const account = await stripe.accounts.retrieve();
+
+        return reply.send({
+          ok: true,
+          data: {
+            id: account.id,
+            name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Unknown Account Name",
+            email: account.email
+          },
+          message: "Successfully connected to Stripe!",
+        } as ApiResponse);
+      } catch (err: any) {
+        console.error("Failed to test Stripe Connect connection:", err);
+        return reply.code(400).send({
+          ok: false,
+          message: err.message || "Failed to connect to Stripe",
+        } as ApiResponse);
+      }
+    }
+  );
+
+  // Admin: test System Email configuration
+  fastify.post<{ Body: { testEmail: string; forceDevMode?: boolean } }>(
+    "/admin/system-email/test",
+    { onRequest: [requireAdmin] },
+    async (request, reply) => {
+      try {
+        const { testEmail, forceDevMode } = request.body || {};
+
+        if (!testEmail) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Test email address is required",
+          } as ApiResponse);
+        }
+
+        const config = await prisma.systemEmailConfig.findUnique({
+          where: { id: "global" },
+        });
+
+        const nodemailer = await import("nodemailer");
+        let transporter: any;
+        let isDevTest = false;
+
+        const isDevEnv = process.env.NODE_ENV !== "production";
+        const requiresDevFallback = (!config || !config.smtpServer || !config.username || !config.password);
+        const shouldRunDevMode = isDevEnv && (forceDevMode || requiresDevFallback);
+
+        if (shouldRunDevMode) {
+          const testAccount = await nodemailer.createTestAccount();
+          transporter = nodemailer.createTransport({
+            host: "smtp.ethereal.email",
+            port: 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+              user: testAccount.user, // generated ethereal user
+              pass: testAccount.pass, // generated ethereal password
+            },
+            tls: {
+              rejectUnauthorized: false
+            }
+          });
+          isDevTest = true;
+        } else if (requiresDevFallback) {
+          return reply.code(400).send({
+            ok: false,
+            message: "System email is not fully configured. Please save SMTP settings first.",
+          } as ApiResponse);
+        } else {
+          // Determine secure port logic
+          const port = parseInt(config.smtpPort || "587");
+          const secure = port === 465 || config.smtpSecurity === "SSL";
+
+          transporter = nodemailer.createTransport({
+            host: config.smtpServer,
+            port,
+            secure,
+            auth: {
+              user: config.username,
+              pass: config.password,
+            },
+          } as any);
+
+          // Verify connection for real configs
+          await transporter.verify();
+        }
+
+        // Send test email
+        const info = await transporter.sendMail({
+          from: `"OrbisVoice System" <${config?.username || "test@orbisvoice.local"}>`,
+          to: testEmail,
+          subject: "Test Email from OrbisVoice",
+          text: "This is a test email sent from the OrbisVoice System Email configuration panel.",
+          html: "<p>This is a test email sent from the <strong>OrbisVoice System Email</strong> configuration panel.</p>",
+        });
+
+        let successMessage = "Test email sent successfully! Please check your inbox.";
+        if (isDevTest) {
+          const previewUrl = nodemailer.getTestMessageUrl(info);
+          successMessage = `Dev mode: Email sent via Ethereal. ${previewUrl}`;
+        }
+
+        return reply.send({
+          ok: true,
+          message: successMessage,
+        } as ApiResponse);
+      } catch (err: any) {
+        console.error("Test email failed:", err);
+        return reply.code(500).send({
+          ok: false,
+          message: `Failed to send test email: ${err.message || "Unknown error"}`,
+        } as ApiResponse);
+      }
+    }
+  );
+
   // Get calendar connection status for current user
   fastify.get(
     "/users/me/calendar",
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         const creds = await prisma.calendarCredentials.findUnique({
           where: {
@@ -934,7 +1294,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             createdAt: true,
             expiresAt: true,
           },
-        }) as any;
+        });
 
         return reply.send({
           ok: true,
@@ -959,8 +1319,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         await prisma.calendarCredentials.deleteMany({
           where: {
@@ -989,8 +1349,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         const creds = await prisma.gmailCredentials.findUnique({
           where: {
@@ -1006,7 +1366,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             createdAt: true,
             expiresAt: true,
           },
-        }) as any;
+        });
 
         return reply.send({
           ok: true,
@@ -1031,8 +1391,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         await prisma.gmailCredentials.deleteMany({
           where: {
@@ -1099,10 +1459,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
-        const body = request.body as any;
-        const { code } = body;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
+        const body = request.body;
+        const { code } = body as any;
 
         if (!code) {
           return reply.code(400).send({
@@ -1128,8 +1488,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
 
         // Get user's email from the token
-        const { oauth2 } = await import("googleapis");
-        const oauth2Api = oauth2({ version: "v2", auth: client });
+        const { google } = await import("googleapis");
+        const oauth2Api = google.oauth2({ version: "v2", auth: client as any });
         client.setCredentials(tokens);
         const userInfo = await oauth2Api.userinfo.get();
 
@@ -1147,7 +1507,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token || null,
             expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-            gmailEmail: (userInfo.data as any).email,
+            gmailEmail: (userInfo.data).email,
             scope: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email",
             verified: true,
           },
@@ -1155,7 +1515,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token || null,
             expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-            gmailEmail: (userInfo.data as any).email,
+            gmailEmail: (userInfo.data).email,
             verified: true,
           },
         });
@@ -1164,7 +1524,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           ok: true,
           message: "Gmail connected successfully",
           data: {
-            gmailEmail: (userInfo.data as any).email,
+            gmailEmail: (userInfo.data).email,
           },
         } as ApiResponse);
       } catch (err) {
@@ -1183,8 +1543,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         const creds = await prisma.gmailCredentials.findUnique({
           where: {
@@ -1220,8 +1580,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         await prisma.gmailCredentials.delete({
           where: {
@@ -1252,8 +1612,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
-        const userId = (request as any).user.userId;
-        const tenantId = (request as any).user.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
+        const tenantId = (request as any).user?.tenantId;
 
         const creds = await prisma.gmailCredentials.findUnique({
           where: {
@@ -1262,7 +1622,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
               tenantId,
             },
           },
-        }) as any;
+        });
 
         if (!creds) {
           return reply.code(400).send({
@@ -1351,6 +1711,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
               lowCommission: 10,
               medCommission: 20,
               highCommission: 30,
+              commissionDurationMonths: 0,
+              defaultCommissionLevel: "LOW",
+              payoutMinimum: 100,
+              refundHoldDays: 14,
+              payoutCycleDelayMonths: 1,
+              transactionFeePercent: 3.4,
+              starterLimit: 1000,
+              professionalLimit: 10000,
+              enterpriseLimit: 100000,
+              ltdLimit: 1000,
+              aiInfraLimit: 250000,
             },
           });
         }
@@ -1377,6 +1748,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const body = PlatformSettingsSchema.parse(request.body);
 
+        const oldSettings = await prisma.platformSettings.findUnique({
+          where: { id: "global" },
+          select: { defaultCommissionLevel: true }
+        });
+        const oldLevel = oldSettings?.defaultCommissionLevel || "LOW";
+
         const settings = await prisma.platformSettings.upsert({
           where: { id: "global" },
           update: body,
@@ -1385,6 +1762,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
             ...body,
           },
         });
+
+        // Dynamically shift all users matching the old default to the new baseline
+        if (body.defaultCommissionLevel && oldLevel !== body.defaultCommissionLevel) {
+          await prisma.user.updateMany({
+            where: { commissionLevel: oldLevel },
+            data: { commissionLevel: body.defaultCommissionLevel },
+          });
+          fastify.log.info({ oldLevel, newLevel: body.defaultCommissionLevel }, "Dynamically updated users to new default commission level");
+        }
 
         return reply.send({
           ok: true,
@@ -1409,3 +1795,4 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   );
 }
+

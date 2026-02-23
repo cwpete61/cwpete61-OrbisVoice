@@ -3,7 +3,7 @@ import { z } from "zod";
 import { OAuth2Client } from "google-auth-library";
 import axios from "axios";
 import { prisma } from "../db.js";
-import { ApiResponse } from "../types.js";
+import { ApiResponse, AuthPayload } from "../types.js";
 import { env } from "../env.js";
 import { authenticate } from "../middleware/auth.js";
 
@@ -39,7 +39,7 @@ const getGoogleConfig = async (tenantId?: string) => {
       redirectUri:
         config?.redirectUri ||
         env.GOOGLE_REDIRECT_URI ||
-        "http://localhost:3000/auth/google/callback",
+        "http://localhost:3000/api/auth/callback/google",
       enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
     };
   } catch (error) {
@@ -210,7 +210,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
         // Check if user with this Google ID exists
         let user = await prisma.user.findUnique({
           where: { googleId },
-        } as any);
+        });
 
         if (!user) {
           // Check if user with this email exists
@@ -228,7 +228,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
                 googleName,
                 googleProfilePicture,
                 googleAuthProvider: "google",
-              } as any,
+              },
             });
           } else {
             // Create new user with Google account
@@ -237,6 +237,11 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               data: {
                 name: `${googleName}'s Workspace`,
               },
+            });
+
+            // Fetch system wide commission default
+            const settings = await prisma.platformSettings.findUnique({
+              where: { id: "global" }
             });
 
             user = await prisma.user.create({
@@ -249,7 +254,8 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
                 googleName,
                 googleProfilePicture,
                 googleAuthProvider: "google",
-              } as any,
+                commissionLevel: settings?.defaultCommissionLevel || "LOW",
+              },
             });
           }
         } else if (
@@ -286,7 +292,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               id: user.id,
               email: user.email,
               name: user.name,
-              username: (user as any).username,
+              username: (user).username,
               avatar: user.avatar || googleProfilePicture,
             },
           },
@@ -315,7 +321,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request, reply) => {
       try {
-        const userId = (request as any).user?.userId;
+        const userId = (request as unknown as { user: AuthPayload }).user?.userId;
         if (!userId) {
           return reply.code(401).send({
             ok: false,
@@ -323,7 +329,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const tenantId = (request as any).user?.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user?.tenantId;
         const googleConfig = await getGoogleConfig(tenantId);
         if (!googleConfig.clientId || !googleConfig.enabled) {
           return reply.code(503).send({
@@ -380,7 +386,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const { code, state } = request.body;
-        const user = (request as any).user;
+        const user = (request as unknown as { user: AuthPayload }).user;
         const userId = user?.userId;
         const tenantId = user?.tenantId;
 
@@ -470,7 +476,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               calendarEmail,
               scope: tokens.scope || "",
             },
-          } as any);
+          });
 
           fastify.log.info({ userId, calendarEmail }, "User calendar connected");
 
@@ -504,7 +510,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     { onRequest: [authenticate] },
     async (request, reply) => {
       try {
-        const userId = (request as any).user?.userId;
+        const userId = (request as unknown as { user: AuthPayload }).user?.userId;
         if (!userId) {
           return reply.code(401).send({
             ok: false,
@@ -512,7 +518,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const tenantId = (request as any).user?.tenantId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user?.tenantId;
         const googleConfig = await getGoogleConfig(tenantId);
         if (!googleConfig.clientId || !googleConfig.enabled) {
           return reply.code(503).send({
@@ -569,8 +575,8 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const { code, state } = request.body;
-        const userId = (request as any).user?.userId;
-        const tenantId = (request as any).user?.tenantId;
+        const userId = (request as unknown as { user: AuthPayload }).user?.userId;
+        const tenantId = (request as unknown as { user: AuthPayload }).user?.tenantId;
 
         if (!userId || !tenantId) {
           return reply.code(401).send({
@@ -659,7 +665,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               scope: tokens.scope || "",
               verified: true,
             },
-          } as any);
+          });
 
           fastify.log.info({ userId, gmailEmail }, "User Gmail connected");
 

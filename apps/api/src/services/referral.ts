@@ -1,16 +1,6 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
 
-export interface ReferralData {
-  referrerId: string;
-  refereeId: string;
-  code: string;
-  status: "pending" | "accepted" | "completed";
-  rewardAmount?: number;
-  rewardCurrency?: string;
-  expiresAt?: Date;
-}
-
 class ReferralManager {
   // Generate unique referral code
   generateCode(userId: string): string {
@@ -35,8 +25,8 @@ class ReferralManager {
         data: {
           referrerId: userId,
           code,
-          status: 'pending', // Initial status for the code itself
-          rewardAmount: 5,   // $5 per referral
+          status: 'pending',
+          rewardAmount: 0,   // Legacy
         }
       });
 
@@ -44,33 +34,6 @@ class ReferralManager {
     } catch (err) {
       logger.error({ err, userId }, "Failed to get or create referral code");
       throw err;
-    }
-  }
-
-  // Create referral link when someone uses a code
-  async createReferralRecord(code: string, refereeId: string): Promise<boolean> {
-    try {
-      const parentReferral = await prisma.referral.findUnique({
-        where: { code }
-      });
-
-      if (!parentReferral) return false;
-
-      // Create a specific record for this successful sign-up
-      await prisma.referral.create({
-        data: {
-          referrerId: parentReferral.referrerId,
-          refereeId: refereeId,
-          code: `${code}_${refereeId}`, // Unique sub-code
-          status: 'accepted',
-          rewardAmount: 5,
-        }
-      });
-
-      return true;
-    } catch (err) {
-      logger.error({ err, code, refereeId }, "Failed to create referral record");
-      return false;
     }
   }
 
@@ -85,86 +48,238 @@ class ReferralManager {
         return { success: false };
       }
 
-      // Track the usage
-      await prisma.referral.create({
-        data: {
-          referrerId: referral.referrerId,
-          refereeId,
-          code: `USE_${code}_${refereeId}_${Date.now()}`,
-          status: 'accepted',
-          rewardAmount: 5, // Reward for referrer
-        }
-      });
-
-      // Update referee
+      // Update referee to link them
       await prisma.user.update({
         where: { id: refereeId },
         data: { referralCodeUsed: code }
       });
 
-      logger.info({ code, refereeId }, "Referral code redeemed");
+      logger.info({ code, refereeId }, "Referral code redeemed (linked)");
 
       return {
         success: true,
-        reward: 10, // $10 credit for signup given to the new user
       };
     } catch (err) {
-      logger.error({ err, code }, "Failed to redeem referral");
+      logger.error({ err, code }, "Failed to link referral");
       return { success: false };
     }
   }
 
-  // Mark referral as completed
-  async completeReferral(referralId: string): Promise<boolean> {
+  // Process commission on payment
+  async processCommission(refereeId: string, paymentAmount: number, paymentId: string): Promise<boolean> {
     try {
-      await prisma.referral.update({
-        where: { id: referralId },
-        data: { status: 'completed' },
+      // Get the referee to check who referred them
+      const referee = await prisma.user.findUnique({
+        where: { id: refereeId },
+        select: { referralCodeUsed: true }
       });
 
-      logger.info({ referralId }, "Referral completed");
+      if (!referee?.referralCodeUsed) return false;
+
+      // Ensure this payment hasn't already been processed
+      const existingTx = await prisma.rewardTransaction.findFirst({
+        where: { sourcePaymentId: paymentId }
+      });
+
+      if (existingTx) return false;
+
+      // ENFORCE ONE-TIME COMMISSIONS: Check if any reward transaction exists for this referee 
+      const existingRefereeTx = await prisma.rewardTransaction.findFirst({
+        where: { refereeId }
+      });
+
+      if (existingRefereeTx) {
+        logger.info({ refereeId, paymentId }, "Skipping commission: One-time limit already reached for this referee");
+        return false;
+      }
+
+      // Find the referrer: Check standard referrals first
+      const referralCode = await prisma.referral.findUnique({
+        where: { code: referee.referralCodeUsed },
+        select: { referrerId: true }
+      });
+
+      let referrerId: string | undefined;
+      let affiliateRecord: { customCommissionRate: number | null, lockedCommissionRate: number | null } | null = null;
+
+      if (referralCode) {
+        referrerId = referralCode.referrerId;
+        // Try to find their affiliate record for locked/custom rates
+        const aff = await prisma.affiliate.findUnique({
+          where: { userId: referrerId },
+          select: { customCommissionRate: true, lockedCommissionRate: true }
+        });
+        affiliateRecord = aff;
+      } else {
+        // If not found, check if it's an affiliate slug
+        const affiliate = await prisma.affiliate.findUnique({
+          where: { slug: referee.referralCodeUsed },
+          select: { userId: true, customCommissionRate: true, lockedCommissionRate: true }
+        });
+        if (affiliate) {
+          referrerId = affiliate.userId;
+          affiliateRecord = affiliate;
+        }
+      }
+
+      if (!referrerId) return false;
+
+      // Get platform settings for rates and hold period
+      const settings = await prisma.platformSettings.findUnique({
+        where: { id: "global" }
+      });
+
+      // ── Commission rate priority chain ──────────────────────────────────
+      // 1. customCommissionRate  — Per-partner admin override (highest priority)
+      // 2. lockedCommissionRate  — Rate snapshotted at approval (immune to global changes)
+      // 3. Global tier rate      — Current PlatformSettings rate (lowest priority)
+      let ratePercentage: number;
+
+      if (affiliateRecord?.customCommissionRate != null) {
+        // Admin has set a specific custom rate for this partner
+        ratePercentage = affiliateRecord.customCommissionRate;
+        logger.info({ referrerId, ratePercentage }, "Using custom per-partner commission rate");
+      } else if (affiliateRecord?.lockedCommissionRate != null) {
+        // Use the rate that was locked in when this partner was approved
+        ratePercentage = affiliateRecord.lockedCommissionRate;
+        logger.info({ referrerId, ratePercentage }, "Using locked commission rate (immune to global changes)");
+      } else {
+        // Fall back to current global tier rate based on user's assigned level
+        const referrerUser = await prisma.user.findUnique({
+          where: { id: referrerId },
+          select: { commissionLevel: true }
+        });
+        const userLevel = referrerUser?.commissionLevel || settings?.defaultCommissionLevel || "LOW";
+        ratePercentage = settings?.lowCommission ?? 10;
+        if (userLevel === "MED") ratePercentage = settings?.medCommission ?? 20;
+        if (userLevel === "HIGH") ratePercentage = settings?.highCommission ?? 30;
+        logger.info({ referrerId, ratePercentage, userLevel }, "Using user-specific global tier commission rate");
+      }
+      // ───────────────────────────────────────────────────────────────────
+
+      const rate = ratePercentage / 100;
+      const delayMonths = settings?.payoutCycleDelayMonths ?? 1;
+
+      const commissionAmount = paymentAmount * rate;
+
+      const holdEndsAt = new Date();
+      holdEndsAt.setMonth(holdEndsAt.getMonth() + delayMonths);
+
+      // Create pending reward transaction
+      await prisma.rewardTransaction.create({
+        data: {
+          referrerId: referrerId,
+          refereeId: refereeId,
+          amount: commissionAmount,
+          status: 'pending',
+          sourcePaymentId: paymentId,
+          holdEndsAt: holdEndsAt
+        }
+      });
+
+      logger.info({ referrerId: referrerId, commissionAmount, ratePercentage }, "Commission processed");
       return true;
     } catch (err) {
-      logger.error({ err, referralId }, "Failed to complete referral");
+      logger.error({ err, refereeId }, "Failed to process commission");
       return false;
+    }
+  }
+
+  // Clear pending holds that have passed their holdEndsAt date
+  async clearPendingHolds(): Promise<number> {
+    try {
+      const now = new Date();
+      const updated = await prisma.rewardTransaction.updateMany({
+        where: {
+          status: 'pending',
+          holdEndsAt: {
+            lte: now
+          }
+        },
+        data: {
+          status: 'available'
+        }
+      });
+
+      if (updated.count > 0) {
+        logger.info({ count: updated.count }, "Cleared pending commission holds");
+      }
+      return updated.count;
+    } catch (err) {
+      logger.error(err, "Failed to clear pending holds");
+      return 0;
     }
   }
 
   // Get referral stats for user
   async getReferralStats(referrerId: string): Promise<{
-    totalReferred: number;
-    accepted: number;
-    completed: number;
+    totalClicks: number;
+    totalSignups: number;
+    pendingRewards: number;
+    availableRewards: number;
     totalRewards: number;
+    transactionFeePercent: number;
+    estimatedFee: number;
+    estimatedNetBalance: number;
     referrals: any[];
+    transactions: any[];
   }> {
     try {
-      const allReferrals = await prisma.referral.findMany({
-        where: {
-          referrerId,
-          refereeId: { not: null } // Only records representing people signed up
-        },
-        include: {
-          referrer: {
-            select: { name: true, email: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
+      // For signups, we look at users who have this referrer's code
+      const codes = await prisma.referral.findMany({
+        where: { referrerId },
+        select: { code: true }
+      });
+      const codeStrings = codes.map(c => c.code);
+
+      // Add affiliate slug if the user is an affiliate
+      const affiliate = await prisma.affiliate.findUnique({
+        where: { userId: referrerId },
+        select: { slug: true }
+      });
+      if (affiliate) {
+        codeStrings.push(affiliate.slug);
+      }
+
+      const signups = await prisma.user.findMany({
+        where: { referralCodeUsed: { in: codeStrings } },
+        select: { id: true, name: true, email: true, createdAt: true }
       });
 
-      const accepted = allReferrals.filter(r => r.status === 'accepted').length;
-      const completed = allReferrals.filter(r => r.status === 'completed').length;
-      const totalRewards = allReferrals
-        .filter(r => r.status === 'completed' || r.status === 'accepted')
-        .reduce((sum, r) => sum + (r.rewardAmount || 0), 0);
+      // For monetary stats, we query RewardTransactions
+      const txs = await prisma.rewardTransaction.findMany({
+        where: { referrerId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          referrer: { select: { name: true, email: true } }
+        }
+      });
+
+      // Fetch transaction fee setting
+      const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+      const feePercent = settings?.transactionFeePercent || 3.4;
+
+      const pendingRewards = txs.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0);
+      const availableRewards = txs.filter(t => t.status === 'available').reduce((sum, t) => sum + t.amount, 0);
+      const totalRewards = txs.filter(t => t.status === 'available' || t.status === 'paid').reduce((sum, t) => sum + t.amount, 0);
+
+      // Transparency: Calculate estimated fees for the available balance
+      const estimatedFee = availableRewards * (feePercent / 100);
+      const estimatedNetBalance = availableRewards - estimatedFee;
 
       return {
-        totalReferred: allReferrals.length,
-        accepted,
-        completed,
+        totalClicks: 0,
+        totalSignups: signups.length,
+        pendingRewards,
+        availableRewards,
         totalRewards,
-        referrals: allReferrals
+        transactionFeePercent: feePercent,
+        estimatedFee,
+        estimatedNetBalance,
+        referrals: signups,
+        transactions: txs
       };
+
     } catch (err) {
       logger.error({ err, referrerId }, "Failed to get referral stats");
       throw err;
