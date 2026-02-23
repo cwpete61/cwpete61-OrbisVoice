@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
+import { API_BASE } from "@/lib/api";
 
 function SettingsContent() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
@@ -129,7 +130,7 @@ function SettingsContent() {
   const fetchGmailCredentials = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/credentials`, {
+      const res = await fetch(`${API_BASE}/users/me/gmail/credentials`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -148,7 +149,7 @@ function SettingsContent() {
   const fetchApiKeys = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api-keys`, {
+      const res = await fetch(`${API_BASE}/api-keys`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -163,7 +164,7 @@ function SettingsContent() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -178,7 +179,7 @@ function SettingsContent() {
   const fetchGoogleConfig = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/google-auth/config`, {
+      const res = await fetch(`${API_BASE}/admin/google-auth/config`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -200,7 +201,7 @@ function SettingsContent() {
     try {
       setTenantConfigLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/google-config?include_secrets=true`, {
+      const res = await fetch(`${API_BASE}/settings/google-config?include_secrets=true`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -227,7 +228,7 @@ function SettingsContent() {
     setTenantConfigMessage(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/google-config`, {
+      const res = await fetch(`${API_BASE}/settings/google-config`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -263,7 +264,7 @@ function SettingsContent() {
     setTenantConfigMessage(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/google-config`, {
+      const res = await fetch(`${API_BASE}/settings/google-config`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -289,7 +290,7 @@ function SettingsContent() {
     try {
       setTwilioLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/twilio/config`, {
+      const res = await fetch(`${API_BASE}/twilio/config`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -315,7 +316,7 @@ function SettingsContent() {
     setTwilioMessage(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/twilio/config`, {
+      const res = await fetch(`${API_BASE}/twilio/config`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -343,7 +344,7 @@ function SettingsContent() {
     try {
       setSystemEmailLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/system-email`, {
+      const res = await fetch(`${API_BASE}/admin/system-email`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -377,7 +378,7 @@ function SettingsContent() {
     setSystemEmailMessage(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/system-email`, {
+      const res = await fetch(`${API_BASE}/admin/system-email`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -411,7 +412,7 @@ function SettingsContent() {
     setSystemEmailTestResult(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/system-email/test`, {
+      const res = await fetch(`${API_BASE}/admin/system-email/test`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -437,7 +438,7 @@ function SettingsContent() {
   const fetchStripeConnectConfig = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stripe-connect`, {
+      const res = await fetch(`${API_BASE}/admin/stripe-connect`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -457,7 +458,7 @@ function SettingsContent() {
     setStripeConnectMessage(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stripe-connect`, {
+      const res = await fetch(`${API_BASE}/admin/stripe-connect`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -489,7 +490,7 @@ function SettingsContent() {
     setStripeConnectTestResult(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stripe-connect/test`, {
+      const res = await fetch(`${API_BASE}/admin/stripe-connect/test`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -525,7 +526,7 @@ function SettingsContent() {
     setGoogleSaveSuccess(false);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/google-auth/config`, {
+      const res = await fetch(`${API_BASE}/admin/google-auth/config`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -550,7 +551,7 @@ function SettingsContent() {
     setGoogleTestResult(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/url`, {
+      const res = await fetch(`${API_BASE}/auth/google/url`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -589,7 +590,7 @@ function SettingsContent() {
   const checkCalendarConnection = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/calendar`, {
+      const res = await fetch(`${API_BASE}/users/me/calendar`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -605,7 +606,7 @@ function SettingsContent() {
     try {
       setCalendarLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/calendar-url`, {
+      const res = await fetch(`${API_BASE}/auth/google/calendar-url`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -630,7 +631,7 @@ function SettingsContent() {
     try {
       setCalendarLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/calendar`, {
+      const res = await fetch(`${API_BASE}/users/me/calendar`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -648,7 +649,7 @@ function SettingsContent() {
   const checkGmailConnection = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/credentials`, {
+      const res = await fetch(`${API_BASE}/users/me/gmail/credentials`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -666,7 +667,7 @@ function SettingsContent() {
     try {
       setGmailLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/gmail-url`, {
+      const res = await fetch(`${API_BASE}/auth/google/gmail-url`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -690,7 +691,7 @@ function SettingsContent() {
     setGmailTestResult(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/verify`, {
+      const res = await fetch(`${API_BASE}/users/me/gmail/verify`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -726,7 +727,7 @@ function SettingsContent() {
     try {
       setGmailLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/disconnect`, {
+      const res = await fetch(`${API_BASE}/users/me/gmail/disconnect`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -752,7 +753,7 @@ function SettingsContent() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api-keys`, {
+      const res = await fetch(`${API_BASE}/api-keys`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: newKeyName }),
@@ -776,7 +777,7 @@ function SettingsContent() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api-keys/${keyId}`, {
+      const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

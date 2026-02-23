@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 
 import PasswordInput from "./PasswordInput";
+import { API_BASE } from "@/lib/api";
 
 interface ProfileMenuProps {
   onClose?: () => void;
@@ -28,7 +29,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -70,7 +71,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +110,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/password`, {
+      const res = await fetch(`${API_BASE}/users/me/password`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -162,7 +163,7 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
         try {
           const token = localStorage.getItem("token");
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/avatar`, {
+          const res = await fetch(`${API_BASE}/users/me/avatar`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

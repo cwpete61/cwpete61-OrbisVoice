@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { toast } from "react-hot-toast";
+import { API_BASE } from "@/lib/api";
 
 interface Package {
     id: string;
@@ -30,7 +31,7 @@ export default function PackagesPage() {
     const fetchPackages = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/packages`, {
+            const res = await fetch(`${API_BASE}/admin/packages`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -50,8 +51,8 @@ export default function PackagesPage() {
         const token = localStorage.getItem("token");
         const method = editingPackage ? "PUT" : "POST";
         const url = editingPackage
-            ? `${process.env.NEXT_PUBLIC_API_URL}/admin/packages/${editingPackage.id}`
-            : `${process.env.NEXT_PUBLIC_API_URL}/admin/packages`;
+            ? `${API_BASE}/admin/packages/${editingPackage.id}`
+            : `${API_BASE}/admin/packages`;
 
         try {
             const res = await fetch(url, {
@@ -87,7 +88,7 @@ export default function PackagesPage() {
         if (!confirm("Are you sure you want to delete this package?")) return;
         const token = localStorage.getItem("token");
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/packages/${id}`, {
+            const res = await fetch(`${API_BASE}/admin/packages/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });

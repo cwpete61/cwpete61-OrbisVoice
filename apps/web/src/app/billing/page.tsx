@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
+import { API_BASE } from "@/lib/api";
 
 interface TierInfo {
   conversations: number;
@@ -105,7 +106,7 @@ function BillingContent() {
   const fetchSubscription = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/subscription`, {
+      const res = await fetch(`${API_BASE}/billing/subscription`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -130,7 +131,7 @@ function BillingContent() {
 
   const fetchAvailableTiers = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/tiers`);
+      const res = await fetch(`${API_BASE}/billing/tiers`);
       if (res.ok) {
         const data = await res.json();
         setAvailableTiers(data.data);
@@ -142,7 +143,7 @@ function BillingContent() {
 
   const fetchPackages = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/packages`);
+      const res = await fetch(`${API_BASE}/packages`);
       if (res.ok) {
         const data = await res.json();
         setPackages(data.data || []);
@@ -156,7 +157,7 @@ function BillingContent() {
     try {
       setError("");
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/checkout`, {
+      const res = await fetch(`${API_BASE}/billing/checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -186,7 +187,7 @@ function BillingContent() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/subscription`, {
+      const res = await fetch(`${API_BASE}/billing/subscription`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -208,7 +209,7 @@ function BillingContent() {
     setPurchasingPackage(pkg.id);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/purchase-package`, {
+      const res = await fetch(`${API_BASE}/billing/purchase-package`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

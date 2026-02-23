@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
+import { API_BASE } from "@/lib/api";
 
 function SignupContent() {
   const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ function SignupContent() {
     setLoading(true);
     try {
       const affiliateSlug = localStorage.getItem("affiliate_slug") || "";
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
+      const res = await fetch(`${API_BASE}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -53,7 +54,7 @@ function SignupContent() {
   const handleGoogleSignup = async () => {
     setError("");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google/url`);
+      const res = await fetch(`${API_BASE}/auth/google/url`);
       const data = await res.json();
       if (res.ok) {
         window.location.href = data.data.url;

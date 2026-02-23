@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
+import { API_BASE } from "@/lib/api";
 
 function AffiliateDashboardContent() {
   const [profile, setProfile] = useState<any>(null);
@@ -55,17 +56,17 @@ function AffiliateDashboardContent() {
         programRes,
         payoutsRes,
       ] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+        fetch(`${API_BASE}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/me`, {
+        fetch(`${API_BASE}/affiliates/me`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/status`, {
+        fetch(`${API_BASE}/affiliates/stripe/status`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/program-details`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/me/payouts`, {
+        fetch(`${API_BASE}/affiliates/program-details`),
+        fetch(`${API_BASE}/affiliates/me/payouts`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -121,7 +122,7 @@ function AffiliateDashboardContent() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -145,7 +146,7 @@ function AffiliateDashboardContent() {
     setStripeLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/onboard`, {
+      const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
 import UserInfoCard from "./UserInfoCard";
 import IdleTimeoutModal from "./IdleTimeoutModal";
+import { API_BASE } from "@/lib/api";
 
 const NAV = [
   {
+    category: "Main",
     href: "/dashboard",
     label: "Agents",
     icon: (
@@ -17,6 +19,7 @@ const NAV = [
     ),
   },
   {
+    category: "Main",
     href: "/billing",
     label: "Billing",
     icon: (
@@ -27,6 +30,7 @@ const NAV = [
     ),
   },
   {
+    category: "Main",
     href: "/stats",
     label: "Analytics",
     icon: (
@@ -36,6 +40,7 @@ const NAV = [
     ),
   },
   {
+    category: "Partnership",
     href: "/referrals",
     label: "My Referrals",
     icon: (
@@ -45,6 +50,7 @@ const NAV = [
     ),
   },
   {
+    category: "Partnership",
     href: "/affiliates",
     label: "My Affiliate Partnership",
     icon: (
@@ -53,9 +59,24 @@ const NAV = [
       </svg>
     ),
   },
+
+  // Admin Category
   {
+    category: "Admin",
+    href: "/admin",
+    label: "Command Center",
+    isAdminOnly: true,
+    icon: (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    ),
+  },
+  {
+    category: "Admin",
     href: "/affiliate-agents",
     label: "Affiliate Agents",
+    isAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M12 4.318l-1.318 1.318a4.5 4.5 0 000 6.364L12 13.318l1.318-1.318a4.5 4.5 0 000-6.364L12 4.318z" />
@@ -65,8 +86,10 @@ const NAV = [
     ),
   },
   {
+    category: "Admin",
     href: "/referral-agents",
     label: "Referral Agents",
+    isAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
@@ -76,18 +99,21 @@ const NAV = [
     ),
   },
   {
+    category: "Admin",
     href: "/payouts",
     label: "Payouts",
+    isAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
       </svg>
     ),
   },
-
   {
+    category: "Admin",
     href: "/users",
     label: "Users",
+    isAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
@@ -98,8 +124,10 @@ const NAV = [
     ),
   },
   {
+    category: "Admin",
     href: "/packages",
     label: "Packages",
+    isAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14v14m0-14l-8 4m0 0v10l8 4" />
@@ -107,6 +135,7 @@ const NAV = [
     ),
   },
   {
+    category: "System",
     href: "/settings",
     label: "Settings",
     icon: (
@@ -142,7 +171,7 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -170,37 +199,50 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 px-3 py-4">
-          {NAV.filter(item => {
-            // Hide admin-only tabs
-            if (item.label === "Users" || item.label === "Referral Agents" || item.label === "Affiliate Agents" || item.label === "Packages" || item.label === "Payouts") {
-              return profile?.isAdmin;
-            }
-            if (item.label === "My Affiliate Partnership") {
-              // Show Affiliates tag to admins OR approved affiliates
-              return profile?.isAdmin || profile?.isAffiliate;
-            }
-            return true;
-          }).map((item) => {
-            const active = path === item.href || (item.href !== "/dashboard" && path.startsWith(item.href));
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          {["Main", "Partnership", "Admin", "System"].map((cat) => {
+            const items = NAV.filter((item) => {
+              if (item.category !== cat) return false;
+              if (item.isAdminOnly) return profile?.isAdmin;
+              if (item.label === "My Affiliate Partnership") {
+                return profile?.isAdmin || profile?.isAffiliate;
+              }
+              return true;
+            });
+
+            if (items.length === 0) return null;
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${active
-                  ? "bg-[#14b8a6]/10 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.04] hover:text-[#f0f4fa]"
-                  } ${(item.label === "Affiliate Agents" || item.label === "Referral Agents" || item.label === "Payouts")
-                    ? "!text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]"
-                    : ""
-                  }`}
-              >
-                {item.icon}
-                <span className="whitespace-nowrap">{item.label}</span>
-              </Link>
+              <div key={cat} className="space-y-1">
+                <h3 className="px-3 text-[10px] font-bold uppercase tracking-widest text-[rgba(240,244,250,0.25)]">
+                  {cat}
+                </h3>
+                {items.map((item) => {
+                  const active =
+                    path === item.href ||
+                    (item.href !== "/dashboard" && path.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${active
+                        ? "bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.04] hover:text-[#f0f4fa]"
+                        } ${(item.label === "Affiliate Agents" || item.label === "Referral Agents" || item.label === "Payouts")
+                          ? "!text-yellow-400/90"
+                          : ""
+                        }`}
+                    >
+                      <span className={`${active ? "text-[#14b8a6]" : "text-[rgba(240,244,250,0.35)]"}`}>
+                        {item.icon}
+                      </span>
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
-
         </nav>
 
         {/* Logout */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { API_BASE } from "@/lib/api";
 
 interface UserInfoCardProps {
   onProfileClick: () => void;
@@ -21,7 +22,7 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

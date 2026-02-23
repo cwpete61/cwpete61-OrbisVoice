@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { API_BASE } from "@/lib/api";
 
 function GoogleCallbackContent() {
   const router = useRouter();
@@ -57,7 +58,7 @@ function GoogleCallbackContent() {
           headers["Authorization"] = `Bearer ${token}`;
         }
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
           method,
           headers,
           body: JSON.stringify(body),

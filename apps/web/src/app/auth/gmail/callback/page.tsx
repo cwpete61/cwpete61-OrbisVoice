@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { API_BASE } from "@/lib/api";
 
 function GmailCallbackContent() {
   const router = useRouter();
@@ -34,7 +35,7 @@ function GmailCallbackContent() {
       try {
         const token = localStorage.getItem("token");
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/gmail/connect`, {
+        const res = await fetch(`${API_BASE}/users/me/gmail/connect`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

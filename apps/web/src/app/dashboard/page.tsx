@@ -5,6 +5,7 @@ import { Suspense, useState, useEffect } from "react";
 import AgentForm from "../../components/AgentForm";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
+import { API_BASE } from "@/lib/api";
 
 function DashboardContent() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -44,7 +45,7 @@ function DashboardContent() {
   const fetchSubscription = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/billing/subscription`, {
+      const res = await fetch(`${API_BASE}/billing/subscription`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -58,7 +59,7 @@ function DashboardContent() {
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+      const res = await fetch(`${API_BASE}/agents`, {
         headers: {
           ...getAuthHeaders(),
         },
@@ -76,7 +77,7 @@ function DashboardContent() {
 
   const handleCreateAgent = async (data: any) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+      const res = await fetch(`${API_BASE}/agents`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(data),
@@ -97,7 +98,7 @@ function DashboardContent() {
   const handleUpdateAgent = async (data: any) => {
     if (!editingAgent) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${editingAgent.id}`, {
+      const res = await fetch(`${API_BASE}/agents/${editingAgent.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(data),
@@ -120,7 +121,7 @@ function DashboardContent() {
     if (!confirm("Are you sure you want to delete this agent?")) return;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+      const res = await fetch(`${API_BASE}/agents/${agentId}`, {
         method: "DELETE",
         headers: { ...getAuthHeaders() },
       });

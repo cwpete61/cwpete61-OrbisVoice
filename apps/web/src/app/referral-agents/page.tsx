@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import {
+import { API_BASE } from "@/lib/api";
     LineChart,
     Line,
     XAxis,
@@ -70,7 +71,7 @@ function ReferralAgentsContent() {
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+            const res = await fetch(`${API_BASE}/users/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -85,7 +86,7 @@ function ReferralAgentsContent() {
     const fetchStripeStatus = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/status`, {
+            const res = await fetch(`${API_BASE}/affiliates/stripe/status`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -107,7 +108,7 @@ function ReferralAgentsContent() {
         setStripeLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/onboard`, {
+            const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -135,7 +136,7 @@ function ReferralAgentsContent() {
             if (searchTerm) {
                 params.set("search", searchTerm);
             }
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates?${params.toString()}`, {
+            const res = await fetch(`${API_BASE}/admin/affiliates?${params.toString()}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -152,7 +153,7 @@ function ReferralAgentsContent() {
     const fetchPlatformSettings = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+            const res = await fetch(`${API_BASE}/admin/platform-settings`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -177,7 +178,7 @@ function ReferralAgentsContent() {
         setSaveSettingsLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+            const res = await fetch(`${API_BASE}/admin/platform-settings`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -202,7 +203,7 @@ function ReferralAgentsContent() {
         setActionLoading(id);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${id}/status`, {
+            const res = await fetch(`${API_BASE}/admin/affiliates/${id}/status`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -526,7 +527,7 @@ function ReferralAgentsContent() {
                                         setActionLoading("override");
                                         try {
                                             const token = localStorage.getItem("token");
-                                            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/promote`, {
+                                            const res = await fetch(`${API_BASE}/admin/affiliates/promote`, {
                                                 method: "POST",
                                                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                                                 body: JSON.stringify({ userId: val }),

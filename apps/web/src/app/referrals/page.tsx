@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import Link from "next/link";
+import { API_BASE } from "@/lib/api";
 
 interface ReferralData {
   code: string;
@@ -64,7 +65,7 @@ function ReferralsContent() {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/status`, {
+      const res = await fetch(`${API_BASE}/affiliates/stripe/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -80,7 +81,7 @@ function ReferralsContent() {
     setStripeLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/stripe/onboard`, {
+      const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -111,9 +112,9 @@ function ReferralsContent() {
 
       const headers = { Authorization: `Bearer ${token}` };
       const [profileRes, codeRes, statsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-code`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/referral-stats`, { headers }),
+        fetch(`${API_BASE}/users/me`, { headers }),
+        fetch(`${API_BASE}/users/me/referral-code`, { headers }),
+        fetch(`${API_BASE}/users/me/referral-stats`, { headers }),
       ]);
 
       if (codeRes.status === 401 || statsRes.status === 401) {
@@ -163,7 +164,7 @@ function ReferralsContent() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import PublicNav from "../components/PublicNav";
+import { API_BASE } from "@/lib/api";
 
 async function getCommissionRate() {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/program-details`, {
+        const res = await fetch(`${API_BASE}/affiliates/program-details`, {
             next: { revalidate: 3600 } // Cache for 1 hour
         });
         if (res.ok) {

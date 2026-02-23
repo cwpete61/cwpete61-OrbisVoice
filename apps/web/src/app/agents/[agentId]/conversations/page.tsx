@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import TranscriptCard from "@/components/TranscriptCard";
+import { API_BASE } from "@/lib/api";
 
 export default function AgentConversationsPage() {
   const params = useParams();
@@ -20,7 +21,7 @@ export default function AgentConversationsPage() {
 
   const fetchAgent = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`);
+      const res = await fetch(`${API_BASE}/agents/${agentId}`);
       if (res.ok) {
         const data = await res.json();
         setAgent(data.data);
@@ -33,7 +34,7 @@ export default function AgentConversationsPage() {
   const fetchTranscripts = async () => {
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}/transcripts?limit=50`
+        `${API_BASE}/agents/${agentId}/transcripts?limit=50`
       );
       if (res.ok) {
         const data = await res.json();
@@ -50,7 +51,7 @@ export default function AgentConversationsPage() {
     if (!confirm("Delete this transcript?")) return;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transcripts/${transcriptId}`, {
+      const res = await fetch(`${API_BASE}/transcripts/${transcriptId}`, {
         method: "DELETE",
       });
 
@@ -64,7 +65,7 @@ export default function AgentConversationsPage() {
 
   const handleViewTranscript = async (transcriptId: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transcripts/${transcriptId}`);
+      const res = await fetch(`${API_BASE}/transcripts/${transcriptId}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedTranscript(data.data);

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
+import { API_BASE } from "@/lib/api";
 
 function PayoutsContent() {
     const [profile, setProfile] = useState<any>(null);
@@ -24,7 +25,7 @@ function PayoutsContent() {
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+            const res = await fetch(`${API_BASE}/users/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -39,7 +40,7 @@ function PayoutsContent() {
     const fetchPlatformSettings = async () => {
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+            const res = await fetch(`${API_BASE}/admin/platform-settings`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -55,7 +56,7 @@ function PayoutsContent() {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/payouts/queue`, {
+            const res = await fetch(`${API_BASE}/admin/payouts/queue`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
@@ -76,7 +77,7 @@ function PayoutsContent() {
         setActionLoading("bulk");
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/payouts/bulk`, {
+            const res = await fetch(`${API_BASE}/admin/payouts/bulk`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

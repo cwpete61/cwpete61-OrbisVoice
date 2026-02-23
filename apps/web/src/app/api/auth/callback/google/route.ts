@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { API_BASE } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for token with our Fastify API
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+    const apiUrl = API_BASE || "http://localhost:4001";
     const tokenResponse = await fetch(`${apiUrl}/auth/google/callback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

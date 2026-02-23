@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PublicNav from "../../components/PublicNav";
+import { API_BASE } from "@/lib/api";
 
 export default function PartnerApplication() {
     const router = useRouter();
@@ -26,7 +27,7 @@ export default function PartnerApplication() {
         setError(null);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/public-apply`, {
+            const res = await fetch(`${API_BASE}/affiliates/public-apply`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),

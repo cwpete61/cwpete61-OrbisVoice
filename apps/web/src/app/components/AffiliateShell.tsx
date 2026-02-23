@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
 import UserInfoCard from "./UserInfoCard";
 import IdleTimeoutModal from "./IdleTimeoutModal";
+import { API_BASE } from "@/lib/api";
 
 const AFFILIATE_NAV = [
     {
@@ -46,7 +47,7 @@ export default function AffiliateShell({ children }: { children: React.ReactNode
                 return;
             }
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+            const res = await fetch(`${API_BASE}/users/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -55,7 +56,7 @@ export default function AffiliateShell({ children }: { children: React.ReactNode
                 setProfile(data.data);
 
                 // Check if user is an affiliate
-                const affRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/affiliates/me`, {
+                const affRes = await fetch(`${API_BASE}/affiliates/me`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
 

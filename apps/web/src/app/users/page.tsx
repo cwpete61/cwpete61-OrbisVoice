@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import PasswordInput from "../components/PasswordInput";
+import { API_BASE } from "@/lib/api";
 
 function UsersContent() {
   const [profile, setProfile] = useState<any>(null);
@@ -104,7 +105,7 @@ function UsersContent() {
   const fetchPlatformSettings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+      const res = await fetch(`${API_BASE}/admin/platform-settings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -139,7 +140,7 @@ function UsersContent() {
     setSaveSettingsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/platform-settings`, {
+      const res = await fetch(`${API_BASE}/admin/platform-settings`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -162,7 +163,7 @@ function UsersContent() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -185,7 +186,7 @@ function UsersContent() {
       if (searchTerm) {
         params.set("search", searchTerm);
       }
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/admin/users?${params.toString()}`;
+      const url = `${API_BASE}/admin/users?${params.toString()}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -210,7 +211,7 @@ function UsersContent() {
       if (searchTerm) {
         params.set("search", searchTerm);
       }
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates?${params.toString()}`, {
+      const res = await fetch(`${API_BASE}/admin/affiliates?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -228,7 +229,7 @@ function UsersContent() {
     setActionLoading(id);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${id}/status`, {
+      const res = await fetch(`${API_BASE}/admin/affiliates/${id}/status`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -264,7 +265,7 @@ function UsersContent() {
     setActionLoading(`rate-${aff.id}`);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/${aff.id}/commission-rate`, {
+      const res = await fetch(`${API_BASE}/admin/affiliates/${aff.id}/commission-rate`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -291,7 +292,7 @@ function UsersContent() {
     setCreateLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, {
+      const res = await fetch(`${API_BASE}/admin/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -344,7 +345,7 @@ function UsersContent() {
     setActionLoading(key);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -375,7 +376,7 @@ function UsersContent() {
     setActionLoading(`promote-${userId}`);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/affiliates/promote`, {
+      const res = await fetch(`${API_BASE}/admin/affiliates/promote`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -404,7 +405,7 @@ function UsersContent() {
     setActionLoading(key);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${user.id}/block`, {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/block`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -434,7 +435,7 @@ function UsersContent() {
     setActionLoading(key);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${user.id}`, {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

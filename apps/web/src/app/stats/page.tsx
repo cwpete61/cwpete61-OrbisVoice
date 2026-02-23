@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
+import { API_BASE } from "@/lib/api";
 
 interface DashboardStats {
   totalAgents: number;
@@ -46,7 +47,7 @@ function StatsContent() {
         throw new Error("Not authenticated. Please log in again.");
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stats/dashboard`, {
+      const res = await fetch(`${API_BASE}/stats/dashboard`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
