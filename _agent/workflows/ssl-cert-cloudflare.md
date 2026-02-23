@@ -23,9 +23,26 @@ Create a file at `.github/workflows/ssl-cert.yml` with the following content:
 name: Generate SSL Certificate
 
 on:
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
+    inputs:
+      domain_names:
+        description: 'Domains to include (comma-separated)'
+        required: true
+        default: 'example.com,*.example.com'
+      email:
+        description: 'Email for Let''s Encrypt'
+        required: true
+        default: 'admin@example.com'
+      dry_run:
+        description: 'Run in dry-run mode (no actual cert issued)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
   schedule:
-    - cron: '0 0 1 * *' # Run once a month to ensure renewal
+    - cron: '0 0 1 * *'
 
 jobs:
   get-cert:
@@ -38,10 +55,10 @@ jobs:
         uses: shibme/cloudflare-letsencrypt-certbot-generate@main
         with:
           cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          domain_names: 'example.com,*.example.com' # Comma-separated list
-          email: 'admin@example.com'
-          cert_file_name: 'cert.zip' # Optional, default is cert.zip
-          dry_run: false # Optional, default is false
+          domain_names: ${{ github.event.inputs.domain_names || 'example.com,*.example.com' }}
+          email: ${{ github.event.inputs.email || 'admin@example.com' }}
+          cert_file_name: 'cert'
+          dry_run: ${{ github.event.inputs.dry_run || 'false' }}
 
       - name: Upload Certificate Artifact
         uses: actions/upload-artifact@v4
