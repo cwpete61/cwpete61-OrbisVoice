@@ -63,8 +63,12 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     return reply.send({
       ok: true,
       config,
-      envClientId: env.GOOGLE_CLIENT_ID,
-      envRedirectUri: env.GOOGLE_REDIRECT_URI
+      env: {
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? "****" : undefined,
+        GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+        WEB_URL: process.env.WEB_URL,
+      }
     });
   });
 
