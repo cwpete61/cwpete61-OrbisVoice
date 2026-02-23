@@ -43,3 +43,28 @@ jobs:
         with:
           name: orbis-ssl-certificate
           path: orbis_cert.zip
+
+      - name: Copy Certificate to VPS
+        uses: appleboy/scp-action@v0.1.7
+        # Only run deployment if not dry_run
+        if: ${{ github.event.inputs.dry_run == 'false' || github.event_name == 'schedule' }}
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "orbis_cert.zip"
+          target: "/opt/orbisvoice/nginx/certs"
+
+      - name: Extract Certificate and Reload Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        if: ${{ github.event.inputs.dry_run == 'false' || github.event_name == 'schedule' }}
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/orbisvoice/nginx/certs
+            apt-get install -y unzip || true
+            unzip -o orbis_cert.zip
+            rm orbis_cert.zip
+            docker restart orbisvoice-nginx-prod

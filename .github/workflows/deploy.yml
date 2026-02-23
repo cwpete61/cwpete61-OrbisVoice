@@ -56,6 +56,17 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Copy config files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml,nginx/"
+          target: "/opt/orbisvoice"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
