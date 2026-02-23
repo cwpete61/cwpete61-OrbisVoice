@@ -1,14 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { leadService } from "../services/lead";
 import { authenticate } from "../middleware/auth";
-import { ApiResponse } from "../types";
+import { ApiResponse, AuthPayload } from "../types";
 
 export async function leadRoutes(fastify: FastifyInstance) {
     fastify.addHook("preHandler", authenticate);
 
     // GET /leads - List all leads for the tenant
     fastify.get("/", async (request, reply) => {
-        const { tenantId } = request.user as any;
+        const { tenantId } = request.user as AuthPayload;
         try {
             const leads = await leadService.getLeadsByTenant(tenantId);
             return { ok: true, data: leads } as ApiResponse;

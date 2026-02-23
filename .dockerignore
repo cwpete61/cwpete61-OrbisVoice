@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+.git
+.env*
+*.log
+docker-compose*
+Dockerfile*
+build_output.txt
+lint_web_*
+tsconfig.tsbuildinfo
