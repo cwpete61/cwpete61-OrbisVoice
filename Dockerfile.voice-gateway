@@ -11,7 +11,7 @@ COPY apps/voice-gateway/package*.json ./
 COPY apps/voice-gateway/prisma ./prisma
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy source and config files
 COPY apps/voice-gateway/src ./src
