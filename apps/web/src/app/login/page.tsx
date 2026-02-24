@@ -49,6 +49,7 @@ export default function LoginPage() {
       }
 
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
       const result = await signInWithPopup(firebaseAuth, provider);
       const idToken = await result.user.getIdToken();
 
