@@ -7,20 +7,24 @@ import { logger } from "../logger";
  * Verify that the request originates from a legitimate app instance.
  */
 export async function verifyAppCheck(request: FastifyRequest, reply: FastifyReply) {
-    const appCheckToken = request.headers["x-firebase-appcheck"] as string;
+    const hasSecret = !!process.env.RECAPTCHA_SECRET_KEY;
 
     if (!appCheckToken) {
-        logger.warn({ path: request.url }, "Missing App Check token");
-        return reply.code(401).send({
-            ok: false,
-            message: "Unauthorized: Missing identity attestation",
-        });
+        if (hasSecret) {
+            logger.warn({ path: request.url }, "Missing App Check token");
+            return reply.code(401).send({
+                ok: false,
+                message: "Unauthorized: Missing identity attestation",
+            });
+        }
+        // Soft-fail: No token and no secret configured
+        logger.warn({ path: request.url }, "App Check bypassed: Token missing and no secret set");
+        return;
     }
 
     try {
         // If ReCaptcha secret is not configured, we skip verification to prevent lockout
-        // but log a warning. This allows initial setup to proceed.
-        if (!process.env.RECAPTCHA_SECRET_KEY && process.env.NODE_ENV === "production") {
+        if (!hasSecret && process.env.NODE_ENV === "production") {
             logger.warn({ path: request.url }, "App Check bypassed: RECAPTCHA_SECRET_KEY not set in production");
             return;
         }
@@ -28,7 +32,7 @@ export async function verifyAppCheck(request: FastifyRequest, reply: FastifyRepl
         await getAppCheck().verifyToken(appCheckToken);
     } catch (err: any) {
         // Only enforce if we have a secret configured
-        if (process.env.RECAPTCHA_SECRET_KEY) {
+        if (hasSecret) {
             logger.error({ err: err.message, path: request.url }, "App Check verification failed");
             return reply.code(401).send({
                 ok: false,
