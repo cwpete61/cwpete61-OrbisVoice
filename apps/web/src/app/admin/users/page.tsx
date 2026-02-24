@@ -308,6 +308,7 @@ function UsersContent() {
                     password: createForm.password,
                     tier: createForm.tier,
                     commissionLevel: createForm.commissionLevel,
+                    role: createForm.role,
                 }),
             });
 
@@ -317,7 +318,7 @@ function UsersContent() {
                 return;
             }
 
-            setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
+            setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW", role: "USER" });
             setCreateOpen(false);
             await fetchUsers(userFilter, debouncedSearch);
         } catch (err) {
@@ -335,12 +336,13 @@ function UsersContent() {
             email: user.email || "",
             tier: (user?.tenant?.subscriptionTier as string) || "starter",
             commissionLevel: user.commissionLevel || platformSettings?.defaultCommissionLevel || "LOW",
+            role: user.role || "USER",
         });
     };
 
     const cancelEditUser = () => {
         setEditingUserId(null);
-        setEditForm({ name: "", email: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
+        setEditForm({ name: "", email: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW", role: "USER" });
     };
 
     const saveEditUser = async (userId: string) => {
@@ -359,6 +361,7 @@ function UsersContent() {
                     email: editForm.email.trim(),
                     tier: editForm.tier,
                     commissionLevel: editForm.commissionLevel,
+                    role: editForm.role,
                 }),
             });
 
