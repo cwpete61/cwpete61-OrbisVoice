@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth as firebaseAuth } from "../../lib/firebase";
 
@@ -35,7 +35,7 @@ function SignupContent() {
 
     try {
       const affiliateSlug = localStorage.getItem("affiliate_slug") || "";
-      const res = await fetch(`${API_BASE}/auth/signup`, {
+      const { res, data } = await apiFetch("/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -47,7 +47,6 @@ function SignupContent() {
           affiliateSlug
         }),
       });
-      const data = await res.json();
       if (res.ok) {
         localStorage.setItem("token", data.data.token);
         router.push("/dashboard");
@@ -75,7 +74,7 @@ function SignupContent() {
       const idToken = await result.user.getIdToken();
 
       // Send to our backend to get app-specific JWT and handle auto-signup
-      const res = await fetch(`${API_BASE}/auth/firebase-signin`, {
+      const { res, data } = await apiFetch("/auth/firebase-signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,7 +83,6 @@ function SignupContent() {
           affiliateSlug
         }),
       });
-      const data = await res.json();
 
       if (res.ok) {
         localStorage.setItem("token", data.data.token);

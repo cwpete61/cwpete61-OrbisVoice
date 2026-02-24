@@ -41,7 +41,7 @@ export async function apiFetch<T = unknown>(
         try {
             const tokenResult = await getToken(firebaseAppCheck);
             if (tokenResult.token) {
-                extraHeaders["X-Firebase-AppCheck"] = tokenResult.token;
+                extraHeaders["x-firebase-appcheck"] = tokenResult.token;
             }
         } catch (err) {
             console.warn("App Check token acquisition failed", err);
