@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
-import { notificationService } from "./notification";
+import { createNotification, NotifType } from "./notification";
 
 export interface LeadData {
     name: string;
@@ -29,8 +29,17 @@ class LeadService {
 
             logger.info({ leadId: lead.id, tenantId: data.tenantId }, "Lead captured successfully");
 
-            // Trigger notification
-            await notificationService.sendLeadNotification(lead);
+            // Trigger notification to all users of the tenant
+            const users = await prisma.user.findMany({ where: { tenantId: data.tenantId } });
+            await Promise.allSettled(users.map(u =>
+                createNotification({
+                    userId: u.id,
+                    type: NotifType.LEAD_CAPTURED,
+                    title: "New Lead Captured!",
+                    body: `You received a new lead from ${data.name}.`,
+                    data: { leadId: lead.id, name: data.name, phone: data.phone }
+                })
+            ));
 
             return lead;
         } catch (err) {
