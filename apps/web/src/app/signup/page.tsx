@@ -147,7 +147,7 @@ function SignupContent() {
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Full name</label>
                 <input
                   type="text"
-                  placeholder="Jane Smith (Gmail Only)"
+                  placeholder="Jane Smith"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
@@ -168,7 +168,7 @@ function SignupContent() {
                 <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">3+ characters, letters, numbers, underscore, hyphen</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Gmail address</label>
+                <label className="mb-1.5 block text-xs font-medium text-[#14b8a6]">Gmail Address (Required)</label>
                 <input
                   type="email"
                   placeholder="yourname@gmail.com"

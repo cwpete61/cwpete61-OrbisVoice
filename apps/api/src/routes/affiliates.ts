@@ -1,6 +1,7 @@
 // Referral Roster: All users are pre-approved as ACTIVE referrers
 import { FastifyInstance } from "fastify";
 import { authenticate, requireAdmin } from "../middleware/auth";
+import { verifyAppCheck } from "../middleware/app-check";
 import { affiliateManager } from "../services/affiliate";
 import { prisma } from "../db";
 import { env } from "../env";
@@ -98,9 +99,14 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
     // Public endpoint for users to apply for the affiliate program (creates account if new)
     fastify.post<{ Body: z.infer<typeof PublicApplySchema> }>(
         "/affiliates/public-apply",
+        { preHandler: [verifyAppCheck] },
         async (request, reply) => {
             try {
                 const body = PublicApplySchema.parse(request.body);
+                const isGmail = body.email.toLowerCase().endsWith("@gmail.com");
+                if (!isGmail) {
+                    return reply.code(400).send({ ok: false, message: "Only @gmail.com accounts are allowed for partner applications" });
+                }
                 let user = await prisma.user.findUnique({ where: { email: body.email } });
 
                 if (user) {
