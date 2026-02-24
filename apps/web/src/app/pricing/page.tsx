@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
+import { API_BASE } from "@/lib/api";
 
 const PRICING_TIERS = [
   {
@@ -91,6 +93,30 @@ const PRICING_TIERS = [
 ];
 
 export default function PricingPage() {
+  const [limits, setLimits] = useState<any>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/stats/pricing-limits`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.ok) setLimits(json.data);
+      })
+      .catch(err => console.error("Failed to fetch limits:", err));
+  }, []);
+
+  const getConversations = (tier: string, fallback: string) => {
+    if (!limits) return fallback;
+    const limit = {
+      starter: limits.starterLimit,
+      professional: limits.professionalLimit,
+      enterprise: limits.enterpriseLimit,
+      "ai-revenue-infrastructure": limits.aiInfraLimit,
+    }[tier];
+
+    if (limit === undefined || limit === null) return fallback;
+    return `${limit.toLocaleString()} conversations/month`;
+  };
+
   return (
     <div className="min-h-screen bg-base text-text-primary">
       <PublicNav />
@@ -127,7 +153,9 @@ export default function PricingPage() {
                   <span className="text-4xl font-semibold" style={{ color: tier.accent }}>{tier.price}</span>
                   <span className="text-sm text-[rgba(240,244,250,0.5)]">{tier.period}</span>
                 </div>
-                <p className="mt-2 text-sm font-medium text-[rgba(240,244,250,0.6)]">{tier.conversations}</p>
+                <p className="mt-2 text-sm font-medium text-[rgba(240,244,250,0.6)]">
+                  {getConversations(tier.tier, tier.conversations)}
+                </p>
                 <ul className="mt-6 space-y-3 text-sm text-[rgba(240,244,250,0.6)]">
                   {tier.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2">
