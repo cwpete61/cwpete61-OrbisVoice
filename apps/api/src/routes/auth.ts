@@ -12,14 +12,21 @@ const isGmail = (email: string) => {
   return email.toLowerCase().endsWith("@gmail.com");
 };
 
+const SYSTEM_ADMIN_EMAILS = [
+  "myorbislocal@gmail.com"
+];
+
 const ADMIN_EMAILS = [
   "myorbisvoice@gmail.com",
-  "myorbislocal@gmail.com",
   "Crawford.peterson.sr@gmail.com"
 ];
 
+const isSystemAdminEmail = (email: string) => {
+  return SYSTEM_ADMIN_EMAILS.includes(email.toLowerCase());
+};
+
 const isAdminEmail = (email: string) => {
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  return ADMIN_EMAILS.includes(email.toLowerCase()) || isSystemAdminEmail(email);
 };
 
 const SignupSchema = z.object({
@@ -91,7 +98,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
-            role: isAdminEmail(body.email) ? "ADMIN" : "USER",
+            role: isSystemAdminEmail(body.email) ? "SYSTEM_ADMIN" : (isAdminEmail(body.email) ? "ADMIN" : "USER"),
             isAdmin: isAdminEmail(body.email),
             commissionLevel: settings?.defaultCommissionLevel || "LOW",
           } as any,
@@ -297,25 +304,29 @@ export async function authRoutes(fastify: FastifyInstance) {
 
         // Auto-promote hardcoded admin
         const isAdmin = isAdminEmail(email);
+        const isSystemAdmin = isSystemAdminEmail(email);
 
-        if (user && isAdmin && (user.role !== "ADMIN" || !user.isAdmin)) {
-          logger.info({ email }, "Self-healing admin role and status");
-          const updateData: any = {
-            role: "ADMIN",
-            isAdmin: true,
-          };
+        if (user && isAdmin) {
+          const targetRole = isSystemAdmin ? "SYSTEM_ADMIN" : "ADMIN";
+          if (user.role !== targetRole || !user.isAdmin) {
+            logger.info({ email, targetRole }, "Self-healing admin role and status");
+            const updateData: any = {
+              role: targetRole,
+              isAdmin: true,
+            };
 
-          if (email.toLowerCase() === "myorbisvoice@gmail.com" && user.username !== "Admin") {
-            updateData.username = "Admin";
-            user.username = "Admin";
+            if (email.toLowerCase() === "myorbisvoice@gmail.com" && user.username !== "Admin") {
+              updateData.username = "Admin";
+              user.username = "Admin";
+            }
+
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: updateData
+            });
+            user.role = targetRole;
+            user.isAdmin = true;
           }
-
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: updateData
-          });
-          user.role = "ADMIN";
-          user.isAdmin = true;
         }
 
         let tenantId = user?.tenantId;
@@ -333,13 +344,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             where: { id: "global" }
           });
 
+          const isSystemAdmin = isSystemAdminEmail(email);
           user = await prisma.user.create({
             data: {
               email,
               name: isAdmin ? (email.toLowerCase() === "myorbisvoice@gmail.com" ? "Admin" : name) : name,
               username: email.toLowerCase() === "myorbisvoice@gmail.com" ? "Admin" : (email.split('@')[0] + Math.floor(Math.random() * 1000)),
               tenantId,
-              role: isAdmin ? "ADMIN" : "USER",
+              role: isSystemAdmin ? "SYSTEM_ADMIN" : (isAdmin ? "ADMIN" : "USER"),
               isAdmin: isAdmin,
               commissionLevel: settings?.defaultCommissionLevel || "LOW",
             } as any,
