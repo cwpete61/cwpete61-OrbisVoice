@@ -27,6 +27,8 @@ import { leadRoutes } from "./routes/leads";
 import { payoutRoutes } from "./routes/payouts";
 import { adminRoutes } from "./routes/admin";
 import { firebaseAuthRoutes } from "./routes/firebase-auth";
+import { notificationRoutes } from "./routes/notifications";
+import { helpRoutes } from "./routes/help";
 import { prisma } from "./db";
 
 const fastify = Fastify({
@@ -117,6 +119,8 @@ fastify.register(payoutRoutes);
 fastify.register(leadRoutes, { prefix: "/api/leads" });
 fastify.register(adminRoutes);
 fastify.register(firebaseAuthRoutes);
+fastify.register(notificationRoutes);
+fastify.register(helpRoutes);
 
 // Start server
 const start = async () => {

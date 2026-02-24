@@ -104,6 +104,9 @@ model User {
   zip String?
   tinSsn String?
   taxFormUrl String?
+  emailNotifications Boolean @default(true)  // master email notification toggle
+  notifications       Notification[]
+  notificationPref    NotificationPreference?
 
   @@unique([tenantId, email])
 }
@@ -344,6 +347,13 @@ model Affiliate {
   totalEarnings   Float            @default(0)
   totalPaid       Float            @default(0)
   balance         Float            @default(0)
+
+  // IRS $600 tax hold
+  payoutHeld          Boolean      @default(false)
+  payoutHoldReason    String?      // "tax_hold", "admin_hold"
+  payoutHoldLiftedAt  DateTime?
+  payoutHoldLiftedBy  String?      // admin userId
+
   referrals       AffiliateReferral[]
   payouts         AffiliatePayout[]
   createdAt       DateTime         @default(now())
@@ -379,10 +389,69 @@ model ConversationPackage {
   id        String   @id @default(cuid())
   name      String
   price     Float
-  credits   Int      // number of conversations
+  credits   Int
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// ─── Notification System ─────────────────────────────────────────────────────
 
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // COMMISSION_EARNED, PAYOUT_PROCESSED, TAX_HOLD, etc.
+  title       String
+  body        String   @db.Text
+  data        Json?
+  read        Boolean  @default(false)
+  emailSent   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model NotificationPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled    Boolean  @default(true)
+  commissions     Boolean  @default(true)
+  payouts         Boolean  @default(true)
+  leads           Boolean  @default(true)
+  usageWarnings   Boolean  @default(true)
+  announcements   Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique
+  subject   String
+  bodyHtml  String   @db.Text
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Help / FAQ RAG Bot ───────────────────────────────────────────────────────
+
+model FaqEntry {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String   @db.Text
+  category    String   @default("general")
+  helpful     Int      @default(0)
+  notHelpful  Int      @default(0)
+  published   Boolean  @default(true)
+  source      String   @default("admin")  // "admin" | "bot_learned"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FaqQuestion {
+  id              String   @id @default(cuid())
+  question        String
+  suggestedAnswer String?  @db.Text
+  status          String   @default("pending") // pending, answered, dismissed
+  faqEntryId      String?
+  createdAt       DateTime @default(now())
+}

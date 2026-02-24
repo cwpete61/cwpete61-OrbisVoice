@@ -12,6 +12,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().default("dev-secret-change-in-prod"),
   CORS_ORIGINS: z.string().default("http://localhost:3001"),
   GEMINI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
   // Gmail API
   GMAIL_CLIENT_ID: z.string().optional(),
   GMAIL_CLIENT_SECRET: z.string().optional(),
@@ -64,7 +65,7 @@ if (parsed.NODE_ENV === "production") {
   if (!parsed.STRIPE_WEBHOOK_SECRET) missingKeys.push("STRIPE_WEBHOOK_SECRET");
   if (!parsed.GOOGLE_CLIENT_ID) missingKeys.push("GOOGLE_CLIENT_ID");
   if (!parsed.GOOGLE_CLIENT_SECRET) missingKeys.push("GOOGLE_CLIENT_SECRET");
-  if (!parsed.GEMINI_API_KEY) missingKeys.push("GEMINI_API_KEY");
+  if (!parsed.OPENAI_API_KEY) missingKeys.push("OPENAI_API_KEY");
 
   if (missingKeys.length > 0) {
     console.warn("\n⚠️  WARNING: Missing production environment variables:");

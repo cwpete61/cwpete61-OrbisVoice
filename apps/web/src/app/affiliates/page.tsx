@@ -409,6 +409,7 @@ function AffiliateDashboardContent() {
   const [commissionRate, setCommissionRate] = useState<number>(30);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [taxStatus, setTaxStatus] = useState<any>(null);
+  const [payoutEligibility, setPayoutEligibility] = useState<any>(null);
   const [loginLinkLoading, setLoginLinkLoading] = useState(false);
 
   const [formData, setFormData] = useState({ firstName: "", lastName: "", businessName: "", phone: "", address: "", city: "", state: "", zip: "", tinSsn: "" });
@@ -424,7 +425,7 @@ function AffiliateDashboardContent() {
     if (!token) { setLoading(false); return; }
 
     try {
-      const [profileRes, statsRes, stripeRes, programRes, payoutsRes, stripeDetailsRes, taxRes] = await Promise.all([
+      const [profileRes, statsRes, stripeRes, programRes, payoutsRes, stripeDetailsRes, taxRes, eligRes] = await Promise.all([
         fetch(`${API_BASE}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/affiliates/me`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/affiliates/stripe/status`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -432,6 +433,7 @@ function AffiliateDashboardContent() {
         fetch(`${API_BASE}/affiliates/me/payouts`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/affiliates/stripe/account-details`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/affiliates/me/tax-status`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/affiliates/me/payout-eligibility`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (profileRes.ok) {
@@ -451,6 +453,7 @@ function AffiliateDashboardContent() {
       if (payoutsRes.ok) setPayouts((await payoutsRes.json()).data ?? []);
       if (stripeDetailsRes.ok) setStripeDetails((await stripeDetailsRes.json()).data);
       if (taxRes.ok) setTaxStatus((await taxRes.json()).data);
+      if (eligRes.ok) setPayoutEligibility((await eligRes.json()).data);
     } catch (err) {
       console.error("Failed to load partner portal data", err);
     } finally {
@@ -559,13 +562,42 @@ function AffiliateDashboardContent() {
           </div>
         </div>
 
+        {/* Payout Hold Banner */}
+        {payoutEligibility?.payoutHeld && (
+          <div className="mb-6 flex items-start gap-4 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
+            <div className="shrink-0 text-2xl">🔒</div>
+            <div className="flex-1">
+              <p className="font-semibold text-orange-300">Payouts are currently on hold</p>
+              <p className="mt-1 text-sm text-orange-300/70">
+                {payoutEligibility.holdReason === "tax_hold"
+                  ? `Your YTD earnings have reached $${payoutEligibility.ytdPaid?.toFixed(2)} — the IRS $600 threshold. Please complete your tax documentation to resume payouts.`
+                  : "An admin has placed a hold on your payouts. Please contact support for details."}
+              </p>
+              {payoutEligibility.requiredActions?.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {payoutEligibility.requiredActions.map((action: string) => (
+                    <li key={action} className="flex items-center gap-2 text-xs text-orange-300/80">
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                      {action}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button onClick={() => setActiveTab("tax")}
+                className="mt-3 rounded-lg bg-orange-500/20 border border-orange-500/30 px-4 py-1.5 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition">
+                Go to Tax & Compliance →
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Tab nav */}
         <div className="mb-8 flex gap-0.5 overflow-x-auto border-b border-white/[0.06] pb-px">
           {TABS.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${activeTab === tab.id
-                  ? "border-[#14b8a6] text-[#14b8a6]"
-                  : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                ? "border-[#14b8a6] text-[#14b8a6]"
+                : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
                 }`}>
               {tab.label}
               {tab.id === "tax" && taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (

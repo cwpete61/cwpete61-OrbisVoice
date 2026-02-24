@@ -33,13 +33,22 @@ function DashboardContent() {
   }, [tokenLoaded]);
 
   const fetchStats = async () => {
-    // TODO: Create stats endpoint in API
-    // For now, use placeholder
-    setStats({
-      totalAgents: agents.length,
-      totalConversations: 0,
-      avgDuration: 0,
-    });
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/stats/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStats({
+          totalAgents: data.data?.totalAgents ?? agents.length,
+          totalConversations: data.data?.totalConversations ?? 0,
+          avgDuration: data.data?.avgDurationMinutes ?? 0,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
   };
 
   const fetchSubscription = async () => {

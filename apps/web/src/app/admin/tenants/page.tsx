@@ -37,8 +37,8 @@ export default function TenantManagement() {
             <div className="p-8">
                 <header className="mb-10 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-[#f0f4fa]">Tenant Management</h1>
-                        <p className="mt-2 text-[rgba(240,244,250,0.5)]">Review and manage platform workspaces</p>
+                        <h1 className="text-3xl font-bold text-[#f0f4fa]">Subscriber Management</h1>
+                        <p className="mt-2 text-[rgba(240,244,250,0.5)]">Review and manage platform subscribers</p>
                     </div>
                 </header>
 
@@ -52,13 +52,14 @@ export default function TenantManagement() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-white/[0.02] text-[rgba(240,244,250,0.4)] uppercase text-[10px] font-bold tracking-widest border-b border-white/[0.06]">
                             <tr>
-                                <th className="px-6 py-4">Tenant Name</th>
+                                <th className="px-6 py-4">Subscriber Name</th>
                                 <th className="px-6 py-4">ID</th>
                                 <th className="px-6 py-4">Plan</th>
                                 <th className="px-6 py-4">Users</th>
                                 <th className="px-6 py-4">Agents</th>
                                 <th className="px-6 py-4">Created</th>
                                 <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.04]">
@@ -71,7 +72,7 @@ export default function TenantManagement() {
                             ) : tenants.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
-                                        No tenants found
+                                        No subscribers found
                                     </td>
                                 </tr>
                             ) : (
@@ -81,8 +82,8 @@ export default function TenantManagement() {
                                         <td className="px-6 py-4 font-mono text-xs text-[rgba(240,244,250,0.3)]">{tenant.id}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${tenant.subscriptionTier === 'enterprise' ? 'bg-purple-500/10 text-purple-400' :
-                                                    tenant.subscriptionTier === 'professional' ? 'bg-blue-500/10 text-blue-400' :
-                                                        'bg-slate-500/10 text-slate-400'
+                                                tenant.subscriptionTier === 'professional' ? 'bg-blue-500/10 text-blue-400' :
+                                                    'bg-slate-500/10 text-slate-400'
                                                 }`}>
                                                 {tenant.subscriptionTier}
                                             </span>
@@ -95,6 +96,13 @@ export default function TenantManagement() {
                                         <td className="px-6 py-4">
                                             <span className={`h-2 w-2 rounded-full inline-block mr-2 ${tenant.subscriptionStatus === 'active' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
                                             <span className="text-xs">{tenant.subscriptionStatus || 'free'}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <a href={`/admin/subscribers/${tenant.id}`}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs font-medium text-[rgba(240,244,250,0.6)] hover:text-white hover:bg-white/[0.05] transition">
+                                                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                                View
+                                            </a>
                                         </td>
                                     </tr>
                                 ))

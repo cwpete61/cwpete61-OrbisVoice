@@ -7,6 +7,79 @@ import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
 
+
+function NotificationPrefsPanel({ notifPrefs, masterEmail, setMasterEmail, savingNotif, notifMsg, onSave, setNotifPrefs }: any) {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token || loaded) return;
+    fetch(`${API_BASE}/notifications/preferences`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        const p = d.data;
+        if (p) {
+          setMasterEmail(p.emailEnabled ?? true);
+          setNotifPrefs({ commissions: p.commissions ?? true, payouts: p.payouts ?? true, leads: p.leads ?? true, usageWarnings: p.usageWarnings ?? true, announcements: p.announcements ?? true });
+        }
+        setLoaded(true);
+      });
+  }, []);
+
+  const PREFS = [
+    { key: "commissions", label: "Commission Earned", desc: "When you earn a commission from a referral" },
+    { key: "payouts", label: "Payout Notifications", desc: "When a payout is processed or scheduled" },
+    { key: "leads", label: "Lead Captured", desc: "When a new lead is captured by your agent" },
+    { key: "usageWarnings", label: "Usage Warnings", desc: "When you're approaching your conversation limit" },
+    { key: "announcements", label: "Announcements", desc: "Platform announcements and updates" },
+  ];
+
+  const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
+    <div onClick={onChange} className={`relative h-5 w-9 rounded-full cursor-pointer transition-colors ${value ? "bg-[#14b8a6]" : "bg-white/20"}`}>
+      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-0.5"}`} />
+    </div>
+  );
+
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 space-y-6">
+      <h2 className="text-sm font-semibold text-[#f0f4fa]">🔔 Notification Preferences</h2>
+
+      {/* Master toggle */}
+      <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
+        <div>
+          <p className="text-sm font-semibold text-[#f0f4fa]">Email Notifications</p>
+          <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">Master toggle — turn off to disable all notification emails</p>
+        </div>
+        <Toggle value={masterEmail} onChange={() => setMasterEmail((v: boolean) => !v)} />
+      </div>
+
+      {/* Per-type toggles */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Email Preferences</p>
+        <div className="rounded-xl border border-white/[0.06] bg-[#080c16] divide-y divide-white/[0.04]">
+          {PREFS.map((p) => (
+            <div key={p.key} className="flex items-center justify-between px-5 py-3.5">
+              <div>
+                <p className="text-sm font-medium text-[#f0f4fa]">{p.label}</p>
+                <p className="text-xs text-[rgba(240,244,250,0.4)]">{p.desc}</p>
+              </div>
+              <Toggle
+                value={masterEmail && (notifPrefs?.[p.key] ?? true)}
+                onChange={() => masterEmail && setNotifPrefs((prev: any) => ({ ...prev, [p.key]: !(prev?.[p.key] ?? true) }))}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {notifMsg && <p className="text-sm text-green-400">✅ {notifMsg}</p>}
+      <button onClick={onSave} disabled={savingNotif}
+        className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50">
+        {savingNotif ? "Saving…" : "Save Preferences"}
+      </button>
+    </div>
+  );
+}
+
 function SettingsContent() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
@@ -16,6 +89,11 @@ function SettingsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "api");
   const [profile, setProfile] = useState<any>(null);
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState<any>(null);
+  const [masterEmail, setMasterEmail] = useState(true);
+  const [savingNotif, setSavingNotif] = useState(false);
+  const [notifMsg, setNotifMsg] = useState<string | null>(null);
   const [googleConfig, setGoogleConfig] = useState<any>({
     clientId: "",
     clientSecret: "",
@@ -120,8 +198,6 @@ function SettingsContent() {
     fetchProfile();
     checkCalendarConnection();
     checkGmailConnection();
-    fetchGmailCredentials();
-    fetchGmailCredentials();
     fetchGmailCredentials();
     fetchTenantGoogleConfig();
     fetchTwilioConfig();
@@ -974,6 +1050,18 @@ function SettingsContent() {
               >
                 Referrals
               </button>
+              <button
+                onClick={() => {
+                  setActiveTab("notifications");
+                  router.replace("/settings?tab=notifications");
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "notifications"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                🔔 Notifications
+              </button>
 
               <button
                 onClick={() => {
@@ -1038,6 +1126,30 @@ function SettingsContent() {
               <button onClick={() => setShowNewKey(null)} className="btn-secondary text-sm">Done</button>
             </div>
           </div>
+        )}
+
+        {/* Notifications Preferences Section */}
+        {activeTab === "notifications" && (
+          <NotificationPrefsPanel
+            notifPrefs={notifPrefs}
+            masterEmail={masterEmail}
+            setMasterEmail={setMasterEmail}
+            savingNotif={savingNotif}
+            notifMsg={notifMsg}
+            onSave={async () => {
+              setSavingNotif(true); setNotifMsg(null);
+              const token = localStorage.getItem("token");
+              await fetch(`${API_BASE}/notifications/preferences`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ emailEnabled: masterEmail, ...(notifPrefs || {}) }),
+              });
+              setSavingNotif(false);
+              setNotifMsg("Notification preferences saved.");
+              setTimeout(() => setNotifMsg(null), 3000);
+            }}
+            setNotifPrefs={setNotifPrefs}
+          />
         )}
 
         {/* API Keys Section */}

@@ -835,4 +835,146 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
             }
         }
     );
+
+    // ── GET /affiliates/me/payout-eligibility ─────────────────────────────────
+    fastify.get(
+        "/affiliates/me/payout-eligibility",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as AuthPayload).userId;
+                const affiliate = await prisma.affiliate.findUnique({
+                    where: { userId },
+                    include: {
+                        payouts: {
+                            where: {
+                                status: "PAID",
+                                createdAt: {
+                                    gte: new Date(new Date().getFullYear(), 0, 1), // Jan 1 of this year
+                                    lt: new Date(new Date().getFullYear() + 1, 0, 1),
+                                },
+                            },
+                            select: { netAmount: true },
+                        },
+                    },
+                });
+
+                if (!affiliate) {
+                    return reply.code(404).send({ ok: false, message: "Affiliate record not found" });
+                }
+
+                const ytdPaid = affiliate.payouts.reduce((sum: number, p: any) => sum + p.netAmount, 0);
+                const IRSThreshold = 600;
+                const thresholdReached = ytdPaid >= IRSThreshold;
+                const taxComplete = affiliate.taxFormCompleted && affiliate.tax1099Uploaded;
+                const eligibleForPayout = !affiliate.payoutHeld && (!thresholdReached || taxComplete);
+
+                return reply.code(200).send({
+                    ok: true,
+                    data: {
+                        eligible: eligibleForPayout,
+                        payoutHeld: affiliate.payoutHeld,
+                        holdReason: affiliate.payoutHoldReason,
+                        ytdPaid: Math.round(ytdPaid * 100) / 100,
+                        irsThreshold: IRSThreshold,
+                        thresholdReached,
+                        taxFormCompleted: affiliate.taxFormCompleted,
+                        tax1099Uploaded: affiliate.tax1099Uploaded,
+                        requiredActions: [
+                            ...(!affiliate.taxFormCompleted ? ["Complete tax information form"] : []),
+                            ...(!affiliate.tax1099Uploaded ? ["Upload W-9 or tax documentation"] : []),
+                        ],
+                    },
+                });
+            } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // ── POST /affiliates/me/submit-tax-docs ───────────────────────────────────
+    fastify.post<{ Body: { taxFormUrl?: string; tinSsn?: string } }>(
+        "/affiliates/me/submit-tax-docs",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as AuthPayload).userId;
+                const { taxFormUrl, tinSsn } = request.body as any;
+
+                // Update user tax fields
+                if (taxFormUrl || tinSsn) {
+                    await prisma.user.update({
+                        where: { id: userId },
+                        data: {
+                            ...(taxFormUrl && { taxFormUrl }),
+                            ...(tinSsn && { tinSsn }),
+                        },
+                    });
+                }
+
+                // Mark affiliate tax1099Uploaded + taxFormCompleted if both are present
+                const user = await prisma.user.findUnique({ where: { id: userId }, select: { taxFormUrl: true, tinSsn: true } });
+                const hasDoc = !!(taxFormUrl || user?.taxFormUrl);
+                const hasTin = !!(tinSsn || user?.tinSsn);
+
+                await prisma.affiliate.update({
+                    where: { userId },
+                    data: {
+                        ...(hasDoc && { tax1099Uploaded: true }),
+                        ...(hasTin && { taxFormCompleted: true }),
+                    },
+                });
+
+                return reply.code(200).send({ ok: true, message: "Tax documents submitted" });
+            } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // ── POST /admin/affiliates/:id/lift-hold ──────────────────────────────────
+    fastify.post<{ Params: { id: string } }>(
+        "/admin/affiliates/:id/lift-hold",
+        { onRequest: [requireAdmin] },
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const adminId = (request.user as AuthPayload).userId;
+
+                const affiliate = await prisma.affiliate.update({
+                    where: { id },
+                    data: {
+                        payoutHeld: false,
+                        payoutHoldReason: null,
+                        payoutHoldLiftedAt: new Date(),
+                        payoutHoldLiftedBy: adminId,
+                    },
+                    include: { user: { select: { id: true, name: true, email: true } } },
+                });
+
+                // Fire notification to the payee
+                try {
+                    const { createNotification, NotifType } = await import("../services/notification");
+                    await createNotification({
+                        userId: affiliate.userId,
+                        type: NotifType.TAX_HOLD_LIFTED,
+                        title: "Payout Hold Lifted",
+                        body: "Your payout hold has been reviewed and lifted. You are now eligible to receive payouts again.",
+                        data: { liftedBy: adminId, liftedAt: new Date().toISOString() },
+                    });
+                } catch { }
+
+                return reply.code(200).send({
+                    ok: true,
+                    message: `Payout hold lifted for ${affiliate.user.name}`,
+                    data: { affiliateId: affiliate.id, userId: affiliate.userId },
+                });
+            } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
 }

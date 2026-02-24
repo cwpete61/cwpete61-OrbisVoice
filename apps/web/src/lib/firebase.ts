@@ -26,14 +26,9 @@ if (isConfigured) {
         auth = getAuth(app);
 
         // Initialize App Check
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
             const siteKey = process.env.NEXT_PUBLIC_APPCHECK_KEY;
             if (siteKey) {
-                // Enable debug token if in development
-                if (process.env.NODE_ENV === "development") {
-                    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-                }
-
                 appCheck = initializeAppCheck(app, {
                     provider: new ReCaptchaV3Provider(siteKey),
                     isTokenAutoRefreshEnabled: true,

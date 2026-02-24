@@ -88,7 +88,7 @@ export default function AdminDashboard() {
                 {/* Overview Cards */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                     <StatCard
-                        title="Total Tenants"
+                        title="Total Subscribers"
                         value={stats?.totalTenants || 0}
                         icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 21h18M3 7v14M21 7v14M12 3L3 7v14M12 3l9 4M12 3v18" /></svg>}
                     />
@@ -174,8 +174,8 @@ export default function AdminDashboard() {
                     <h2 className="mb-6 text-xl font-semibold">Quick Management</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <QuickLinkCard
-                            title="Manage Tenants"
-                            subtitle="View and edit all platform workspaces"
+                            title="Manage Subscribers"
+                            subtitle="View and manage all platform subscribers"
                             href="/admin/tenants"
                             icon={<svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-12h1m-1 4h1m-1 4h1" /></svg>}
                         />
@@ -201,8 +201,8 @@ export default function AdminDashboard() {
 function StatCard({ title, value, icon, isHighlight = false }: any) {
     return (
         <div className={`rounded-2xl border p-6 transition group relative overflow-hidden ${isHighlight
-                ? 'border-[#14b8a6]/40 bg-[#14b8a6]/5 shadow-[0_0_20px_rgba(20,184,166,0.1)]'
-                : 'border-white/[0.06] bg-[#0c111d] hover:border-[#14b8a6]/30'
+            ? 'border-[#14b8a6]/40 bg-[#14b8a6]/5 shadow-[0_0_20px_rgba(20,184,166,0.1)]'
+            : 'border-white/[0.06] bg-[#0c111d] hover:border-[#14b8a6]/30'
             }`}>
             <div className="flex items-center justify-between mb-4 relative z-10">
                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${isHighlight ? 'bg-[#14b8a6] text-[#05080f]' : 'bg-white/[0.04] text-[rgba(240,244,250,0.6)] group-hover:bg-[#14b8a6]/20 group-hover:text-[#14b8a6]'} transition`}>
