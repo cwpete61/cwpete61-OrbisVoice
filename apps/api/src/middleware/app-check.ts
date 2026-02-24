@@ -7,6 +7,7 @@ import { logger } from "../logger";
  * Verify that the request originates from a legitimate app instance.
  */
 export async function verifyAppCheck(request: FastifyRequest, reply: FastifyReply) {
+    const appCheckToken = request.headers["x-firebase-appcheck"] as string;
     const hasSecret = !!process.env.RECAPTCHA_SECRET_KEY;
 
     if (!appCheckToken) {
