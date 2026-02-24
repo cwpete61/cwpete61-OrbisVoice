@@ -30,7 +30,7 @@ const AdminUpdateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
-  role: z.enum(["ADMIN", "USER"]).optional(),
+  role: z.enum(["SYSTEM_ADMIN", "ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
   tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),

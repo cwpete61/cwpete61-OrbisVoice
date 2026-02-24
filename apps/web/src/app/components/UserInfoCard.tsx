@@ -76,8 +76,20 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
 
         {/* User Info */}
         <div className="flex-1 min-w-0 text-left">
-          <div className="text-sm font-semibold text-[#f0f4fa] truncate">
-            {profile?.name}
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-[#f0f4fa] truncate">
+              {profile?.name}
+            </div>
+            {profile?.role === "SYSTEM_ADMIN" && (
+              <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[9px] font-bold border border-purple-500/20 uppercase tracking-wider">
+                System Admin
+              </span>
+            )}
+            {profile?.role === "ADMIN" && profile?.role !== "SYSTEM_ADMIN" && (
+              <span className="px-1.5 py-0.5 rounded-md bg-[#14b8a6]/10 text-[#14b8a6] text-[9px] font-bold border border-[#14b8a6]/20 uppercase tracking-wider">
+                Admin
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 overflow-hidden">
             <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">
