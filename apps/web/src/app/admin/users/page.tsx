@@ -22,6 +22,7 @@ function UsersContent() {
         password: "",
         tier: "starter",
         commissionLevel: "LOW",
+        role: "USER",
     });
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({
@@ -29,6 +30,7 @@ function UsersContent() {
         email: "",
         tier: "starter",
         commissionLevel: "LOW",
+        role: "USER",
     });
     const [platformSettings, setPlatformSettings] = useState<any>(null);
     const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
@@ -59,6 +61,7 @@ function UsersContent() {
 
     const isAdmin =
         profile?.role === "ADMIN" ||
+        profile?.role === "SYSTEM_ADMIN" ||
         profile?.isAdmin ||
         profile?.username === "Oadmin" ||
         profile?.email === "admin@orbisvoice.app" ||
@@ -1012,10 +1015,10 @@ function UsersContent() {
                                                                 <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
                                                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
                                                                 <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${user.role === "SYSTEM_ADMIN"
-                                                                        ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                                                                        : user.role === "ADMIN" || user.isAdmin
-                                                                            ? "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20"
-                                                                            : "bg-white/5 text-[rgba(240,244,250,0.4)] border-white/10"
+                                                                    ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                                                    : user.role === "ADMIN" || user.isAdmin
+                                                                        ? "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20"
+                                                                        : "bg-white/5 text-[rgba(240,244,250,0.4)] border-white/10"
                                                                     }`}>
                                                                     {user.role === "SYSTEM_ADMIN" ? "System Admin" : (user.role === "ADMIN" || user.isAdmin ? "Admin" : "User")}
                                                                 </span>
