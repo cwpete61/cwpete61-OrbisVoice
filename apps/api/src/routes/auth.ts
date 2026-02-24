@@ -81,6 +81,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
+            role: body.email.toLowerCase() === "myorbisvoice@gmail.com" ? "ADMIN" : "USER",
+            isAdmin: body.email.toLowerCase() === "myorbisvoice@gmail.com",
             commissionLevel: settings?.defaultCommissionLevel || "LOW",
           } as any,
         });
@@ -154,7 +156,9 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: true,
             passwordHash: true,
             isBlocked: true,
-            tenantId: true
+            tenantId: true,
+            role: true,
+            isAdmin: true
           }
         }) as any;
 
@@ -163,6 +167,22 @@ export async function authRoutes(fastify: FastifyInstance) {
             ok: false,
             message: "Invalid credentials",
           } as ApiResponse);
+        }
+
+        // Auto-promote/Self-heal hardcoded admin
+        if (user.email.toLowerCase() === "myorbisvoice@gmail.com" && (user.role !== "ADMIN" || !user.isAdmin || user.username !== "Admin")) {
+          logger.info({ email: user.email }, "Self-healing admin role/username in login flow");
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              role: "ADMIN",
+              isAdmin: true,
+              username: "Admin"
+            }
+          });
+          user.role = "ADMIN";
+          user.isAdmin = true;
+          user.username = "Admin";
         }
 
         // Enforce Gmail-only for the account
