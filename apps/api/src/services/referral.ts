@@ -230,7 +230,7 @@ class ReferralManager {
         where: { referrerId },
         select: { code: true }
       });
-      const codeStrings = codes.map(c => c.code);
+      const codeStrings = codes.map((c: any) => c.code);
 
       // Add affiliate slug if the user is an affiliate
       const affiliate = await prisma.affiliate.findUnique({
@@ -259,9 +259,9 @@ class ReferralManager {
       const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
       const feePercent = settings?.transactionFeePercent || 3.4;
 
-      const pendingRewards = txs.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0);
-      const availableRewards = txs.filter(t => t.status === 'available').reduce((sum, t) => sum + t.amount, 0);
-      const totalRewards = txs.filter(t => t.status === 'available' || t.status === 'paid').reduce((sum, t) => sum + t.amount, 0);
+      const pendingRewards = txs.filter((t: any) => t.status === 'pending').reduce((sum: number, t: any) => sum + t.amount, 0);
+      const availableRewards = txs.filter((t: any) => t.status === 'available').reduce((sum: number, t: any) => sum + t.amount, 0);
+      const totalRewards = txs.filter((t: any) => t.status === 'available' || t.status === 'paid').reduce((sum: number, t: any) => sum + t.amount, 0);
 
       // Transparency: Calculate estimated fees for the available balance
       const estimatedFee = availableRewards * (feePercent / 100);

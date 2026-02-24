@@ -152,7 +152,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
           select: { id: true, name: true },
         });
 
-        const agentIds = agents.map((a) => a.id);
+        const agentIds = agents.map((a: any) => a.id);
 
         // Get summary stats
         const [total, successful, failed] = await Promise.all([

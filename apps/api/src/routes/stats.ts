@@ -22,7 +22,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         select: { id: true },
       });
 
-      const agentIds = agents.map((a) => a.id);
+      const agentIds = agents.map((a: any) => a.id);
 
       const transcriptStats = await prisma.transcript.aggregate({
         where: { agentId: { in: agentIds } },

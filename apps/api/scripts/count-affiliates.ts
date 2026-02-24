@@ -16,10 +16,10 @@ async function main() {
     const affiliates = await prisma.affiliate.findMany();
 
     console.log(`Total users: ${users.length}`);
-    console.log(`Total users with an affiliate profile: ${users.filter(u => u.affiliate).length}`);
+    console.log(`Total users with an affiliate profile: ${users.filter((u: any) => u.affiliate).length}`);
     console.log(`Total affiliates in Affiliate table: ${affiliates.length}`);
-    console.log(`Of those affiliates, total status ACTIVE: ${affiliates.filter(a => a.status === 'ACTIVE').length}`);
-    console.log(`Of those affiliates, total status PENDING: ${affiliates.filter(a => a.status === 'PENDING').length}`);
+    console.log(`Of those affiliates, total status ACTIVE: ${affiliates.filter((a: any) => a.status === 'ACTIVE').length}`);
+    console.log(`Of those affiliates, total status PENDING: ${affiliates.filter((a: any) => a.status === 'PENDING').length}`);
 }
 
 main()

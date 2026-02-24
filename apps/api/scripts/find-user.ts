@@ -24,7 +24,7 @@ async function main() {
                 ]
             }
         });
-        users.forEach(u => console.log(`Found: ${u.email} (${u.username})`));
+        users.forEach((u: any) => console.log(`Found: ${u.email} (${u.username})`));
     }
 }
 

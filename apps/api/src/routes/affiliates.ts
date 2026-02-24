@@ -144,7 +144,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             firstName: body.firstName,
                             lastName: body.lastName,
                             commissionLevel: settings?.defaultCommissionLevel || "LOW",
-                        } as Prisma.UserUncheckedCreateInput,
+                        } as any,
                     });
                 }
 
@@ -327,7 +327,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     accountId = account.id;
 
                     await prisma.affiliate.update({
-                        where: { id: (affiliate as Prisma.AffiliateGetPayload<{ include: { user: true } }>).id },
+                        where: { id: (affiliate as any).id },
                         data: { stripeAccountId: accountId, stripeAccountStatus: "pending" },
                     });
                 }
@@ -387,7 +387,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
 
                 if (filter === "referrers") {
                     // For referrers roster, we show ALL users as active referrers
-                    const where: Prisma.UserWhereInput = {};
+                    const where: any = {};
                     if (search) {
                         where.OR = [
                             { name: { contains: search, mode: "insensitive" } },
@@ -407,7 +407,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
 
 
 
-                    const data = users.map(u => {
+                    const data = users.map((u: any) => {
                         const aff = u.affiliate;
                         return {
                             id: aff ? aff.id : u.id,
@@ -435,7 +435,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 }
 
                 // Default: list actual affiliate records (e.g. for "affiliates" filter or general view)
-                let where: Prisma.AffiliateWhereInput = {};
+                let where: any = {};
                 if (filter === "affiliates") {
                     where.user = { isAffiliate: true };
                 }
@@ -447,7 +447,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             { slug: { contains: search, mode: "insensitive" } },
                             { user: { is: { name: { contains: search, mode: "insensitive" } } } },
                             { user: { is: { email: { contains: search, mode: "insensitive" } } } },
-                        ] as Prisma.AffiliateWhereInput[],
+                        ] as any[],
                     };
                 }
 

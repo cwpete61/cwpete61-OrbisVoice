@@ -165,7 +165,7 @@ export class AffiliateManager {
 
             if (!referral || referral.status !== "PENDING") return null;
 
-            const updatedReferral = await prisma.$transaction(async (tx) => {
+            const updatedReferral = await prisma.$transaction(async (tx: any) => {
                 const r = await tx.affiliateReferral.update({
                     where: { id: referral.id },
                     data: {
@@ -213,11 +213,11 @@ export class AffiliateManager {
             const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
             const feePercent = settings?.transactionFeePercent || 3.4;
 
-            const queue = await Promise.all(affiliates.map(async (aff) => {
+            const queue = await Promise.all(affiliates.map(async (aff: any) => {
                 const txs = await prisma.rewardTransaction.findMany({
                     where: { referrerId: aff.userId, status: 'available' }
                 });
-                const grossAmount = txs.reduce((sum, t) => sum + t.amount, 0);
+                const grossAmount = txs.reduce((sum: number, t: any) => sum + t.amount, 0);
                 const feeAmount = grossAmount * (feePercent / 100);
                 const netAmount = grossAmount - feeAmount;
 
@@ -269,7 +269,7 @@ export class AffiliateManager {
 
             const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
             const feePercent = settings?.transactionFeePercent || 3.4;
-            const payoutAmount = txs.reduce((sum, t) => sum + t.amount, 0);
+            const payoutAmount = txs.reduce((sum: number, t: any) => sum + t.amount, 0);
             const feeAmount = payoutAmount * (feePercent / 100);
             const netAmount = Math.floor(payoutAmount - feeAmount);
 
@@ -278,13 +278,13 @@ export class AffiliateManager {
             }
 
             // 1. Mark as PAID in DB first within a transaction
-            const result = await prisma.$transaction(async (tx) => {
+            const result = await prisma.$transaction(async (tx: any) => {
                 // Update all available to paid
                 await tx.rewardTransaction.updateMany({
                     where: {
                         referrerId: affiliate.userId,
                         status: 'available',
-                        id: { in: txs.map(t => t.id) }
+                        id: { in: txs.map((t: any) => t.id) }
                     },
                     data: { status: 'paid' }
                 });
