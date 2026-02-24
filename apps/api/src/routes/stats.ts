@@ -113,7 +113,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
 
         // Group by date
         const trendsByDate: Record<string, number> = {};
-        transcripts.forEach((t) => {
+        transcripts.forEach((t: any) => {
           const date = t.createdAt.toISOString().split("T")[0];
           trendsByDate[date] = (trendsByDate[date] || 0) + 1;
         });

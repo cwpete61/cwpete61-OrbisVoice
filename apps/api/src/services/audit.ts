@@ -50,7 +50,7 @@ class ToolAuditLogger {
         take: limit,
       });
 
-      return audits.map((audit) => ({
+      return audits.map((audit: any) => ({
         ...audit,
         status: audit.status as "pending" | "success" | "failed",
         toolInput: JSON.parse(audit.toolInput),
@@ -102,7 +102,7 @@ class ToolAuditLogger {
         failedExecutions: failed,
         successRate: total > 0 ? ((successful / total) * 100).toFixed(2) : "0",
         avgExecutionTimeMs: avgTime._avg.executionTimeMs || 0,
-        toolBreakdown: toolBreakdown.map((tb) => ({
+        toolBreakdown: toolBreakdown.map((tb: any) => ({
           toolName: tb.toolName,
           count: tb._count,
         })),
