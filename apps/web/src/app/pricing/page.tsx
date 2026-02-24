@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 const PRICING_TIERS = [
   {
@@ -96,12 +96,11 @@ export default function PricingPage() {
   const [limits, setLimits] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/stats/pricing-limits`)
-      .then(res => res.json())
-      .then(json => {
-        if (json.ok) setLimits(json.data);
+    apiFetch("/stats/pricing-limits")
+      .then(({ data }: { data: any }) => {
+        if (data.ok) setLimits(data.data);
       })
-      .catch(err => console.error("Failed to fetch limits:", err));
+      .catch((err: any) => console.error("Failed to fetch limits:", err));
   }, []);
 
   const getConversations = (tier: string, fallback: string) => {

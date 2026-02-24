@@ -140,8 +140,24 @@ const start = async () => {
         data: { isAdmin: true, role: "ADMIN" }
       });
       logger.info("Admin bootstrap completed");
+
+      // Bootstrap global platform settings
+      const settingsCount = await prisma.platformSettings.count();
+      if (settingsCount === 0) {
+        await prisma.platformSettings.create({
+          data: {
+            id: "global",
+            starterLimit: 1000,
+            professionalLimit: 10000,
+            enterpriseLimit: 100000,
+            aiInfraLimit: 250000,
+            ltdLimit: 1000,
+          }
+        });
+        logger.info("Platform settings bootstrapped");
+      }
     } catch (err) {
-      logger.error({ err }, "Admin bootstrap failed");
+      logger.error({ err }, "Bootstrap failed");
     }
 
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });

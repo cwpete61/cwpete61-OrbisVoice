@@ -84,6 +84,19 @@ export default function SystemSettings() {
         );
     }
 
+    if (!settings) {
+        return (
+            <DashboardShell>
+                <div className="p-8">
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
+                        <h2 className="text-xl font-bold text-red-500 mb-2">Access Denied</h2>
+                        <p className="text-[rgba(240,244,250,0.6)]">{error || "You do not have permission to view this page."}</p>
+                    </div>
+                </div>
+            </DashboardShell>
+        );
+    }
+
     return (
         <DashboardShell>
             <div className="p-8 max-w-none mx-auto">

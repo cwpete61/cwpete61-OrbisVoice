@@ -144,24 +144,25 @@ export async function statsRoutes(fastify: FastifyInstance) {
   // GET /stats/pricing-limits - Public endpoint for pricing page
   fastify.get("/stats/pricing-limits", async (request, reply) => {
     try {
-      const settings = await prisma.platformSettings.findUnique({
+      let settings = await prisma.platformSettings.findUnique({
         where: { id: "global" },
-        select: {
-          starterLimit: true,
-          professionalLimit: true,
-          enterpriseLimit: true,
-          aiInfraLimit: true,
-        },
       });
+
+      if (!settings) {
+        settings = await prisma.platformSettings.findFirst();
+      }
+
+      const data = settings || {
+        starterLimit: 1000,
+        professionalLimit: 10000,
+        enterpriseLimit: 100000,
+        ltdLimit: 1000,
+        aiInfraLimit: 250000,
+      };
 
       return reply.send({
         ok: true,
-        data: settings || {
-          starterLimit: 1000,
-          professionalLimit: 10000,
-          enterpriseLimit: 100000,
-          aiInfraLimit: 250000,
-        },
+        data,
       } as ApiResponse);
     } catch (err) {
       logger.error(err, "Failed to fetch pricing limits");
