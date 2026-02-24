@@ -1,9 +1,9 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { authenticate, requireAdmin } from "../middleware/auth.js";
-import { prisma } from "../db.js";
-import { ApiResponse, AuthPayload } from "../types.js";
+import { authenticate, requireAdmin, requireSystemAdmin } from "../middleware/auth";
+import { prisma } from "../db";
+import { ApiResponse, AuthPayload } from "../types";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).optional(),
@@ -407,7 +407,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: create user
   fastify.post<{ Body: z.infer<typeof AdminCreateUserSchema> }>(
     "/admin/users",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const body = AdminCreateUserSchema.parse(request.body);
@@ -437,7 +437,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         const tenant = await prisma.tenant.create({
           data: {
-            name: `${body.name}'s Workspace`,
+            name: `${body.name} 's Workspace`,
             subscriptionTier: tier,
             subscriptionStatus: "active",
           },
@@ -606,6 +606,21 @@ export default async function userRoutes(fastify: FastifyInstance) {
           }
         }
 
+        // Check if role or isAdmin is being changed, and if so, require SYSTEM_ADMIN
+        if (body.role !== undefined || body.isAdmin !== undefined) {
+          const requestingUser = (request as any).user as AuthPayload;
+          const dbRequestingUser = await prisma.user.findUnique({
+            where: { id: requestingUser.userId },
+            select: { role: true }
+          });
+          if (dbRequestingUser?.role !== "SYSTEM_ADMIN") {
+            return reply.code(403).send({
+              ok: false,
+              message: "Only System Admins can change user roles",
+            } as ApiResponse);
+          }
+        }
+
         if (body.email && body.email !== targetUser.email) {
           const existingEmail = await prisma.user.findUnique({
             where: { email: body.email },
@@ -706,7 +721,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: block or unblock user
   fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminBlockUserSchema> }>(
     "/admin/users/:id/block",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;
@@ -772,7 +787,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: reset user password
   fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminPasswordSchema> }>(
     "/admin/users/:id/password",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;
@@ -822,7 +837,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: impersonate user (support access)
   fastify.post<{ Params: { id: string } }>(
     "/admin/users/:id/impersonate",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;
@@ -867,7 +882,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: delete user
   fastify.delete<{ Params: { id: string } }>(
     "/admin/users/:id",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;
@@ -912,7 +927,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: get Google auth configuration
   fastify.get(
     "/admin/google-auth/config",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const config = await prisma.googleAuthConfig.findUnique({
@@ -942,7 +957,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: update Google auth configuration
   fastify.put<{ Body: { clientId?: string; clientSecret?: string; redirectUri?: string; enabled?: boolean } }>(
     "/admin/google-auth/config",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const body = request.body || {};
@@ -982,7 +997,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: get System Email configuration
   fastify.get(
     "/admin/system-email",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const config = await prisma.systemEmailConfig.findUnique({
@@ -1018,7 +1033,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: update System Email configuration
   fastify.put<{ Body: any }>(
     "/admin/system-email",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const body = (request.body as any) || {};
@@ -1072,7 +1087,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: get Stripe Connect configuration
   fastify.get(
     "/admin/stripe-connect",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const config = await (prisma).stripeConnectConfig.findUnique({
@@ -1100,7 +1115,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: update Stripe Connect configuration
   fastify.put<{ Body: any }>(
     "/admin/stripe-connect",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const body = (request.body as any) || {};
@@ -1696,7 +1711,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: Get platform settings
   fastify.get(
     "/admin/platform-settings",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         let settings = await prisma.platformSettings.findUnique({
@@ -1743,7 +1758,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: Update platform settings
   fastify.put<{ Body: z.infer<typeof PlatformSettingsSchema> }>(
     "/admin/platform-settings",
-    { onRequest: [requireAdmin] },
+    { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
         const body = PlatformSettingsSchema.parse(request.body);

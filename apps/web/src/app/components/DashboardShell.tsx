@@ -115,6 +115,7 @@ const NAV = [
     href: "/admin/payouts",
     label: "Partner Payouts",
     isAdminOnly: true,
+    isSystemAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
@@ -137,6 +138,7 @@ const NAV = [
     href: "/admin/system",
     label: "System Health",
     isAdminOnly: true,
+    isSystemAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -148,6 +150,7 @@ const NAV = [
     href: "/admin/audit",
     label: "Audit Logs",
     isAdminOnly: true,
+    isSystemAdminOnly: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -221,9 +224,14 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
           {["Main", "Partnership", "Admin", "System"].map((cat) => {
-            const items = NAV.filter((item) => {
+            const items = NAV.filter((item: any) => {
               if (item.category !== cat) return false;
-              if (item.isAdminOnly) return profile?.isAdmin;
+
+              const isSystemAdmin = profile?.role === "SYSTEM_ADMIN";
+
+              if (item.isSystemAdminOnly && !isSystemAdmin) return false;
+              if (item.isAdminOnly && !profile?.isAdmin) return false;
+
               if (item.label === "My Affiliate Partnership") {
                 return profile?.isAdmin || profile?.isAffiliate;
               }

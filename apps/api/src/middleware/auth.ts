@@ -60,8 +60,38 @@ export async function requireAdmin(request: FastifyRequest, reply: FastifyReply)
       select: { isAdmin: true, role: true },
     }) as { isAdmin: boolean; role: string } | null;
 
-    if (!dbUser || (!dbUser.isAdmin && dbUser.role !== "ADMIN")) {
+    if (!dbUser || (!dbUser.isAdmin && dbUser.role !== "ADMIN" && dbUser.role !== "SYSTEM_ADMIN")) {
       reply.code(403).send({ ok: false, message: "Forbidden" });
+      return;
+    }
+  } catch (err) {
+    reply.code(500).send({ ok: false, message: "Internal server error" });
+    return;
+  }
+}
+
+export async function requireSystemAdmin(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    reply.code(401).send({ ok: false, message: "Unauthorized" });
+    return;
+  }
+
+  const user = (request as unknown as { user: AuthPayload }).user;
+  if (!user?.userId) {
+    reply.code(401).send({ ok: false, message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { role: true },
+    }) as { role: string } | null;
+
+    if (!dbUser || dbUser.role !== "SYSTEM_ADMIN") {
+      reply.code(403).send({ ok: false, message: "Forbidden: System Admin only" });
       return;
     }
   } catch (err) {

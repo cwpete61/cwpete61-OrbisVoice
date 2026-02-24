@@ -67,6 +67,10 @@ function UsersContent() {
         profile?.email === "admin@orbisvoice.app" ||
         tokenEmail === "admin@orbisvoice.app";
 
+    const isSystemAdmin =
+        profile?.role === "SYSTEM_ADMIN" ||
+        profile?.email === "myorbislocal@gmail.com";
+
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (token) {
@@ -792,12 +796,14 @@ function UsersContent() {
                                                 </button>
                                             )}
                                         </div>
-                                        <button
-                                            onClick={() => setCreateOpen((prev) => !prev)}
-                                            className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
-                                        >
-                                            {createOpen ? "Close" : "Add user"}
-                                        </button>
+                                        {isSystemAdmin && (
+                                            <button
+                                                onClick={() => setCreateOpen((prev) => !prev)}
+                                                className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
+                                            >
+                                                {createOpen ? "Close" : "Add user"}
+                                            </button>
+                                        )}
                                         <div className="flex items-center rounded-lg border border-white/[0.08] bg-[#05080f] p-1 text-xs">
                                             <button
                                                 onClick={() => setUserFilter("paid")}
@@ -1049,41 +1055,45 @@ function UsersContent() {
                                                             </div>
                                                         ) : (
                                                             <>
-                                                                <button
-                                                                    onClick={() => startEditUser(user)}
-                                                                    className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => toggleBlockUser(user)}
-                                                                    disabled={actionLoading === `block-${user.id}`}
-                                                                    className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1.5 text-xs text-[#f59e0b] hover:bg-[#f59e0b]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                                                                >
-                                                                    {user.isBlocked ? "Unblock" : "Block"}
-                                                                </button>
-                                                                {!user.affiliate && !user.isAdmin && (
-                                                                    <button
-                                                                        onClick={() => promoteToAffiliate(user.id)}
-                                                                        disabled={actionLoading === `promote-${user.id}`}
-                                                                        className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/5 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/10 transition disabled:cursor-not-allowed disabled:opacity-60"
-                                                                    >
-                                                                        Promote to Partner
-                                                                    </button>
+                                                                {isSystemAdmin && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => startEditUser(user)}
+                                                                            className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
+                                                                        >
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => toggleBlockUser(user)}
+                                                                            disabled={actionLoading === `block-${user.id}`}
+                                                                            className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1.5 text-xs text-[#f59e0b] hover:bg-[#f59e0b]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                        >
+                                                                            {user.isBlocked ? "Unblock" : "Block"}
+                                                                        </button>
+                                                                        {!user.affiliate && !user.isAdmin && (
+                                                                            <button
+                                                                                onClick={() => promoteToAffiliate(user.id)}
+                                                                                disabled={actionLoading === `promote-${user.id}`}
+                                                                                className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/5 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/10 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                            >
+                                                                                Promote to Partner
+                                                                            </button>
+                                                                        )}
+                                                                        {user.affiliate && (
+                                                                            <div className="flex items-center gap-1 rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-[10px] font-bold text-[#14b8a6] uppercase tracking-wider">
+                                                                                <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
+                                                                                Partner
+                                                                            </div>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={() => deleteUser(user)}
+                                                                            disabled={actionLoading === `delete-${user.id}`}
+                                                                            className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                        >
+                                                                            Delete
+                                                                        </button>
+                                                                    </>
                                                                 )}
-                                                                {user.affiliate && (
-                                                                    <div className="flex items-center gap-1 rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-[10px] font-bold text-[#14b8a6] uppercase tracking-wider">
-                                                                        <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
-                                                                        Partner
-                                                                    </div>
-                                                                )}
-                                                                <button
-                                                                    onClick={() => deleteUser(user)}
-                                                                    disabled={actionLoading === `delete-${user.id}`}
-                                                                    className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                                                                >
-                                                                    Delete
-                                                                </button>
                                                             </>
                                                         )}
                                                     </div>

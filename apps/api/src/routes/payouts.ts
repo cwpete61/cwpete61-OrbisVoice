@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { requireAdmin } from "../middleware/auth";
+import { requireAdmin, requireSystemAdmin } from "../middleware/auth";
 import { affiliateManager } from "../services/affiliate";
 import { ApiResponse } from "../types";
 import { z } from "zod";
@@ -8,7 +8,7 @@ export async function payoutRoutes(fastify: FastifyInstance) {
     // Admin: Get payout queue
     fastify.get(
         "/admin/payouts/queue",
-        { onRequest: [requireAdmin] },
+        { onRequest: [requireSystemAdmin] },
         async (request, reply) => {
             try {
                 const queue = await affiliateManager.getPayoutQueue();
@@ -27,7 +27,7 @@ export async function payoutRoutes(fastify: FastifyInstance) {
 
     fastify.post<{ Body: z.infer<typeof BulkPayoutSchema> }>(
         "/admin/payouts/bulk",
-        { onRequest: [requireAdmin] },
+        { onRequest: [requireSystemAdmin] },
         async (request, reply) => {
             try {
                 const { affiliateIds } = BulkPayoutSchema.parse(request.body);

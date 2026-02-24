@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest } from "fastify";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
-import { requireAdmin } from "../middleware/auth";
+import { requireAdmin, requireSystemAdmin } from "../middleware/auth";
 
 export async function adminRoutes(fastify: FastifyInstance) {
     // All routes in this group require admin privileges
@@ -151,7 +151,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
      * PATCH /admin/settings
      * Update platform-wide settings
      */
-    fastify.patch("/admin/settings", async (request, reply) => {
+    fastify.patch("/admin/settings", { onRequest: [requireSystemAdmin] }, async (request, reply) => {
         try {
             const body = request.body as any;
 
@@ -230,7 +230,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
      * POST /admin/impersonate
      * Generate a login token for a specific user
      */
-    fastify.post("/admin/impersonate", async (request, reply) => {
+    fastify.post("/admin/impersonate", { onRequest: [requireSystemAdmin] }, async (request, reply) => {
         try {
             const { userId } = request.body as { userId: string };
             if (!userId) {

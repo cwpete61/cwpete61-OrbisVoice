@@ -98,8 +98,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
-            role: isSystemAdminEmail(body.email) ? "SYSTEM_ADMIN" : (isAdminEmail(body.email) ? "ADMIN" : "USER"),
-            isAdmin: isAdminEmail(body.email),
+            role: "USER",
+            isAdmin: false,
             commissionLevel: settings?.defaultCommissionLevel || "LOW",
           } as any,
         });
@@ -184,31 +184,6 @@ export async function authRoutes(fastify: FastifyInstance) {
             ok: false,
             message: "Invalid credentials",
           } as ApiResponse);
-        }
-
-        // Auto-promote/Self-heal hardcoded admin
-        if (isAdminEmail(user.email)) {
-          const targetRole = isSystemAdminEmail(user.email) ? "SYSTEM_ADMIN" : "ADMIN";
-          if (user.role !== targetRole || !user.isAdmin) {
-            logger.info({ email: user.email, targetRole }, "Self-healing admin role/status in login flow");
-            const updateData: any = {
-              role: targetRole,
-              isAdmin: true
-            };
-
-            // Only force "Admin" username for the primary admin email
-            if (user.email.toLowerCase() === "myorbisvoice@gmail.com" && user.username !== "Admin") {
-              updateData.username = "Admin";
-              user.username = "Admin";
-            }
-
-            await prisma.user.update({
-              where: { id: user.id },
-              data: updateData
-            });
-            user.role = targetRole;
-            user.isAdmin = true;
-          }
         }
 
         // Enforce Gmail-only for the account
@@ -309,29 +284,6 @@ export async function authRoutes(fastify: FastifyInstance) {
         const isAdmin = isAdminEmail(email);
         const isSystemAdmin = isSystemAdminEmail(email);
 
-        if (user && isAdmin) {
-          const targetRole = isSystemAdmin ? "SYSTEM_ADMIN" : "ADMIN";
-          if (user.role !== targetRole || !user.isAdmin) {
-            logger.info({ email, targetRole }, "Self-healing admin role and status");
-            const updateData: any = {
-              role: targetRole,
-              isAdmin: true,
-            };
-
-            if (email.toLowerCase() === "myorbisvoice@gmail.com" && user.username !== "Admin") {
-              updateData.username = "Admin";
-              user.username = "Admin";
-            }
-
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: updateData
-            });
-            user.role = targetRole;
-            user.isAdmin = true;
-          }
-        }
-
         let tenantId = user?.tenantId;
 
         if (!user) {
@@ -351,11 +303,11 @@ export async function authRoutes(fastify: FastifyInstance) {
           user = await prisma.user.create({
             data: {
               email,
-              name: isAdmin ? (email.toLowerCase() === "myorbisvoice@gmail.com" ? "Admin" : name) : name,
-              username: email.toLowerCase() === "myorbisvoice@gmail.com" ? "Admin" : (email.split('@')[0] + Math.floor(Math.random() * 1000)),
+              name,
+              username: email.split('@')[0] + Math.floor(Math.random() * 1000),
               tenantId,
-              role: isSystemAdmin ? "SYSTEM_ADMIN" : (isAdmin ? "ADMIN" : "USER"),
-              isAdmin: isAdmin,
+              role: "USER",
+              isAdmin: false,
               commissionLevel: settings?.defaultCommissionLevel || "LOW",
             } as any,
           });

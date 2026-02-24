@@ -86,7 +86,7 @@ export default function SystemSettings() {
 
     return (
         <DashboardShell>
-            <div className="p-8 max-w-5xl mx-auto">
+            <div className="p-8 max-w-none mx-auto">
                 <header className="mb-10">
                     <h1 className="text-3xl font-bold text-[#f0f4fa]">System Configuration</h1>
                     <p className="mt-2 text-[rgba(240,244,250,0.5)]">Manage global platform settings and monitor infrastructure health</p>

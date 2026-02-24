@@ -95,14 +95,25 @@ function SettingsContent() {
   const [stripeConnectTesting, setStripeConnectTesting] = useState(false);
   const [stripeConnectTestResult, setStripeConnectTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
 
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [systemRolesTab, setSystemRolesTab] = useState<"users" | "admins">("users");
+
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
     profile?.role === "ADMIN" ||
+    profile?.role === "SYSTEM_ADMIN" ||
     profile?.isAdmin ||
     profile?.username === "Oadmin" ||
     profile?.email === "admin@orbisvoice.app" ||
-    tokenEmail === "admin@orbisvoice.app";
+    profile?.email === "myorbislocal@gmail.com" || // Ensure system admin sees admin sections
+    tokenEmail === "admin@orbisvoice.app" ||
+    tokenEmail === "myorbislocal@gmail.com";
+
+  const isSystemAdmin =
+    profile?.role === "SYSTEM_ADMIN" ||
+    tokenEmail === "myorbislocal@gmail.com";
 
   useEffect(() => {
     fetchApiKeys();
@@ -116,6 +127,9 @@ function SettingsContent() {
     fetchTwilioConfig();
     fetchSystemEmailConfig();
     fetchStripeConnectConfig();
+    if (activeTab === "role-settings" || activeTab === "system-roles") {
+      fetchUsers();
+    }
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -142,6 +156,47 @@ function SettingsContent() {
       }
     } catch (err) {
       console.error("Failed to fetch Gmail credentials:", err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAllUsers(data.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role: newRole, isAdmin: newRole !== "USER" }),
+      });
+      if (res.ok) {
+        await fetchUsers();
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to update role");
+      }
+    } catch (err) {
+      console.error("Failed to update role:", err);
     }
   };
 
@@ -919,6 +974,24 @@ function SettingsContent() {
               >
                 Referrals
               </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab("system-roles");
+                  router.replace("/settings?tab=system-roles");
+                  fetchUsers();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "system-roles"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                System Roles
+              </button>
+            </>
+          )}
+          {isSystemAdmin && (
+            <>
               <button
                 onClick={() => {
                   setActiveTab("stripe-connect");
@@ -930,6 +1003,19 @@ function SettingsContent() {
                   }`}
               >
                 Stripe Connect
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("role-settings");
+                  router.replace("/settings?tab=role-settings");
+                  fetchUsers();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "role-settings"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                Role Settings
               </button>
             </>
           )}
@@ -1891,6 +1977,134 @@ function SettingsContent() {
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
               Settings for the referrals program will be available here.
             </p>
+          </div>
+        )}
+        {/* Role Settings Section */}
+        {activeTab === "role-settings" && isSystemAdmin && (
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">Role Settings</h2>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">Manage user access roles across the platform</p>
+              </div>
+              <button
+                onClick={fetchUsers}
+                className="rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs text-[#f0f4fa] hover:bg-white/[0.1] transition"
+              >
+                Refresh List
+              </button>
+            </div>
+
+            {usersLoading ? (
+              <div className="py-12 text-center text-sm text-[rgba(240,244,250,0.45)]">Loading users...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] text-xs uppercase tracking-wider text-[rgba(240,244,250,0.35)]">
+                      <th className="px-4 py-3 font-semibold">User</th>
+                      <th className="px-4 py-3 font-semibold">Current Role</th>
+                      <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.06]">
+                    {allUsers.map((u) => (
+                      <tr key={u.id} className="group hover:bg-white/[0.02] transition">
+                        <td className="px-4 py-4">
+                          <div className="font-medium text-[#f0f4fa]">{u.name}</div>
+                          <div className="text-xs text-[rgba(240,244,250,0.4)]">{u.email}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === "SYSTEM_ADMIN" ? "bg-purple-500/10 text-purple-400" :
+                            u.role === "ADMIN" ? "bg-[#14b8a6]/10 text-[#14b8a6]" :
+                              "bg-blue-500/10 text-blue-400"
+                            }`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleUpdateRole(u.id, e.target.value)}
+                              className="rounded-lg border border-white/[0.08] bg-[#05080f] px-2 py-1 text-xs text-[#f0f4fa] focus:border-[#14b8a6] outline-none transition"
+                            >
+                              <option value="USER">User</option>
+                              <option value="ADMIN">Admin</option>
+                              <option value="SYSTEM_ADMIN">System Admin</option>
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* System Roles Section */}
+        {activeTab === "system-roles" && isAdmin && (
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">System Roles</h2>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">View and manage platform users by role</p>
+              </div>
+              <button
+                onClick={fetchUsers}
+                className="rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs text-[#f0f4fa] hover:bg-white/[0.1] transition"
+              >
+                Refresh List
+              </button>
+            </div>
+
+            {/* Sub-tabs */}
+            <div className="mb-6 flex gap-2 border-b border-white/[0.06] pb-4">
+              <button
+                onClick={() => setSystemRolesTab("users")}
+                className={`px-4 py-2 text-xs font-medium transition ${systemRolesTab === "users" ? "text-[#14b8a6] border-b-2 border-[#14b8a6]" : "text-[rgba(240,244,250,0.45)] hover:text-[#f0f4fa]"
+                  }`}
+              >
+                Users
+              </button>
+              <button
+                onClick={() => setSystemRolesTab("admins")}
+                className={`px-4 py-2 text-xs font-medium transition ${systemRolesTab === "admins" ? "text-[#14b8a6] border-b-2 border-[#14b8a6]" : "text-[rgba(240,244,250,0.45)] hover:text-[#f0f4fa]"
+                  }`}
+              >
+                Admins
+              </button>
+            </div>
+
+            {usersLoading ? (
+              <div className="py-12 text-center text-sm text-[rgba(240,244,250,0.45)]">Loading...</div>
+            ) : (
+              <div className="space-y-4">
+                {allUsers
+                  .filter(u => systemRolesTab === "admins" ? (u.role === "ADMIN" || u.role === "SYSTEM_ADMIN") : u.role === "USER")
+                  .map(u => (
+                    <div key={u.id} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4">
+                      <div>
+                        <div className="font-medium text-[#f0f4fa]">{u.name}</div>
+                        <div className="text-xs text-[rgba(240,244,250,0.4)]">{u.email}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === "SYSTEM_ADMIN" ? "bg-purple-500/10 text-purple-400" :
+                          u.role === "ADMIN" ? "bg-[#14b8a6]/10 text-[#14b8a6]" :
+                            "bg-blue-500/10 text-blue-400"
+                          }`}>
+                          {u.role}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                {allUsers.filter(u => systemRolesTab === "admins" ? (u.role === "ADMIN" || u.role === "SYSTEM_ADMIN") : u.role === "USER").length === 0 && (
+                  <p className="py-8 text-center text-xs text-[rgba(240,244,250,0.35)]">No {systemRolesTab} found.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
