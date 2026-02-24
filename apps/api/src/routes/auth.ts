@@ -214,4 +214,85 @@ export async function authRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Firebase Sign-in / Signup Unified
+  fastify.post<{ Body: { token: string; referralCode?: string; affiliateSlug?: string } }>(
+    "/auth/firebase-signin",
+    async (request, reply) => {
+      try {
+        const { token, referralCode, affiliateSlug } = request.body;
+        if (!token) {
+          return reply.code(400).send({ ok: false, message: "Firebase token is required" });
+        }
+
+        // 1. Verify Token
+        const { auth } = await import("../lib/firebase");
+        const decodedToken = await auth.verifyIdToken(token);
+        const email = decodedToken.email;
+        const name = decodedToken.name || email?.split('@')[0] || "User";
+
+        if (!email) {
+          return reply.code(400).send({ ok: false, message: "Firebase token missing email" });
+        }
+
+        // 2. Find or Create User
+        let user = await prisma.user.findUnique({
+          where: { email },
+        }) as any;
+
+        let tenantId = user?.tenantId;
+
+        if (!user) {
+          // Chaos-free Auto-Signup
+          logger.info({ email }, "Auto-creating user from Firebase sign-in");
+
+          const tenant = await prisma.tenant.create({
+            data: { name: `${name}'s Workspace` },
+          });
+          tenantId = tenant.id;
+
+          const settings = await prisma.platformSettings.findUnique({
+            where: { id: "global" }
+          });
+
+          user = await prisma.user.create({
+            data: {
+              email,
+              name,
+              username: email.split('@')[0] + Math.floor(Math.random() * 1000),
+              tenantId,
+              commissionLevel: settings?.defaultCommissionLevel || "LOW",
+            } as any,
+          });
+
+          // Handle affiliate/referral for new user
+          if (affiliateSlug) {
+            try { await affiliateManager.recordReferral(affiliateSlug, user.id); } catch (e) { }
+          }
+          if (referralCode) {
+            try { await referralManager.redeemReferral(referralCode, user.id); } catch (e) { }
+          }
+        }
+
+        if (user.isBlocked) {
+          return reply.code(403).send({ ok: false, message: "Account is blocked" });
+        }
+
+        // 3. Issue Native JWT
+        const appToken = fastify.jwt.sign(
+          { userId: user.id, tenantId, email: user.email, isBlocked: user.isBlocked },
+          { expiresIn: "7d" }
+        );
+
+        return reply.send({
+          ok: true,
+          message: "Signed in successfully",
+          data: { token: appToken, user: { id: user.id, email: user.email, name: user.name } }
+        });
+      } catch (err) {
+        logger.error({ err }, "Firebase sign-in error");
+        return reply.code(401).send({ ok: false, message: "Authentication failed" });
+      }
+    }
+  );
 }

@@ -7,6 +7,8 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { apiFetch } from "../../lib/api";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth as firebaseAuth } from "../../lib/firebase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -40,15 +42,36 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setError("");
+    setLoading(true);
     try {
-      const { res, data } = await apiFetch("/auth/google/url");
+      if (!firebaseAuth) {
+        throw new Error("Firebase is not yet configured. Please add your API key to .env.local");
+      }
+
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(firebaseAuth, provider);
+      const idToken = await result.user.getIdToken();
+
+      // Send to our backend to get app-specific JWT
+      const { res, data } = await apiFetch("/auth/firebase-signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: idToken }),
+      });
+
       if (res.ok) {
-        window.location.href = (data.data as any).url;
+        localStorage.setItem("token", (data.data as any).token);
+        router.push("/dashboard");
       } else {
-        setError(data.message || "Google login unavailable");
+        setError(data.message || "Sync with backend failed");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Google login unavailable. Please try again.");
+      console.error("Google login error:", err);
+      // Don't show Firebase-internal errors directly to users if we can help it
+      const msg = err instanceof Error ? err.message : "Google login failed";
+      setError(msg.includes("auth/invalid-api-key") ? "Firebase configuration is incorrect (Invalid API Key)." : msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,10 +98,11 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition disabled:opacity-50"
               >
                 <span className="text-lg">G</span>
-                Sign in with Google
+                {loading ? "Processing..." : "Sign in with Google"}
               </button>
               <div className="flex items-center gap-3 text-xs text-[rgba(240,244,250,0.35)]">
                 <div className="h-px flex-1 bg-white/[0.06]" />
@@ -90,7 +114,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   placeholder="Email or username"
-                  value={email} // keeping variable name 'email' to minimize changes, but it holds identifier
+                  value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
                   required

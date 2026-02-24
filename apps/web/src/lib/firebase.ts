@@ -1,5 +1,5 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -10,10 +10,24 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app =
-    getApps().length === 0
-        ? initializeApp(firebaseConfig)
-        : getApps()[0];
+// Only initialize if we have an API key to prevent runtime crashes
+const isConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.apiKey !== "your-api-key");
 
-export const auth = getAuth(app);
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+
+if (isConfigured) {
+    try {
+        app = getApps().length === 0
+            ? initializeApp(firebaseConfig)
+            : getApps()[0];
+        auth = getAuth(app);
+    } catch (error) {
+        console.error("Firebase initialization failed:", error);
+    }
+} else {
+    console.warn("Firebase is not configured. Social login will be disabled.");
+}
+
+export { app, auth };
 export default app;

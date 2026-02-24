@@ -7,6 +7,8 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { API_BASE } from "@/lib/api";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth as firebaseAuth } from "../../lib/firebase";
 
 function SignupContent() {
   const [email, setEmail] = useState("");
@@ -53,16 +55,41 @@ function SignupContent() {
 
   const handleGoogleSignup = async () => {
     setError("");
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/google/url`);
+      if (!firebaseAuth) {
+        throw new Error("Firebase is not yet configured. Please add your API key to .env.local");
+      }
+
+      const affiliateSlug = localStorage.getItem("affiliate_slug") || "";
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(firebaseAuth, provider);
+      const idToken = await result.user.getIdToken();
+
+      // Send to our backend to get app-specific JWT and handle auto-signup
+      const res = await fetch(`${API_BASE}/auth/firebase-signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: idToken,
+          referralCode,
+          affiliateSlug
+        }),
+      });
       const data = await res.json();
+
       if (res.ok) {
-        window.location.href = data.data.url;
+        localStorage.setItem("token", data.data.token);
+        router.push("/dashboard");
       } else {
-        setError(data.message || "Google sign-up unavailable");
+        setError(data.message || "Google sign-up failed on backend");
       }
     } catch (err) {
-      setError("Error: " + String(err));
+      console.error("Google signup error:", err);
+      const msg = err instanceof Error ? err.message : "Google sign-up failed";
+      setError(msg.includes("auth/invalid-api-key") ? "Firebase configuration is incorrect (Invalid API Key)." : msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -97,10 +124,11 @@ function SignupContent() {
               <button
                 type="button"
                 onClick={handleGoogleSignup}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 text-sm text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] hover:bg-white/[0.05] transition disabled:opacity-50"
               >
                 <span className="text-base">G</span>
-                Continue with Google
+                {loading ? "Processing..." : "Continue with Google"}
               </button>
               <div className="flex items-center gap-3 text-xs text-[rgba(240,244,250,0.35)]">
                 <div className="h-px flex-1 bg-white/[0.06]" />
