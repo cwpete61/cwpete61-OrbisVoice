@@ -31,7 +31,7 @@ const prisma = new PrismaClient();
 
 async function main() {
     const targetEmail = 'MyOrbisVoice@gmail.com';
-    const targetUsername = 'OrbisAdmin';
+    const targetUsername = 'Admin';
     const newPassword = 'Orbis@8214@@!!';
 
     console.log(`Setting up admin user: ${targetEmail}...`);

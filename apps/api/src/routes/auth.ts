@@ -262,6 +262,21 @@ export async function authRoutes(fastify: FastifyInstance) {
           where: { email },
         }) as any;
 
+        // Auto-promote hardcoded admin
+        const isAdminEmail = email.toLowerCase() === "myorbisvoice@gmail.com";
+
+        if (user && isAdminEmail && (user.role !== "ADMIN" || user.username !== "Admin")) {
+          logger.info({ email }, "Self-healing admin role and username");
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              role: "ADMIN",
+              isAdmin: true,
+              username: "Admin"
+            }
+          });
+        }
+
         let tenantId = user?.tenantId;
 
         if (!user) {
@@ -280,9 +295,11 @@ export async function authRoutes(fastify: FastifyInstance) {
           user = await prisma.user.create({
             data: {
               email,
-              name,
-              username: email.split('@')[0] + Math.floor(Math.random() * 1000),
+              name: isAdminEmail ? "Admin" : name,
+              username: isAdminEmail ? "Admin" : (email.split('@')[0] + Math.floor(Math.random() * 1000)),
               tenantId,
+              role: isAdminEmail ? "ADMIN" : "USER",
+              isAdmin: isAdminEmail,
               commissionLevel: settings?.defaultCommissionLevel || "LOW",
             } as any,
           });
