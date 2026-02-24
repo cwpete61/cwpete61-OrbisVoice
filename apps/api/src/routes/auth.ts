@@ -32,7 +32,6 @@ export async function authRoutes(fastify: FastifyInstance) {
   // Signup
   fastify.post<{ Body: z.infer<typeof SignupSchema> }>(
     "/auth/signup",
-    { preHandler: [verifyAppCheck] },
     async (request, reply) => {
       try {
         const body = SignupSchema.parse(request.body);
@@ -136,7 +135,6 @@ export async function authRoutes(fastify: FastifyInstance) {
   // Login
   fastify.post<{ Body: z.infer<typeof LoginSchema> }>(
     "/auth/login",
-    { preHandler: [verifyAppCheck] },
     async (request, reply) => {
       try {
         const body = LoginSchema.parse(request.body);
@@ -236,7 +234,6 @@ export async function authRoutes(fastify: FastifyInstance) {
   // Firebase Sign-in / Signup Unified
   fastify.post<{ Body: { token: string; referralCode?: string; affiliateSlug?: string } }>(
     "/auth/firebase-signin",
-    { preHandler: [verifyAppCheck] },
     async (request, reply) => {
       try {
         const { token, referralCode, affiliateSlug } = request.body;

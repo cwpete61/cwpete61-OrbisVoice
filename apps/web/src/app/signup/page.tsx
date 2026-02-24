@@ -166,7 +166,7 @@ function SignupContent() {
                 <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">3+ characters, letters, numbers, underscore, hyphen</p>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#14b8a6]">Gmail Address (Required)</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Email Address</label>
                 <input
                   type="email"
                   placeholder="yourname@gmail.com"

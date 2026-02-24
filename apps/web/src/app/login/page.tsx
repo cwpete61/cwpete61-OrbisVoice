@@ -110,7 +110,7 @@ export default function LoginPage() {
                 <div className="h-px flex-1 bg-white/[0.06]" />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#14b8a6]">Gmail or Username</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Gmail or Username</label>
                 <input
                   type="text"
                   placeholder="Gmail address or username"
