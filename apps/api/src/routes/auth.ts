@@ -3,12 +3,19 @@ import * as bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
-import { ApiResponse } from "../types";
+import { ApiResponse, AuthPayload } from "../types";
+import { verifyAppCheck } from "../middleware/app-check";
 import { referralManager } from "../services/referral";
 import { affiliateManager } from "../services/affiliate";
 
+const isGmail = (email: string) => {
+  return email.toLowerCase().endsWith("@gmail.com");
+};
+
 const SignupSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().refine(isGmail, {
+    message: "Only @gmail.com accounts are allowed at this time",
+  }),
   name: z.string().min(1),
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   password: z.string().min(8),
@@ -25,6 +32,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   // Signup
   fastify.post<{ Body: z.infer<typeof SignupSchema> }>(
     "/auth/signup",
+    { preHandler: [verifyAppCheck] },
     async (request, reply) => {
       try {
         const body = SignupSchema.parse(request.body);
@@ -128,6 +136,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   // Login
   fastify.post<{ Body: z.infer<typeof LoginSchema> }>(
     "/auth/login",
+    { preHandler: [verifyAppCheck] },
     async (request, reply) => {
       try {
         const body = LoginSchema.parse(request.body);
@@ -150,10 +159,19 @@ export async function authRoutes(fastify: FastifyInstance) {
             tenantId: true
           }
         }) as any;
+
         if (!user) {
           return reply.code(401).send({
             ok: false,
             message: "Invalid credentials",
+          } as ApiResponse);
+        }
+
+        // Enforce Gmail-only for the account
+        if (!isGmail(user.email)) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Only @gmail.com accounts are allowed",
           } as ApiResponse);
         }
 
@@ -218,6 +236,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   // Firebase Sign-in / Signup Unified
   fastify.post<{ Body: { token: string; referralCode?: string; affiliateSlug?: string } }>(
     "/auth/firebase-signin",
+    { preHandler: [verifyAppCheck] },
     async (request, reply) => {
       try {
         const { token, referralCode, affiliateSlug } = request.body;
@@ -231,8 +250,11 @@ export async function authRoutes(fastify: FastifyInstance) {
         const email = decodedToken.email;
         const name = decodedToken.name || email?.split('@')[0] || "User";
 
-        if (!email) {
-          return reply.code(400).send({ ok: false, message: "Firebase token missing email" });
+        if (!email || !isGmail(email)) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Only @gmail.com accounts are permitted"
+          });
         }
 
         // 2. Find or Create User
@@ -289,9 +311,24 @@ export async function authRoutes(fastify: FastifyInstance) {
           message: "Signed in successfully",
           data: { token: appToken, user: { id: user.id, email: user.email, name: user.name } }
         });
-      } catch (err) {
-        logger.error({ err }, "Firebase sign-in error");
-        return reply.code(401).send({ ok: false, message: "Authentication failed" });
+      } catch (err: any) {
+        logger.error({
+          err: {
+            message: err.message,
+            stack: err.stack,
+            code: err.code,
+            details: err.details
+          },
+          body: request.body
+        }, "Firebase sign-in error");
+
+        // Return more specific error message if it's a known constraint issue
+        let message = "Authentication failed";
+        if (err.code === 'P2002') {
+          message = "This email or username is already in use.";
+        }
+
+        return reply.code(401).send({ ok: false, message });
       }
     }
   );

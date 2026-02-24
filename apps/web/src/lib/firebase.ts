@@ -1,5 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
+import { initializeAppCheck, ReCaptchaV3Provider, AppCheck } from "firebase/app-check";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,6 +16,7 @@ const isConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.apiKey !== 
 
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
+let appCheck: AppCheck | undefined;
 
 if (isConfigured) {
     try {
@@ -22,6 +24,22 @@ if (isConfigured) {
             ? initializeApp(firebaseConfig)
             : getApps()[0];
         auth = getAuth(app);
+
+        // Initialize App Check
+        if (typeof window !== "undefined") {
+            const siteKey = process.env.NEXT_PUBLIC_APPCHECK_KEY;
+            if (siteKey) {
+                // Enable debug token if in development
+                if (process.env.NODE_ENV === "development") {
+                    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+                }
+
+                appCheck = initializeAppCheck(app, {
+                    provider: new ReCaptchaV3Provider(siteKey),
+                    isTokenAutoRefreshEnabled: true,
+                });
+            }
+        }
     } catch (error) {
         console.error("Firebase initialization failed:", error);
     }
@@ -29,5 +47,5 @@ if (isConfigured) {
     console.warn("Firebase is not configured. Social login will be disabled.");
 }
 
-export { app, auth };
+export { app, auth, appCheck };
 export default app;

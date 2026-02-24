@@ -185,6 +185,14 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
 
         const googleId = googleProfile.id;
         const googleEmail = googleProfile.email;
+
+        if (!googleEmail || !googleEmail.toLowerCase().endsWith("@gmail.com")) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Only @gmail.com accounts are permitted",
+          } as ApiResponse);
+        }
+
         const googleName = googleProfile.name;
         const googleProfilePicture = googleProfile.picture;
 

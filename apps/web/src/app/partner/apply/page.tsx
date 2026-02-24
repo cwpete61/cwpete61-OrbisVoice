@@ -26,6 +26,12 @@ export default function PartnerApplication() {
         setLoading(true);
         setError(null);
 
+        if (!formData.email.toLowerCase().endsWith("@gmail.com")) {
+            setError("Only @gmail.com accounts are allowed at this time.");
+            setLoading(false);
+            return;
+        }
+
         try {
             const res = await fetch(`${API_BASE}/affiliates/public-apply`, {
                 method: "POST",
@@ -88,8 +94,8 @@ export default function PartnerApplication() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Email Address *</label>
-                            <input required type="email" name="email" value={formData.email} onChange={handleChange} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-[#14b8a6]" placeholder="john@company.com" />
+                            <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Gmail Address *</label>
+                            <input required type="email" name="email" value={formData.email} onChange={handleChange} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-[#14b8a6]" placeholder="yourname@gmail.com" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Password *</label>

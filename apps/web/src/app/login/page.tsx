@@ -110,10 +110,10 @@ export default function LoginPage() {
                 <div className="h-px flex-1 bg-white/[0.06]" />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Email or Username</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Gmail or Username</label>
                 <input
                   type="text"
-                  placeholder="Email or username"
+                  placeholder="Gmail address or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"

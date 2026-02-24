@@ -11,7 +11,9 @@ import * as bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 
 const PublicApplySchema = z.object({
-    email: z.string().email(),
+    email: z.string().email().refine(email => email.toLowerCase().endsWith("@gmail.com"), {
+        message: "Only @gmail.com accounts are allowed"
+    }),
     password: z.string().min(8).optional(), // optional if they already have an account
     firstName: z.string().min(1),
     lastName: z.string().min(1),
@@ -396,6 +398,8 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                         },
                         orderBy: { createdAt: "desc" },
                     });
+
+
 
                     const data = users.map(u => {
                         const aff = u.affiliate;

@@ -44,6 +44,7 @@ const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
+  RECAPTCHA_SECRET_KEY: z.string().optional(),
 });
 
 const result = envSchema.safeParse(process.env);

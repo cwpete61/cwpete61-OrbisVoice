@@ -60,6 +60,30 @@ fastify.register(helmet, {
 fastify.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute",
+  // Route-specific overrides
+  addHeaders: {
+    "x-ratelimit-limit": true,
+    "x-ratelimit-remaining": true,
+    "x-ratelimit-reset": true,
+    "retry-after": true,
+  },
+});
+
+// Configure stricter limits for auth routes
+fastify.addHook("onRoute", (routeOptions) => {
+  if (
+    routeOptions.url === "/auth/login" ||
+    routeOptions.url === "/auth/signup" ||
+    routeOptions.url === "/auth/firebase-signin"
+  ) {
+    routeOptions.config = {
+      ...routeOptions.config,
+      rateLimit: {
+        max: 5,
+        timeWindow: "1 minute",
+      },
+    };
+  }
 });
 
 // Health check endpoint
