@@ -889,6 +889,17 @@ function UsersContent() {
                                                     <option value="MED">Med Comm</option>
                                                     <option value="HIGH">High Comm</option>
                                                 </select>
+                                                <select
+                                                    value={createForm.role}
+                                                    onChange={(event) =>
+                                                        setCreateForm((prev) => ({ ...prev, role: event.target.value }))
+                                                    }
+                                                    className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                                                >
+                                                    <option value="USER">User Role</option>
+                                                    <option value="ADMIN">Admin Role</option>
+                                                    <option value="SYSTEM_ADMIN">System Admin</option>
+                                                </select>
                                                 <button
                                                     onClick={handleCreateUser}
                                                     disabled={createLoading}
@@ -1000,7 +1011,14 @@ function UsersContent() {
                                                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
                                                                 <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
                                                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                                                <span className="uppercase font-semibold text-[rgba(240,244,250,0.6)]">{user.role || (user.isAdmin ? "ADMIN" : "USER")}</span>
+                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${user.role === "SYSTEM_ADMIN"
+                                                                        ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                                                        : user.role === "ADMIN" || user.isAdmin
+                                                                            ? "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20"
+                                                                            : "bg-white/5 text-[rgba(240,244,250,0.4)] border-white/10"
+                                                                    }`}>
+                                                                    {user.role === "SYSTEM_ADMIN" ? "System Admin" : (user.role === "ADMIN" || user.isAdmin ? "Admin" : "User")}
+                                                                </span>
                                                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
                                                                 <span className="text-[rgba(240,244,250,0.35)]">{new Date(user.createdAt).toLocaleDateString()}</span>
                                                             </div>
