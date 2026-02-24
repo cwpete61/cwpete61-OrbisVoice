@@ -104,6 +104,12 @@ function BillingContent() {
     }
   }, [tokenLoaded]);
 
+  const fetchData = () => {
+    fetchSubscription();
+    fetchAvailableTiers();
+    fetchPackages();
+  };
+
   const fetchSubscription = async () => {
     try {
       const token = localStorage.getItem("token");

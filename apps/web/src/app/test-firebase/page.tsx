@@ -17,6 +17,7 @@ export default function FirebaseTestPage() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        if (!auth) return;
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setUser(user);
             if (user) {
@@ -31,6 +32,7 @@ export default function FirebaseTestPage() {
     }, []);
 
     const handleSignIn = async () => {
+        if (!auth) return;
         try {
             setLoading(true);
             const provider = new GoogleAuthProvider();
@@ -44,7 +46,9 @@ export default function FirebaseTestPage() {
     };
 
     const handleSignOut = () => {
-        signOut(auth);
+        if (auth) {
+            signOut(auth);
+        }
         setApiResponse(null);
     };
 

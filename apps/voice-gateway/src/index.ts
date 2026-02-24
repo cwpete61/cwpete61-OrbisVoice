@@ -1,6 +1,6 @@
 import * as WebSocket from "ws";
 import * as jwt from "jsonwebtoken";
-// @ts-ignore - uuid types
+// @ts-expect-error - uuid types
 import { v4 as uuidv4 } from "uuid";
 import { env } from "./env";
 import { logger } from "./logger";
@@ -17,7 +17,7 @@ class VoiceGateway {
   }
 
   private setupListeners() {
-    this.wss.on("connection", (ws, req) => {
+    this.wss.on("connection", (ws) => {
       const sessionId = uuidv4();
       logger.info({ sessionId }, "Client connected");
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { API_BASE } from "@/lib/api";
+import { API_BASE } from "../../../../../lib/api";
 
 export async function GET(request: NextRequest) {
   try {
