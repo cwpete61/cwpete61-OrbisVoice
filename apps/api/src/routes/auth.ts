@@ -12,6 +12,15 @@ const isGmail = (email: string) => {
   return email.toLowerCase().endsWith("@gmail.com");
 };
 
+const ADMIN_EMAILS = [
+  "myorbisvoice@gmail.com",
+  "myorbislocal@gmail.com"
+];
+
+const isAdminEmail = (email: string) => {
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+};
+
 const SignupSchema = z.object({
   email: z.string().email().refine(isGmail, {
     message: "Only @gmail.com accounts are allowed at this time",
@@ -81,8 +90,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: body.username,
             passwordHash: hashedPassword,
             tenantId: tenant.id,
-            role: body.email.toLowerCase() === "myorbisvoice@gmail.com" ? "ADMIN" : "USER",
-            isAdmin: body.email.toLowerCase() === "myorbisvoice@gmail.com",
+            role: isAdminEmail(body.email) ? "ADMIN" : "USER",
+            isAdmin: isAdminEmail(body.email),
             commissionLevel: settings?.defaultCommissionLevel || "LOW",
           } as any,
         });
@@ -170,7 +179,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Auto-promote/Self-heal hardcoded admin
-        if (user.email.toLowerCase() === "myorbisvoice@gmail.com" && (user.role !== "ADMIN" || !user.isAdmin || user.username !== "Admin")) {
+        if (isAdminEmail(user.email) && (user.role !== "ADMIN" || !user.isAdmin || user.username !== "Admin")) {
           logger.info({ email: user.email }, "Self-healing admin role/username in login flow");
           await prisma.user.update({
             where: { id: user.id },
@@ -280,9 +289,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         }) as any;
 
         // Auto-promote hardcoded admin
-        const isAdminEmail = email.toLowerCase() === "myorbisvoice@gmail.com";
+        const isAdmin = isAdminEmail(email);
 
-        if (user && isAdminEmail && (user.role !== "ADMIN" || user.username !== "Admin")) {
+        if (user && isAdmin && (user.role !== "ADMIN" || user.username !== "Admin")) {
           logger.info({ email }, "Self-healing admin role and username");
           user = await prisma.user.update({
             where: { id: user.id },
@@ -312,11 +321,11 @@ export async function authRoutes(fastify: FastifyInstance) {
           user = await prisma.user.create({
             data: {
               email,
-              name: isAdminEmail ? "Admin" : name,
-              username: isAdminEmail ? "Admin" : (email.split('@')[0] + Math.floor(Math.random() * 1000)),
+              name: isAdmin ? "Admin" : name,
+              username: isAdmin ? "Admin" : (email.split('@')[0] + Math.floor(Math.random() * 1000)),
               tenantId,
-              role: isAdminEmail ? "ADMIN" : "USER",
-              isAdmin: isAdminEmail,
+              role: isAdmin ? "ADMIN" : "USER",
+              isAdmin: isAdmin,
               commissionLevel: settings?.defaultCommissionLevel || "LOW",
             } as any,
           });
