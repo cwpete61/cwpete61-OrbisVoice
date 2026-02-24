@@ -1,166 +1,504 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
 
+// ─── Helper ────────────────────────────────────────────────────────────────
+function StatusDot({ ok }: { ok: boolean }) {
+  return <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#10b981]" : "bg-[#f97316]"}`} />;
+}
+
+function Badge({ children, color = "teal" }: { children: React.ReactNode; color?: "teal" | "green" | "red" | "orange" | "purple" }) {
+  const colors: Record<string, string> = {
+    teal: "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20",
+    green: "bg-green-500/10 text-green-400 border-green-500/20",
+    red: "bg-red-500/10 text-red-400 border-red-500/20",
+    orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  };
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${colors[color]}`}>
+      {children}
+    </span>
+  );
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+function OverviewTab({ stats, commissionRate, profile }: any) {
+  const copyLink = () => {
+    navigator.clipboard.writeText(stats?.shareUrl || "");
+    alert("Referral link copied!");
+  };
+
+  const metrics = [
+    { label: "Signups Referred", value: stats?.totalSignups ?? 0, mono: false },
+    { label: "Total Gross Earned", value: `$${(stats?.totalRewards ?? 0).toFixed(2)}`, mono: true },
+    { label: "Pending (in hold)", value: `$${(stats?.pendingRewards ?? 0).toFixed(2)}`, mono: true, dim: true },
+    { label: "Available Balance", value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`, mono: true, highlight: true },
+  ];
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* KPI Strip */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map((m) => (
+          <div key={m.label} className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.4)]">{m.label}</p>
+            <p className={`mt-2 text-3xl font-bold ${m.highlight ? "text-[#14b8a6]" : m.dim ? "text-[rgba(240,244,250,0.4)]" : "text-[#f0f4fa]"} ${m.mono ? "font-mono" : ""}`}>
+              {m.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Earnings Pipeline */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
+        <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">💰 Earnings Pipeline</h2>
+        <div className="flex items-center gap-2 overflow-x-auto">
+          {[
+            { label: "Customer Pays", icon: "💳", desc: "Referral commission created", color: "border-purple-500/30 bg-purple-500/5" },
+            { label: "30-Day Hold", icon: "⏳", desc: "Refund protection period", color: "border-orange-500/30 bg-orange-500/5" },
+            { label: "Available", icon: "✅", desc: "Ready for payout queue", color: "border-[#14b8a6]/30 bg-[#14b8a6]/5" },
+            { label: "Transfer", icon: "🏦", desc: "Sent to your Stripe account", color: "border-green-500/30 bg-green-500/5" },
+            { label: "Bank Deposit", icon: "🎉", desc: "Lands in your bank account", color: "border-blue-500/30 bg-blue-500/5" },
+          ].map((step, i, arr) => (
+            <div key={step.label} className="flex items-center gap-2 shrink-0">
+              <div className={`rounded-xl border ${step.color} p-4 text-center min-w-[120px]`}>
+                <div className="text-2xl mb-1">{step.icon}</div>
+                <div className="text-xs font-semibold text-[#f0f4fa]">{step.label}</div>
+                <div className="text-[10px] text-[rgba(240,244,250,0.4)] mt-0.5">{step.desc}</div>
+              </div>
+              {i < arr.length - 1 && <span className="text-[rgba(240,244,250,0.2)] text-xl">→</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Commission rate + referral link */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
+          <h2 className="mb-1 text-sm font-semibold text-[#f0f4fa]">Your Commission Rate</h2>
+          <p className="text-4xl font-bold text-[#14b8a6]">{commissionRate}%</p>
+          <p className="mt-2 text-xs text-[rgba(240,244,250,0.4)]">Per referred customer's first qualifying payment</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
+          <h2 className="mb-3 text-sm font-semibold text-[#f0f4fa]">Your Partner Link</h2>
+          <div className="flex gap-2">
+            <input readOnly value={stats?.shareUrl || "Loading…"} className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[rgba(240,244,250,0.7)] outline-none truncate" />
+            <button onClick={copyLink} className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition active:scale-95 shrink-0">
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconnect, stripeStatus }: any) {
+  const isActive = stripeDetails?.connected && stripeDetails?.payoutsEnabled;
+  const needsAction = stripeDetails?.requirementsDue?.length > 0;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Stripe Connect Status Card */}
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div>
+            <h2 className="text-xl font-bold text-[#f0f4fa] mb-1">Stripe Connect</h2>
+            <p className="text-sm text-[rgba(240,244,250,0.5)] max-w-lg">
+              Your bank account is connected via Stripe Express. Payouts go from OrbisVoice's platform to your Stripe account, then to your bank on your configured schedule.
+            </p>
+          </div>
+          <div className="flex gap-3 shrink-0">
+            {isActive && (
+              <button
+                onClick={onGetLoginLink}
+                disabled={loginLinkLoading}
+                className="flex items-center gap-2 rounded-lg bg-[#635BFF] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524ae3] transition disabled:opacity-50 shadow-lg shadow-[#635BFF]/20"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                {loginLinkLoading ? "Opening…" : "Open Stripe Dashboard"}
+              </button>
+            )}
+            {!isActive && (
+              <button onClick={onReconnect} className="rounded-lg bg-[#635BFF] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524ae3] transition shadow-lg shadow-[#635BFF]/20">
+                {stripeStatus?.status === "not_connected" ? "Connect Bank Account" : "Complete Onboarding"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Status Grid */}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Details Submitted", ok: stripeDetails?.detailsSubmitted },
+            { label: "Charges Enabled", ok: stripeDetails?.chargesEnabled },
+            { label: "Payouts Enabled", ok: stripeDetails?.payoutsEnabled },
+            { label: "Payout Schedule", value: stripeDetails?.payoutSchedule || "Not set" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl border border-white/[0.05] bg-[#111827] p-4">
+              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-2">{item.label}</p>
+              {item.value !== undefined ? (
+                <p className="text-sm font-semibold text-[#f0f4fa]">{item.value}</p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <StatusDot ok={item.ok ?? false} />
+                  <span className="text-sm font-semibold text-[#f0f4fa]">{item.ok ? "Yes" : "No"}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Requirements due warning */}
+        {needsAction && (
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
+            <svg className="mt-0.5 h-5 w-5 shrink-0 text-orange-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <div>
+              <p className="text-sm font-semibold text-orange-400">Action Required</p>
+              <p className="mt-1 text-xs text-orange-300/70">Stripe needs additional information: {stripeDetails.requirementsDue.join(", ")}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Connected balance */}
+        {stripeDetails?.liveDataAvailable && (
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-white/[0.05] bg-[#111827] p-4">
+              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-1">Your Stripe Available</p>
+              <p className="text-2xl font-bold font-mono text-[#10b981]">${(stripeDetails.connectedBalance?.available ?? 0).toFixed(2)}</p>
+              <p className="text-[10px] text-[rgba(240,244,250,0.3)] mt-1">Ready to pay out to bank</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.05] bg-[#111827] p-4">
+              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-1">Your Stripe Pending</p>
+              <p className="text-2xl font-bold font-mono text-[rgba(240,244,250,0.5)]">${(stripeDetails.connectedBalance?.pending ?? 0).toFixed(2)}</p>
+              <p className="text-[10px] text-[rgba(240,244,250,0.3)] mt-1">In Stripe settlement</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PayoutHistoryTab({ payouts }: { payouts: any[] }) {
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] overflow-hidden">
+        <div className="p-6 border-b border-white/[0.05]">
+          <h2 className="text-lg font-semibold text-[#f0f4fa]">Payout History</h2>
+          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">Confirmed transfers from OrbisVoice to your Stripe account.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#111827]/60 text-[rgba(240,244,250,0.4)] text-[10px] uppercase tracking-widest">
+              <tr>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Gross</th>
+                <th className="px-6 py-4">Fee</th>
+                <th className="px-6 py-4">Net Transferred</th>
+                <th className="px-6 py-4">Stripe Transfer ID</th>
+                <th className="px-6 py-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {payouts.length > 0 ? payouts.map((p) => (
+                <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.6)]">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap font-mono text-[rgba(240,244,250,0.7)]">${p.amount.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap font-mono text-[#f97316]">-${(p.feeAmount ?? 0).toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#14b8a6]">${(p.netAmount ?? p.amount).toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {p.transactionId && p.transactionId !== "simulated" ? (
+                      <a href={`https://dashboard.stripe.com/test/transfers/${p.transactionId}`} target="_blank" rel="noopener noreferrer"
+                        className="font-mono text-[10px] text-[#635BFF] hover:underline">{p.transactionId.slice(0, 18)}…</a>
+                    ) : (
+                      <span className="font-mono text-[10px] text-[rgba(240,244,250,0.3)]">{p.transactionId || "—"}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge color="green">{p.status}</Badge>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">No payouts yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, saveMsg, saveErr }: any) {
+  const ytd = taxStatus?.ytdEarnings ?? 0;
+  const threshold = taxStatus?.thresholdAmount ?? 600;
+  const pct = Math.min((ytd / threshold) * 100, 100);
+  const crossed = taxStatus?.thresholdCrossed;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* YTD earning vs $600 threshold */}
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+        <h2 className="text-lg font-semibold text-[#f0f4fa] mb-1">IRS Compliance Status</h2>
+        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">The IRS requires a 1099-NEC for any partner earning $600+ in a calendar year.</p>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-[rgba(240,244,250,0.6)]">YTD Earnings</span>
+          <span className="text-sm font-bold font-mono text-[#f0f4fa]">${ytd.toFixed(2)} / ${threshold}</span>
+        </div>
+        <div className="h-3 w-full rounded-full bg-white/[0.05] overflow-hidden">
+          <div className={`h-full rounded-full transition-all duration-700 ${crossed ? "bg-[#f97316]" : "bg-[#14b8a6]"}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div className="mt-4 flex gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <StatusDot ok={taxStatus?.taxFormCompleted} />
+            <span className="text-xs text-[rgba(240,244,250,0.6)]">W-9 / Tax form submitted</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusDot ok={(taxStatus?.availableTaxForms ?? 0) > 0} />
+            <span className="text-xs text-[rgba(240,244,250,0.6)]">{taxStatus?.availableTaxForms ?? 0} 1099 form(s) available</span>
+          </div>
+        </div>
+        {crossed && !taxStatus?.taxFormCompleted && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
+            <span className="text-orange-400 text-lg">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-orange-400">Action Required: Submit Tax Information</p>
+              <p className="mt-1 text-xs text-orange-300/70">You've exceeded the $600 IRS reporting threshold. Complete the tax form below to prevent payout holds.</p>
+            </div>
+          </div>
+        )}
+        {taxStatus?.taxForms?.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs text-[rgba(240,244,250,0.5)] mb-2">Available Tax Documents:</p>
+            <div className="space-y-2">
+              {taxStatus.taxForms.map((f: any) => (
+                <div key={f.id} className="flex items-center justify-between rounded-lg border border-white/[0.05] bg-[#111827] px-4 py-2.5">
+                  <span className="text-sm text-[#f0f4fa]">{f.type} — {f.year}</span>
+                  <Badge color={f.status === "available" ? "green" : "orange"}>{f.status}</Badge>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-[rgba(240,244,250,0.4)]">
+              Access and download your 1099 from your{" "}
+              <span className="text-[#635BFF]">Stripe Express Dashboard</span>{" "}
+              (Payouts & Banking tab → Open Stripe Dashboard).
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Tax info form */}
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
+        <h2 className="text-lg font-semibold text-[#f0f4fa] mb-1">Tax & Identification Information</h2>
+        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">Required for 1099-NEC compliance. Stored securely, used only for tax reporting.</p>
+        {saveErr && <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{saveErr}</div>}
+        {saveMsg && <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">{saveMsg}</div>}
+        <form onSubmit={onSave} className="space-y-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              { key: "firstName", label: "First Name" },
+              { key: "lastName", label: "Last Name" },
+              { key: "businessName", label: "Business Name (optional)" },
+              { key: "phone", label: "Phone" },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">{label}</label>
+                <input type="text" value={formData[key]} onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="col-span-4 sm:col-span-2">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Street Address</label>
+              <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">City</label>
+              <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+            </div>
+            <div className="col-span-1">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">State</label>
+              <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">TIN / SSN (last 4 for verification)</label>
+            <input type="text" value={formData.tinSsn} onChange={(e) => setFormData({ ...formData, tinSsn: e.target.value })}
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+          </div>
+          <div className="flex justify-end pt-2">
+            <button type="submit" disabled={saving} className="rounded-lg bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50 transition">
+              {saving ? "Saving…" : "Save Tax Information"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function TransactionsTab({ stats }: any) {
+  const txs: any[] = stats?.transactions ?? [];
+  const statusColor: Record<string, string> = {
+    pending: "orange",
+    available: "teal",
+    paid: "green",
+    refunded: "red",
+  };
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] overflow-hidden">
+        <div className="p-6 border-b border-white/[0.05]">
+          <h2 className="text-lg font-semibold text-[#f0f4fa]">Commission Transactions</h2>
+          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">Individual commission events from your referrals.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#111827]/60 text-[rgba(240,244,250,0.4)] text-[10px] uppercase tracking-widest">
+              <tr>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Event</th>
+                <th className="px-6 py-4">Commission</th>
+                <th className="px-6 py-4">Hold Until</th>
+                <th className="px-6 py-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {txs.length > 0 ? txs.map((tx: any) => (
+                <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.6)]">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.7)] font-mono text-[10px]">
+                    {tx.sourcePaymentId?.slice(0, 16)}…
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#14b8a6]">${tx.amount.toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-xs text-[rgba(240,244,250,0.4)]">
+                    {tx.holdEndsAt ? new Date(tx.holdEndsAt).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge color={(statusColor[tx.status] ?? "teal") as any}>{tx.status}</Badge>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">No transactions yet. Share your link to start earning!</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 function AffiliateDashboardContent() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [activeTab, setActiveTab] = useState("overview");
-
   const [stripeStatus, setStripeStatus] = useState<any>(null);
-  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeDetails, setStripeDetails] = useState<any>(null);
   const [commissionRate, setCommissionRate] = useState<number>(30);
   const [payouts, setPayouts] = useState<any[]>([]);
+  const [taxStatus, setTaxStatus] = useState<any>(null);
+  const [loginLinkLoading, setLoginLinkLoading] = useState(false);
 
-  // Settings form
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    businessName: "",
-    phone: "",
-    address: "",
-    unit: "",
-    city: "",
-    state: "",
-    zip: "",
-    tinSsn: "",
-  });
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ firstName: "", lastName: "", businessName: "", phone: "", address: "", city: "", state: "", zip: "", tinSsn: "" });
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
   const tokenLoaded = useTokenFromUrl();
 
-  useEffect(() => {
-    if (tokenLoaded) {
-      fetchData();
-    }
-  }, [tokenLoaded]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) { setLoading(false); return; }
 
-      const [
-        profileRes,
-        statsRes,
-        stripeRes,
-        programRes,
-        payoutsRes,
-      ] = await Promise.all([
-        fetch(`${API_BASE}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/affiliates/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/affiliates/stripe/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+    try {
+      const [profileRes, statsRes, stripeRes, programRes, payoutsRes, stripeDetailsRes, taxRes] = await Promise.all([
+        fetch(`${API_BASE}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/affiliates/me`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/affiliates/stripe/status`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/affiliates/program-details`),
-        fetch(`${API_BASE}/affiliates/me/payouts`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        fetch(`${API_BASE}/affiliates/me/payouts`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/affiliates/stripe/account-details`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/affiliates/me/tax-status`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (profileRes.ok) {
-        const pData = await profileRes.json();
-        setProfile(pData.data);
+        const d = await profileRes.json();
+        setProfile(d.data);
         setFormData({
-          firstName: pData.data.firstName || "",
-          lastName: pData.data.lastName || "",
-          businessName: pData.data.businessName || "",
-          phone: pData.data.phone || "",
-          address: pData.data.address || "",
-          unit: pData.data.unit || "",
-          city: pData.data.city || "",
-          state: pData.data.state || "",
-          zip: pData.data.zip || "",
-          tinSsn: pData.data.tinSsn || "",
+          firstName: d.data.firstName || "", lastName: d.data.lastName || "",
+          businessName: d.data.businessName || "", phone: d.data.phone || "",
+          address: d.data.address || "", city: d.data.city || "",
+          state: d.data.state || "", zip: d.data.zip || "",
+          tinSsn: d.data.tinSsn || "",
         });
       }
-
-      if (statsRes.ok) {
-        const sData = await statsRes.json();
-        setStats(sData.data);
-      }
-
-      if (stripeRes.ok) {
-        const stData = await stripeRes.json();
-        setStripeStatus(stData.data);
-      }
-
-      if (programRes.ok) {
-        const prData = await programRes.json();
-        setCommissionRate(prData.data?.commissionRate || 30);
-      }
-
-      if (payoutsRes && payoutsRes.ok) {
-        const pyData = await payoutsRes.json();
-        setPayouts(pyData.data || []);
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to load Partner Portal.");
+      if (statsRes.ok) setStats((await statsRes.json()).data);
+      if (stripeRes.ok) setStripeStatus((await stripeRes.json()).data);
+      if (programRes.ok) setCommissionRate((await programRes.json()).data?.commissionRate ?? 30);
+      if (payoutsRes.ok) setPayouts((await payoutsRes.json()).data ?? []);
+      if (stripeDetailsRes.ok) setStripeDetails((await stripeDetailsRes.json()).data);
+      if (taxRes.ok) setTaxStatus((await taxRes.json()).data);
+    } catch (err) {
+      console.error("Failed to load partner portal data", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingSettings(true);
-    setSaveMessage(null);
-    setSaveError(null);
+  useEffect(() => {
+    if (tokenLoaded) fetchData();
+  }, [tokenLoaded, fetchData]);
 
+  const handleGetLoginLink = async () => {
+    setLoginLinkLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
+      const res = await fetch(`${API_BASE}/affiliates/stripe/login-link`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update tax information.");
-
-      setSaveMessage("Partner information updated successfully.");
-    } catch (err: any) {
-      setSaveError(err.message);
+      if (res.ok && data.data?.url) {
+        window.open(data.data.url, "_blank", "noopener,noreferrer");
+      } else {
+        alert(data.message || "Failed to open Stripe Dashboard");
+      }
     } finally {
-      setSavingSettings(false);
+      setLoginLinkLoading(false);
     }
   };
 
   const handleStripeOnboard = async () => {
-    setStripeLoading(true);
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    if (res.ok && data.data?.url) window.location.href = data.data.url;
+    else alert(data.message || "Failed to generate onboarding link.");
+  };
+
+  const handleSaveTaxInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true); setSaveMsg(null); setSaveErr(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API_BASE}/users/me`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(formData) });
       const data = await res.json();
-
-      if (res.ok && data.data?.url) {
-        window.location.href = data.data.url;
-      } else {
-        alert(data.message || "Failed to generate onboarding link.");
-      }
-    } catch (err) {
-      alert("Network error.");
+      if (!res.ok) throw new Error(data.message || "Failed to save");
+      setSaveMsg("Tax information saved.");
+    } catch (err: any) {
+      setSaveErr(err.message);
     } finally {
-      setStripeLoading(false);
+      setSaving(false);
     }
   };
 
@@ -168,7 +506,7 @@ function AffiliateDashboardContent() {
     return (
       <DashboardShell tokenLoaded={tokenLoaded}>
         <div className="flex h-screen items-center justify-center">
-          <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading Partner Portal...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#14b8a6] border-t-transparent" />
         </div>
       </DashboardShell>
     );
@@ -177,501 +515,90 @@ function AffiliateDashboardContent() {
   if (profile && !profile.isAffiliate && !profile.isAdmin) {
     return (
       <DashboardShell tokenLoaded={tokenLoaded}>
-        <div className="flex h-screen flex-col items-center justify-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14b8a6]/10 text-[#14b8a6]">
-            <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-[#f0f4fa]">Access Restricted</h2>
-          <p className="mt-2 text-sm text-[rgba(240,244,250,0.4)]">
-            This dashboard is exclusively for approved Partners.
-          </p>
-          <a href="/partner/apply" className="mt-6 rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]">
-            Apply for Partner Program
-          </a>
+        <div className="flex h-screen flex-col items-center justify-center text-center px-4">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14b8a6]/10 text-3xl">🔒</div>
+          <h2 className="text-xl font-bold text-[#f0f4fa]">Partner Access Required</h2>
+          <p className="mt-2 text-sm text-[rgba(240,244,250,0.5)]">This portal is for approved OrbisVoice partners.</p>
+          <a href="/partner/apply" className="mt-6 rounded-lg bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]">Apply for Partner Program</a>
         </div>
       </DashboardShell>
     );
   }
 
-  // Admins are allowed to view the dashboard layout without being redirected.
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "banking", label: "Payouts & Banking" },
+    { id: "payout-history", label: "Payout History" },
+    { id: "tax", label: "Tax & Compliance" },
+    { id: "transactions", label: "Transactions" },
+  ];
+
+  const isStripeActive = stripeStatus?.status === "active" || stripeDetails?.payoutsEnabled;
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
-      <div className="px-8 py-10">
-        <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="px-6 lg:px-8 py-10">
+        {/* Header */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#f0f4fa]">Partner Portal</h1>
-            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
-              Manage your links, track your stats, and setup your payouts.
-            </p>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Manage your earnings, banking, and compliance.</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={fetchData}
-              className="flex items-center gap-2 rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.1] transition border border-white/[0.1]"
-            >
-              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+            <button onClick={fetchData} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.08] transition">
+              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               Refresh
             </button>
-            {stripeStatus && stripeStatus.payoutsEnabled ? (
-              <span className="inline-flex items-center rounded-full bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-400">
-                <span className="mr-1.5 h-2 w-2 rounded-full bg-green-500"></span>
-                Payouts Active
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-semibold text-yellow-400">
-                <span className="mr-1.5 h-2 w-2 rounded-full bg-yellow-500"></span>
-                Payouts Inactive
-              </span>
+            <Badge color={isStripeActive ? "green" : "orange"}>
+              <StatusDot ok={isStripeActive} />
+              {isStripeActive ? "Payouts Active" : "Setup Incomplete"}
+            </Badge>
+            {taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (
+              <Badge color="red">⚠ Tax Action Required</Badge>
             )}
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-8 flex space-x-1 border-b border-white/[0.05] pb-px overflow-x-auto thin-scrollbar">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "overview"
-              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-              }`}
-          >
-            Overview & Stats
-          </button>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "profile"
-              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-              }`}
-          >
-            Profile & Tax Info
-          </button>
-          <button
-            onClick={() => setActiveTab("banking")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "banking"
-              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-              }`}
-          >
-            Payouts & Banking
-          </button>
-          <button
-            onClick={() => setActiveTab("transactions")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "transactions"
-              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-              }`}
-          >
-            Transactions
-          </button>
-          <button
-            onClick={() => setActiveTab("help")}
-            className={`px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${activeTab === "help"
-              ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-              : "border-b-2 border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-              }`}
-          >
-            Help & Resources
-          </button>
+        {/* Tab nav */}
+        <div className="mb-8 flex gap-0.5 overflow-x-auto border-b border-white/[0.06] pb-px">
+          {TABS.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${activeTab === tab.id
+                  ? "border-[#14b8a6] text-[#14b8a6]"
+                  : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                }`}>
+              {tab.label}
+              {tab.id === "tax" && taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (
+                <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+              )}
+            </button>
+          ))}
         </div>
 
-        {activeTab === "overview" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid gap-6 md:grid-cols-4">
-              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Total Clicks</p>
-                <p className="mt-2 text-3xl font-bold text-[#f0f4fa]">{stats?.clicks || 0}</p>
-              </div>
-              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Conversions</p>
-                <p className="mt-2 text-3xl font-bold text-[#f0f4fa]">{stats?.sales || 0}</p>
-              </div>
-              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Revenue Driven</p>
-                <p className="mt-2 text-3xl font-bold text-[#f0f4fa]">${(stats?.revenue || 0).toFixed(2)}</p>
-              </div>
-              <div className="rounded-xl border border-white/[0.05] bg-[#0c111d] p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Your Balance</p>
-                <div className="mt-2">
-                  <p className="text-3xl font-bold text-[#14b8a6]">${(stats?.estimatedNetBalance || 0).toFixed(2)}</p>
-                  <div className="mt-1 flex flex-col text-[10px] text-[rgba(240,244,250,0.4)]">
-                    <span>Gross: ${(stats?.availableRewards || 0).toFixed(2)}</span>
-                    <span className="text-[#f97316]">Fee ({stats?.transactionFeePercent || 3.4}%): -${(stats?.estimatedFee || 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-              <h2 className="text-sm font-semibold text-[#f0f4fa] mb-4">Your Partner Link</h2>
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  type="text"
-                  value={stats?.shareUrl || ""}
-                  className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-3 text-sm text-[#f0f4fa] outline-none"
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(stats?.shareUrl || "");
-                    alert("Link copied!");
-                  }}
-                  className="rounded-lg bg-white/[0.05] px-4 py-3 text-sm font-medium text-white hover:bg-white/[0.1] transition"
-                >
-                  Copy Link
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "help" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-                <h3 className="text-lg font-semibold text-[#f0f4fa] mb-4">Frequently Asked Questions</h3>
-                <div className="space-y-4">
-                  {[
-                    { q: "How do I get paid?", a: "Payouts are automated via Stripe Connect. Once you've reached the minimum threshold and your earnings are 'Available', they will be transferred to your bank account." },
-                    { q: "What is the commission rate?", a: `Our current baseline commission rate is ${commissionRate}%. High-performance partners may be eligible for custom higher rates.` },
-                    { q: "When do commissions become 'Available'?", a: "Commissions are held for 30 days to account for potential customer refunds. After this period, they move from 'Pending' to 'Available'." },
-                    { q: "Where can I find my referral link?", a: "Your unique link is located on the 'Overview' tab of this portal." }
-                  ].map((item, i) => (
-                    <div key={i} className="group rounded-xl border border-white/[0.03] bg-white/[0.01] p-4 hover:bg-white/[0.03] transition-colors">
-                      <p className="text-sm font-semibold text-[#14b8a6]">{item.q}</p>
-                      <p className="mt-2 text-sm text-[rgba(240,244,250,0.5)] leading-relaxed">{item.a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f4fa] mb-4">Contact Affiliate Support</h3>
-                  <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">Need help with your account or have questions about the program?</p>
-                  <a
-                    href="mailto:partners@orbisvoice.app"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-6 py-4 text-sm font-bold text-white hover:bg-[#0d9488] transition shadow-[0_4px_14px_0_rgba(20,184,166,0.39)]"
-                  >
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Email Partner Support
-                  </a>
-                </div>
-
-                <div className="rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-6">
-                  <h3 className="text-sm font-bold text-[#14b8a6] uppercase tracking-widest mb-2">Program Tip</h3>
-                  <p className="text-sm text-[rgba(240,244,250,0.8)] leading-relaxed">
-                    Sharing on social media with a personal review increases conversion rates by up to 3x compared to raw link sharing.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "transactions" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] overflow-hidden">
-              <div className="p-6 border-b border-white/[0.05]">
-                <h2 className="text-lg font-semibold text-[#f0f4fa]">Transactions & Earnings</h2>
-                <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">Detailed history of commissions earned from your referrals.</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#111827]/50 text-[rgba(240,244,250,0.4)] uppercase text-[10px] tracking-widest font-bold">
-                    <tr>
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">Referral</th>
-                      <th className="px-6 py-4">Commission</th>
-                      <th className="px-6 py-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.05]">
-                    {stats?.referrals && stats.referrals.length > 0 ? (
-                      stats.referrals.map((tx: any) => (
-                        <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.7)]">
-                            {new Date(tx.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-[#f0f4fa]">
-                            Order #{tx.id.substring(tx.id.length - 6).toUpperCase()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-[#14b8a6] font-bold">
-                            ${tx.commissionAmount.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.status === 'CONVERTED' ? 'bg-green-500/10 text-green-400' :
-                              tx.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-400' :
-                                'bg-gray-500/10 text-gray-400'
-                              }`}>
-                              {tx.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
-                          No transactions found yet. Use your link to start earning!
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Tab content */}
+        {activeTab === "overview" && <OverviewTab stats={stats} commissionRate={commissionRate} profile={profile} />}
         {activeTab === "banking" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
-              <h2 className="text-xl font-bold text-[#f0f4fa] mb-2">Payouts & Banking Setup</h2>
-              <p className="text-sm text-[rgba(240,244,250,0.6)] mb-8 max-w-2xl">
-                We use Stripe Connect to route your earned commissions directly and securely into your bank account. Connect your account to enable automated transfers.
-              </p>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-white/[0.05] bg-[#111827] p-6 gap-6">
-                <div className="flex items-start sm:items-center gap-4">
-                  <div className={`mt-1 sm:mt-0 flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${stripeStatus?.status === 'active' ? "bg-green-500/10 text-green-500" : "bg-white/[0.05] text-[#f0f4fa]/30"}`}>
-                    <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-[#f0f4fa]">
-                      {stripeStatus?.status === 'active' ? "Stripe Account Active" : "Action Required"}
-                    </h3>
-                    <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)] max-w-md">
-                      {stripeStatus?.status === 'active'
-                        ? "Your banking details are verified. Commissions will be automatically deposited."
-                        : "You must complete Stripe onboarding to receive your affiliate payouts."}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleStripeOnboard}
-                  disabled={stripeLoading}
-                  className="shrink-0 rounded-lg bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white hover:bg-[#524ae3] transition-colors disabled:opacity-50 shadow-[0_4px_14px_0_rgba(99,91,255,0.39)]"
-                >
-                  {stripeLoading ? "Loading Secure Portal..." : (stripeStatus?.status === 'active' ? "Manage Banking Info" : "Connect Bank Account")}
-                </button>
-              </div>
-            </div>
-
-            {/* Payout History Section */}
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] overflow-hidden">
-              <div className="p-6 border-b border-white/[0.05]">
-                <h2 className="text-lg font-semibold text-[#f0f4fa]">Payout History</h2>
-                <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">History of actual transfers to your bank account.</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#111827]/50 text-[rgba(240,244,250,0.4)] uppercase text-[10px] tracking-widest font-bold">
-                    <tr>
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">Method</th>
-                      <th className="px-6 py-4">Gross</th>
-                      <th className="px-6 py-4">Fee</th>
-                      <th className="px-6 py-4">Net Payout</th>
-                      <th className="px-6 py-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.05]">
-                    {payouts.length > 0 ? (
-                      payouts.map((payout: any) => (
-                        <tr key={payout.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.7)]">
-                            {new Date(payout.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-[#f0f4fa] uppercase">
-                            {payout.method}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.7)] font-mono">
-                            ${payout.amount.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-[#f97316] font-mono">
-                            {payout.feeAmount ? `-$${payout.feeAmount.toFixed(2)}` : "—"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-[#14b8a6] font-bold font-mono">
-                            ${(payout.netAmount || payout.amount).toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400">
-                              {payout.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
-                          No payout history found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <BankingTab
+            stripeDetails={stripeDetails}
+            stripeStatus={stripeStatus}
+            loginLinkLoading={loginLinkLoading}
+            onGetLoginLink={handleGetLoginLink}
+            onReconnect={handleStripeOnboard}
+          />
         )}
-
-        {activeTab === "profile" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Manual Banking / Tax Info */}
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
-              <h2 className="text-lg font-semibold text-[#f0f4fa]">Tax & Information Parameters</h2>
-              <p className="mt-1 text-sm text-[rgba(240,244,250,0.6)] mb-6">
-                Please maintain your accurate personal and corporate intelligence here in order to comply with domestic tax treaties and 1099 distributions.
-              </p>
-
-              {saveError && (
-                <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
-                  {saveError}
-                </div>
-              )}
-              {saveMessage && (
-                <div className="mb-6 rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
-                  {saveMessage}
-                </div>
-              )}
-
-              <form onSubmit={handleSaveSettings} className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">First Name</label>
-                    <input type="text" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Last Name</label>
-                    <input type="text" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Business Name (Optional)</label>
-                    <input type="text" value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Phone / Cell</label>
-                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-6 gap-4">
-                  <div className="col-span-6 sm:col-span-4 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Street Address</label>
-                    <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                  <div className="col-span-6 sm:col-span-2 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Unit / Apt</label>
-                    <input type="text" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-6 gap-4">
-                  <div className="col-span-6 sm:col-span-2 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">City</label>
-                    <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                  <div className="col-span-3 sm:col-span-2 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">State</label>
-                    <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                  <div className="col-span-3 sm:col-span-2 space-y-1.5">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Zip Code</label>
-                    <input type="text" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">TIN OR SSN</label>
-                  <input type="text" value={formData.tinSsn} onChange={(e) => setFormData({ ...formData, tinSsn: e.target.value })} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-[#14b8a6] outline-none" />
-                </div>
-
-                <div className="pt-4 flex justify-end">
-                  <button type="submit" disabled={savingSettings} className="rounded-lg bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] transition hover:bg-[#0d9488] disabled:opacity-50">
-                    {savingSettings ? "Saving Settings..." : "Save Information"}
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Document Upload Area inside Profile */}
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
-              <h2 className="text-lg font-semibold text-[#f0f4fa] mb-2">W-9 / 1099 Form Upload</h2>
-              <p className="text-sm text-[rgba(240,244,250,0.6)] mb-6">
-                Please securely upload your completed W-9 form for the current tax year.
-              </p>
-
-              <div className="mt-2 flex justify-center rounded-xl border border-dashed border-white/[0.1] px-6 py-10 hover:border-[#14b8a6]/40 hover:bg-[#14b8a6]/5 transition cursor-pointer group">
-                <div className="text-center">
-                  <svg className="mx-auto h-10 w-10 text-white/20 group-hover:text-[#14b8a6]/50 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  <div className="mt-4 flex text-sm leading-6 text-gray-400 justify-center">
-                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md font-semibold text-[#14b8a6] hover:text-[#0d9488]">
-                      <span>Upload a file</span>
-                      <input id="file-upload" name="file-upload" type="file" className="sr-only" />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs leading-5 text-gray-500 mt-2">PDF, JPG up to 10MB (Coming soon)</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {activeTab === "payout-history" && <PayoutHistoryTab payouts={payouts} />}
+        {activeTab === "tax" && (
+          <TaxComplianceTab
+            taxStatus={taxStatus}
+            formData={formData}
+            setFormData={setFormData}
+            onSave={handleSaveTaxInfo}
+            saving={saving}
+            saveMsg={saveMsg}
+            saveErr={saveErr}
+          />
         )}
-
-        {activeTab === "help" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
-              <h2 className="text-xl font-bold text-white mb-6">Partner Program FAQ</h2>
-
-              <div className="space-y-6">
-                <div className="border-b border-white/[0.05] pb-6">
-                  <h3 className="text-base font-semibold text-white mb-2">How does the {commissionRate}% lifetime commission work?</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    Whenever a user clicks your tracking link, we place a multi-month cookie on their device. If they sign up for a paid plan or upgrade from a free tier down the road, {commissionRate}% of their subscription payment is automatically diverted to your account balance. This applies for as long as they remain a paying customer.
-                  </p>
-                </div>
-
-                <div className="border-b border-white/[0.05] pb-6">
-                  <h3 className="text-base font-semibold text-white mb-2">When do payouts happen?</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    Payouts are processed automatically via Stripe Connect. Balances are settled on a Net-30 basis to account for standard SaaS refund periods. Once cleared, funds are directly deposited into your linked bank account. Minimum payout threshold is $50.00.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-base font-semibold text-white mb-2">Why do you need my W-9 / TIN?</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    As a legitimate US-based operation, we are required by the IRS to issue 1099-NEC forms for any partner earning $600 or more in a calendar year. Your information is securely stored and exclusively utilized for end-of-year tax compliance.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/[0.02] p-6 lg:p-8 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-1">Still need help?</h3>
-                <p className="text-sm text-[rgba(240,244,250,0.6)]">Our priority partner support team is standing by.</p>
-              </div>
-              <a href="mailto:support@orbisvoice.com" className="rounded-lg bg-white/[0.05] border border-white/[0.1] px-6 py-3 text-sm font-semibold text-white hover:bg-white/[0.1] transition-colors">
-                Contact Support
-              </a>
-            </div>
-          </div>
-        )}
+        {activeTab === "transactions" && <TransactionsTab stats={stats} />}
       </div>
     </DashboardShell>
   );

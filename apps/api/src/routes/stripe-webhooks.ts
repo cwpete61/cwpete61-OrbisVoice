@@ -284,6 +284,95 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         break;
                     }
 
+                    // ─── CONNECT: TRANSFER CREATED ─────────────────────────
+                    // Fires when a platform transfer lands in a connected account
+                    case "transfer.created": {
+                        const transfer = event.data.object as any;
+                        // Update any pending AffiliatePayout records that used this transfer
+                        const updated = await prisma.affiliatePayout.updateMany({
+                            where: { transactionId: "simulated" },
+                            data: { transactionId: transfer.id }
+                        });
+                        if (updated.count > 0) {
+                            logger.info({ transferId: transfer.id }, "Backfilled Stripe transfer ID on payout record");
+                        }
+                        break;
+                    }
+
+                    // ─── CONNECT: ACCOUNT UPDATED ──────────────────────────
+                    // Fires when a connected account's verification status changes
+                    case "account.updated": {
+                        const acct = event.data.object as any;
+                        const affiliate = await prisma.affiliate.findFirst({
+                            where: { stripeAccountId: acct.id }
+                        });
+                        if (!affiliate) break;
+
+                        let newStatus = affiliate.stripeAccountStatus;
+                        if (acct.details_submitted && acct.payouts_enabled) {
+                            newStatus = "active";
+                        } else if (acct.details_submitted && !acct.payouts_enabled) {
+                            newStatus = "pending";
+                        }
+
+                        if (newStatus !== affiliate.stripeAccountStatus) {
+                            await prisma.affiliate.update({
+                                where: { id: affiliate.id },
+                                data: { stripeAccountStatus: newStatus }
+                            });
+                            logger.info({ affiliateId: affiliate.id, newStatus }, "Stripe account status synced via webhook");
+                        }
+                        break;
+                    }
+
+                    // ─── CONNECT: PAYOUT PAID ──────────────────────────────
+                    // Fires when Stripe pays the connected account to their bank
+                    case "payout.paid": {
+                        const payout = event.data.object as any;
+                        // Find the most recent PAID AffiliatePayout for this account
+                        const connectedAccountId = event.account; // Set by Stripe for Connect events
+                        if (connectedAccountId) {
+                            const affiliate = await prisma.affiliate.findFirst({
+                                where: { stripeAccountId: connectedAccountId }
+                            });
+                            if (affiliate) {
+                                logger.info({
+                                    affiliateId: affiliate.id,
+                                    payoutId: payout.id,
+                                    amount: payout.amount / 100
+                                }, "Connected account payout confirmed by bank");
+                            }
+                        }
+                        break;
+                    }
+
+                    // ─── CONNECT: PAYOUT FAILED ────────────────────────────
+                    // Fires when a bank payout fails (e.g. invalid account)
+                    case "payout.failed": {
+                        const payout = event.data.object as any;
+                        const connectedAccountId = event.account;
+                        if (connectedAccountId) {
+                            const affiliate = await prisma.affiliate.findFirst({
+                                where: { stripeAccountId: connectedAccountId }
+                            });
+                            if (affiliate) {
+                                logger.error({
+                                    affiliateId: affiliate.id,
+                                    payoutId: payout.id,
+                                    failureCode: payout.failure_code,
+                                    failureMessage: payout.failure_message,
+                                }, "⚠️ Connected account payout FAILED — manual review needed");
+
+                                // Flag the affiliate's stripe account as needing attention
+                                await prisma.affiliate.update({
+                                    where: { id: affiliate.id },
+                                    data: { stripeAccountStatus: "pending" }
+                                });
+                            }
+                        }
+                        break;
+                    }
+
                     default:
                         logger.info({ type: event.type }, "Unhandled Stripe event type");
                 }

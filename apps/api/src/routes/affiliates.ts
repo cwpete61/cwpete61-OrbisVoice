@@ -675,4 +675,164 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
             }
         }
     );
+
+    // ─── NEW: Live Stripe account details (balance, status, payout schedule) ───
+    fastify.get(
+        "/affiliates/stripe/account-details",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as AuthPayload).userId;
+                const affiliate = await prisma.affiliate.findUnique({ where: { userId } });
+
+                if (!affiliate?.stripeAccountId) {
+                    return reply.send({ ok: true, data: { connected: false } } as ApiResponse);
+                }
+
+                if (!env.STRIPE_API_KEY) {
+                    return reply.send({
+                        ok: true,
+                        data: {
+                            connected: true,
+                            accountId: affiliate.stripeAccountId,
+                            status: affiliate.stripeAccountStatus,
+                            liveDataAvailable: false,
+                        },
+                    } as ApiResponse);
+                }
+
+                const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+
+                // Retrieve live account info
+                const account = await stripe.accounts.retrieve(affiliate.stripeAccountId);
+
+                // Retrieve connected account's own balance (as platform)
+                let connectedBalance: { available: number; pending: number } = { available: 0, pending: 0 };
+                try {
+                    const bal = await stripe.balance.retrieve({}, { stripeAccount: affiliate.stripeAccountId });
+                    connectedBalance = {
+                        available: bal.available.reduce((s, b) => s + b.amount, 0) / 100,
+                        pending: bal.pending.reduce((s, b) => s + b.amount, 0) / 100,
+                    };
+                } catch (_) {
+                    // Not all accounts have balance readable by platform
+                }
+
+                const schedule = account.settings?.payouts?.schedule;
+
+                return reply.send({
+                    ok: true,
+                    data: {
+                        connected: true,
+                        liveDataAvailable: true,
+                        accountId: account.id,
+                        detailsSubmitted: account.details_submitted,
+                        chargesEnabled: account.charges_enabled,
+                        payoutsEnabled: account.payouts_enabled,
+                        requirementsDue: account.requirements?.currently_due ?? [],
+                        defaultCurrency: account.default_currency,
+                        payoutSchedule: schedule
+                            ? `${schedule.interval === "daily" ? "Daily" : schedule.interval === "weekly" ? `Weekly (${schedule.weekly_anchor})` : `Monthly (day ${schedule.monthly_anchor})`}`
+                            : "Manual",
+                        connectedBalance,
+                    },
+                } as ApiResponse);
+            } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
+
+    // ─── NEW: Generate Stripe Express Dashboard login link ──────────────────
+    fastify.post(
+        "/affiliates/stripe/login-link",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as AuthPayload).userId;
+                const affiliate = await prisma.affiliate.findUnique({ where: { userId } });
+
+                if (!affiliate?.stripeAccountId || affiliate.stripeAccountStatus !== "active") {
+                    return reply.code(400).send({ ok: false, message: "No active Stripe account connected" });
+                }
+
+                if (!env.STRIPE_API_KEY) {
+                    return reply.code(400).send({ ok: false, message: "Stripe not configured" });
+                }
+
+                const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                const loginLink = await stripe.accounts.createLoginLink(affiliate.stripeAccountId);
+
+                return reply.send({ ok: true, data: { url: loginLink.url } } as ApiResponse);
+            } catch (err: any) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: err.message || "Server error" });
+            }
+        }
+    );
+
+    // ─── NEW: Tax compliance status (YTD earnings + $600 threshold) ─────────
+    fastify.get(
+        "/affiliates/me/tax-status",
+        { onRequest: [authenticate] },
+        async (request, reply) => {
+            try {
+                const userId = (request.user as AuthPayload).userId;
+                const affiliate = await prisma.affiliate.findUnique({ where: { userId } });
+
+                // YTD = Jan 1 of current year to now
+                const now = new Date();
+                const ytdStart = new Date(now.getFullYear(), 0, 1);
+
+                const ytdTxs = await prisma.rewardTransaction.findMany({
+                    where: {
+                        referrerId: userId,
+                        status: { in: ["available", "paid"] },
+                        createdAt: { gte: ytdStart },
+                    },
+                });
+                const ytdEarnings = ytdTxs.reduce((s, t) => s + t.amount, 0);
+                const thresholdCrossed = ytdEarnings >= 600;
+
+                // 1099 availability via Stripe (if connected)
+                let taxForms: any[] = [];
+                if (affiliate?.stripeAccountId && env.STRIPE_API_KEY) {
+                    try {
+                        const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                        // List tax forms for this connected account (Stripe Tax Forms API)
+                        const forms = await (stripe as any).tax?.forms?.list?.(
+                            { limit: 10 },
+                            { stripeAccount: affiliate.stripeAccountId }
+                        );
+                        taxForms = forms?.data ?? [];
+                    } catch (_) {
+                        // Tax Forms API may not be enabled — graceful skip
+                    }
+                }
+
+                return reply.send({
+                    ok: true,
+                    data: {
+                        ytdEarnings: Math.round(ytdEarnings * 100) / 100,
+                        ytdStart: ytdStart.toISOString(),
+                        thresholdCrossed,
+                        thresholdAmount: 600,
+                        taxFormCompleted: affiliate?.taxFormCompleted ?? false,
+                        tax1099Uploaded: affiliate?.tax1099Uploaded ?? false,
+                        availableTaxForms: taxForms.length,
+                        taxForms: taxForms.map((f: any) => ({
+                            id: f.id,
+                            type: f.type,
+                            year: f.filing_details?.year,
+                            status: f.status,
+                        })),
+                    },
+                } as ApiResponse);
+            } catch (err) {
+                fastify.log.error(err);
+                return reply.code(500).send({ ok: false, message: "Server error" });
+            }
+        }
+    );
 }
