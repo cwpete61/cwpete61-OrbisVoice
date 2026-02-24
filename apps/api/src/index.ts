@@ -54,6 +54,7 @@ fastify.register(helmet, {
       connectSrc: ["'self'", "https://*.firebaseio.com", "https://*.googleapis.com"],
     },
   },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
 });
 
 // Register Rate Limiting
