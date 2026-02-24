@@ -187,25 +187,28 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Auto-promote/Self-heal hardcoded admin
-        if (isAdminEmail(user.email) && (user.role !== "ADMIN" || !user.isAdmin)) {
-          logger.info({ email: user.email }, "Self-healing admin role/status in login flow");
-          const updateData: any = {
-            role: "ADMIN",
-            isAdmin: true
-          };
+        if (isAdminEmail(user.email)) {
+          const targetRole = isSystemAdminEmail(user.email) ? "SYSTEM_ADMIN" : "ADMIN";
+          if (user.role !== targetRole || !user.isAdmin) {
+            logger.info({ email: user.email, targetRole }, "Self-healing admin role/status in login flow");
+            const updateData: any = {
+              role: targetRole,
+              isAdmin: true
+            };
 
-          // Only force "Admin" username for the primary admin email
-          if (user.email.toLowerCase() === "myorbisvoice@gmail.com" && user.username !== "Admin") {
-            updateData.username = "Admin";
-            user.username = "Admin";
+            // Only force "Admin" username for the primary admin email
+            if (user.email.toLowerCase() === "myorbisvoice@gmail.com" && user.username !== "Admin") {
+              updateData.username = "Admin";
+              user.username = "Admin";
+            }
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: updateData
+            });
+            user.role = targetRole;
+            user.isAdmin = true;
           }
-
-          await prisma.user.update({
-            where: { id: user.id },
-            data: updateData
-          });
-          user.role = "ADMIN";
-          user.isAdmin = true;
         }
 
         // Enforce Gmail-only for the account
