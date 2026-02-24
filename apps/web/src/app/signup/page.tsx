@@ -48,7 +48,7 @@ function SignupContent() {
         }),
       });
       if (res.ok) {
-        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("token", (data.data as any).token);
         router.push("/dashboard");
       } else {
         setError(data.message || "Signup failed");
@@ -85,7 +85,7 @@ function SignupContent() {
       });
 
       if (res.ok) {
-        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("token", (data.data as any).token);
         router.push("/dashboard");
       } else {
         setError(data.message || "Google sign-up failed on backend");
