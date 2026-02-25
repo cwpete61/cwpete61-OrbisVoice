@@ -131,6 +131,7 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
                 <tr>
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Code Used</th>
+                  <th className="px-6 py-3">User</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3 text-right">Reward</th>
                 </tr>
@@ -140,6 +141,16 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
                   <tr key={ref.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-6 py-4 text-[rgba(240,244,250,0.6)]">{new Date(ref.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4 font-mono text-[#f0f4fa]">{ref.code}</td>
+                    <td className="px-6 py-4 text-xs text-[rgba(240,244,250,0.6)]">
+                      {ref.referredUser ? (
+                        <div>
+                          <div className="text-[#f0f4fa]">{ref.referredUser.name}</div>
+                          <div>{ref.referredUser.email}</div>
+                        </div>
+                      ) : (
+                        "Unknown User"
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <Badge color={ref.status === "completed" ? "green" : "orange"}>{ref.status}</Badge>
                     </td>
@@ -567,8 +578,8 @@ function ReferralsContent() {
           {TABS.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${activeTab === tab.id
-                  ? "border-[#14b8a6] text-[#14b8a6]"
-                  : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                ? "border-[#14b8a6] text-[#14b8a6]"
+                : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
                 }`}>
               {tab.label}
               {tab.id === "tax" && taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (

@@ -78,7 +78,14 @@ export default function TenantManagement() {
                             ) : (
                                 tenants.map((tenant) => (
                                     <tr key={tenant.id} className="hover:bg-white/[0.02] transition">
-                                        <td className="px-6 py-4 font-medium text-[#f0f4fa]">{tenant.name}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-medium text-[#f0f4fa]">{tenant.name}</div>
+                                            {tenant.billingEmail ? (
+                                                <div className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">{tenant.billingEmail}</div>
+                                            ) : tenant.users?.[0]?.email ? (
+                                                <div className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">{tenant.users[0].email}</div>
+                                            ) : null}
+                                        </td>
                                         <td className="px-6 py-4 font-mono text-xs text-[rgba(240,244,250,0.3)]">{tenant.id}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${tenant.subscriptionTier === 'enterprise' ? 'bg-purple-500/10 text-purple-400' :

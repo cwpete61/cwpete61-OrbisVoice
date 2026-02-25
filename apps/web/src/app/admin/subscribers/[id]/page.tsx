@@ -79,8 +79,8 @@ function SubscriberDetailContent({ id }: { id: string }) {
                     </div>
                     <div className="flex gap-2">
                         <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${sub.subscriptionStatus === "active" ? "border-green-500/20 bg-green-500/10 text-green-400"
-                                : sub.subscriptionStatus === "past_due" ? "border-red-500/20 bg-red-500/10 text-red-400"
-                                    : "border-white/10 bg-white/5 text-[rgba(240,244,250,0.5)]"
+                            : sub.subscriptionStatus === "past_due" ? "border-red-500/20 bg-red-500/10 text-red-400"
+                                : "border-white/10 bg-white/5 text-[rgba(240,244,250,0.5)]"
                             }`}>
                             ● {sub.subscriptionStatus ?? "No Plan"}
                         </span>
@@ -150,12 +150,14 @@ function SubscriberDetailContent({ id }: { id: string }) {
                             <tbody className="divide-y divide-white/[0.03]">
                                 {(sub.users ?? []).map((u: any) => (
                                     <tr key={u.id} className="hover:bg-white/[0.01]">
-                                        <td className="px-5 py-3 font-medium text-[#f0f4fa]">{u.name}</td>
-                                        <td className="px-5 py-3 text-[rgba(240,244,250,0.6)]">{u.email}</td>
+                                        <td className="px-5 py-3">
+                                            <div className="font-medium text-[#f0f4fa]">{u.name}</div>
+                                            <div className="text-xs text-[rgba(240,244,250,0.6)] mt-0.5">{u.email}</div>
+                                        </td>
                                         <td className="px-5 py-3">
                                             <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${u.role === "SYSTEM_ADMIN" ? "bg-red-500/15 text-red-400"
-                                                    : u.isAdmin ? "bg-orange-500/15 text-orange-400"
-                                                        : "bg-white/5 text-[rgba(240,244,250,0.5)]"
+                                                : u.isAdmin ? "bg-orange-500/15 text-orange-400"
+                                                    : "bg-white/5 text-[rgba(240,244,250,0.5)]"
                                                 }`}>{u.role}</span>
                                         </td>
                                         <td className="px-5 py-3 text-xs text-[rgba(240,244,250,0.4)]">{new Date(u.createdAt).toLocaleDateString()}</td>

@@ -106,6 +106,11 @@ export async function adminRoutes(fastify: FastifyInstance) {
                 include: {
                     _count: {
                         select: { agents: true, users: true }
+                    },
+                    users: {
+                        select: { email: true, name: true },
+                        orderBy: { createdAt: 'asc' },
+                        take: 1
                     }
                 },
                 orderBy: { createdAt: "desc" }
