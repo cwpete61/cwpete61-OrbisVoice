@@ -25,6 +25,22 @@ function Badge({ children, color = "teal" }: { children: React.ReactNode; color?
   );
 }
 
+const getExpectedPayoutDate = (createdAt: string) => {
+  const date = new Date(createdAt);
+  date.setDate(date.getDate() + 30); // 30-day hold
+
+  // Find next bi-monthly window (15th or Last Day)
+  const day = date.getDate();
+  const month = date.getMonth();
+  const year = date.getFullYear();
+
+  if (day <= 15) {
+    return new Date(year, month, 15).toLocaleDateString();
+  } else {
+    return new Date(year, month + 1, 0).toLocaleDateString();
+  }
+};
+
 // ─── Sub-components ─────────────────────────────────────────────────────────
 function OverviewTab({ stats, commissionRate, profile }: any) {
   const copyLink = () => {
@@ -33,48 +49,144 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
   };
 
   const metrics = [
-    { label: "Signups Referred", value: stats?.totalSignups ?? 0, mono: false },
-    { label: "Total Gross Earned", value: `$${(stats?.totalRewards ?? 0).toFixed(2)}`, mono: true },
-    { label: "Pending (in hold)", value: `$${(stats?.pendingRewards ?? 0).toFixed(2)}`, mono: true, dim: true },
-    { label: "Available Balance", value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`, mono: true, highlight: true },
+    { label: "Total Referred", value: stats?.totalReferred ?? 0, highlight: false },
+    { label: "Accepted", value: stats?.accepted ?? 0, highlight: false },
+    { label: "Converted", value: stats?.completed ?? 0, highlight: false },
+    { label: "Total Earned", value: `$${(stats?.totalRewards ?? 0).toFixed(2)}`, highlight: false, mono: true },
+    { label: "Available", value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`, highlight: true, mono: true },
+    {
+      label: "Pending (Hold)",
+      value: `$${(stats?.pendingRewards ?? 0).toFixed(2)}`,
+      highlight: false,
+      dim: true,
+      mono: true,
+      desc: stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)
+        ? `Est. Payday: ${getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}`
+        : "30-day verification"
+    },
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* KPI Strip */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((m) => (
-          <div key={m.label} className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.4)]">{m.label}</p>
-            <p className={`mt-2 text-3xl font-bold ${m.highlight ? "text-[#14b8a6]" : m.dim ? "text-[rgba(240,244,250,0.4)]" : "text-[#f0f4fa]"} ${m.mono ? "font-mono" : ""}`}>
-              {m.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Earnings Pipeline */}
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
-        <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">💰 Earnings Pipeline</h2>
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {[
-            { label: "Customer Pays", icon: "💳", desc: "Referral commission created", color: "border-purple-500/30 bg-purple-500/5" },
-            { label: "30-Day Hold", icon: "⏳", desc: "Refund protection period", color: "border-orange-500/30 bg-orange-500/5" },
-            { label: "Available", icon: "✅", desc: "Ready for payout queue", color: "border-[#14b8a6]/30 bg-[#14b8a6]/5" },
-            { label: "Transfer", icon: "🏦", desc: "Sent to your Stripe account", color: "border-green-500/30 bg-green-500/5" },
-            { label: "Bank Deposit", icon: "🎉", desc: "Lands in your bank account", color: "border-blue-500/30 bg-blue-500/5" },
-          ].map((step, i, arr) => (
-            <div key={step.label} className="flex items-center gap-2 shrink-0">
-              <div className={`rounded-xl border ${step.color} p-4 text-center min-w-[120px]`}>
-                <div className="text-2xl mb-1">{step.icon}</div>
-                <div className="text-xs font-semibold text-[#f0f4fa]">{step.label}</div>
-                <div className="text-[10px] text-[rgba(240,244,250,0.4)] mt-0.5">{step.desc}</div>
-              </div>
-              {i < arr.length - 1 && <span className="text-[rgba(240,244,250,0.2)] text-xl">→</span>}
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Performance Metrics Section */}
+      <section>
+        <h3 className="text-xs uppercase tracking-[0.2em] font-black text-[rgba(240,244,250,0.4)] mb-6 flex items-center gap-2">
+          <span className="h-px w-6 bg-white/10"></span>
+          Performance Metrics
+        </h3>
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          {metrics.map((m) => (
+            <div key={m.label} className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5 hover:border-white/[0.12] transition-all">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-2">{m.label}</p>
+              <p className={`text-2xl font-bold ${m.highlight ? "text-[#14b8a6]" : m.dim ? "text-[rgba(240,244,250,0.4)]" : "text-[#f0f4fa]"} ${m.mono ? "font-mono text-xl" : ""}`}>
+                {m.value}
+              </p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
+
+      {/* Earnings Pipeline - MOVED HERE */}
+      <section>
+        <h3 className="text-xs uppercase tracking-[0.2em] font-black text-[rgba(240,244,250,0.4)] mb-6 flex items-center gap-2">
+          <span className="h-px w-6 bg-white/10"></span>
+          Earnings Pipeline
+        </h3>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {[
+              { label: "Customer Pays", icon: "💳", desc: "Referral commission created", color: "border-purple-500/30 bg-purple-500/5" },
+              { label: "30-Day Hold", icon: "⏳", desc: "Refund protection period", color: "border-orange-500/30 bg-orange-500/5" },
+              { label: "Available", icon: "✅", desc: "Ready for payout queue", color: "border-[#14b8a6]/30 bg-[#14b8a6]/5" },
+              { label: "Transfer", icon: "🏦", desc: "Sent to your Stripe account", color: "border-green-500/30 bg-green-500/5" },
+              { label: "Bank Deposit", icon: "🎉", desc: "Lands in your bank account", color: "border-blue-500/30 bg-blue-500/5" },
+            ].map((step, i, arr) => (
+              <div key={step.label} className="flex items-center gap-2 shrink-0">
+                <div className={`rounded-xl border ${step.color} p-4 text-center min-w-[120px]`}>
+                  <div className="text-2xl mb-1">{step.icon}</div>
+                  <div className="text-xs font-semibold text-[#f0f4fa]">{step.label}</div>
+                  <div className="text-[10px] text-[rgba(240,244,250,0.4)] mt-0.5">{step.desc}</div>
+                </div>
+                {i < arr.length - 1 && <span className="text-[rgba(240,244,250,0.2)] text-xl">→</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Referral Activity Table - Restored portion of the image */}
+      <section>
+        <h3 className="text-xs uppercase tracking-[0.2em] font-black text-[rgba(240,244,250,0.4)] mb-6 flex items-center gap-2">
+          <span className="h-px w-6 bg-white/10"></span>
+          Referral Activity
+        </h3>
+        <div className="rounded-3xl border border-white/[0.07] bg-[#0c111d] overflow-hidden shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#111827]/80 text-[rgba(240,244,250,0.4)] uppercase tracking-widest font-bold">
+                <tr>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4">Code Used</th>
+                  <th className="px-6 py-4">User & Email</th>
+                  <th className="px-6 py-4 text-center">Plan</th>
+                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5 group/tip relative">
+                      Expected Payout
+                      <svg className="h-3 w-3 text-[rgba(240,244,250,0.3)] cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 rounded-xl bg-[#05080f] border border-white/10 text-[10px] normal-case font-medium text-[rgba(240,244,250,0.6)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
+                        Funds are released to your bank in the next available bi-monthly window (15th or end of month) after the 30-day verification hold expires.
+                      </div>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-right">Commission</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {!stats?.referrals || stats.referrals.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)] font-medium">
+                      No referral activity found yet. Start sharing your link to earn!
+                    </td>
+                  </tr>
+                ) : (
+                  stats.referrals.map((ref: any) => (
+                    <tr key={ref.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <td className="px-6 py-5 text-[rgba(240,244,250,0.5)] whitespace-nowrap">{new Date(ref.createdAt).toLocaleDateString()}</td>
+                      <td className="px-6 py-5 text-[rgba(240,244,250,0.6)] font-mono text-[10px]">{ref.referralCodeUsed || "—"}</td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-white/[0.05] to-white/[0.01] border border-white/[0.05] flex items-center justify-center text-[10px] font-bold text-[#f0f4fa]">
+                            {ref.name?.charAt(0) || "U"}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[#f0f4fa] font-semibold">{ref.name || "Unknown User"}</span>
+                            <span className="text-[10px] text-[rgba(240,244,250,0.4)]">{ref.email || "No email"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <Badge color={ref.plan === 'free' ? 'teal' : 'purple'}>{ref.plan}</Badge>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <Badge color={ref.status === "completed" ? "green" : "orange"}>{ref.status}</Badge>
+                      </td>
+                      <td className="px-6 py-5 text-center text-[10px] font-medium text-[rgba(240,244,250,0.4)]">
+                        {getExpectedPayoutDate(ref.createdAt)}
+                      </td>
+                      <td className="px-6 py-5 text-right font-bold text-[#14b8a6] whitespace-nowrap">
+                        +${(ref.rewardAmount || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       {/* Commission rate + referral link */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -592,19 +704,27 @@ function AffiliateDashboardContent() {
         )}
 
         {/* Tab nav */}
-        <div className="mb-8 flex gap-0.5 overflow-x-auto border-b border-white/[0.06] pb-px">
-          {TABS.map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${activeTab === tab.id
-                ? "border-[#14b8a6] text-[#14b8a6]"
-                : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-                }`}>
-              {tab.label}
-              {tab.id === "tax" && taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (
-                <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-              )}
-            </button>
-          ))}
+        <div className="mb-8 flex items-center justify-between flex-wrap gap-4 border-b border-white/[0.06] pb-px">
+          <div className="flex gap-0.5 overflow-x-auto">
+            {TABS.map((tab) => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${activeTab === tab.id
+                  ? "border-[#14b8a6] text-[#14b8a6]"
+                  : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                  }`}>
+                {tab.label}
+                {tab.id === "tax" && taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (
+                  <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {(stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)) && (
+            <div className="text-[20px] font-black text-white animate-pulse tracking-tight pr-4 pb-2">
+              Next Payout: {getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}
+            </div>
+          )}
         </div>
 
         {/* Tab content */}

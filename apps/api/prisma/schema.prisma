@@ -86,9 +86,11 @@ model User {
   referralCodeUsed String?
   referralRewardTotal Float @default(0)
   referralsCreated Referral[] @relation("referrer")
+  referralRedemptions Referral[] @relation("referee")
+  rewards RewardTransaction[] @relation("referrer_rewards")
+  refereeRewardTransactions RewardTransaction[] @relation("referee_rewards")
   affiliate Affiliate?
   isAffiliate Boolean @default(false)
-  rewards RewardTransaction[] @relation("referrer_rewards")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -150,6 +152,7 @@ model Referral {
   referrerId String
   referrer User @relation("referrer", fields: [referrerId], references: [id], onDelete: Cascade)
   refereeId String?
+  referee   User? @relation("referee", fields: [refereeId], references: [id], onDelete: SetNull)
   code  String @unique
   status String @default("pending") // pending, accepted, completed, expired
   rewardAmount Float @default(10)
@@ -164,6 +167,7 @@ model RewardTransaction {
   referrerId      String
   referrer        User             @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
   refereeId       String?
+  referee         User?            @relation("referee_rewards", fields: [refereeId], references: [id], onDelete: SetNull)
   amount          Float
   status          String           @default("pending") // pending, available, paid, refunded
   sourcePaymentId String?          // e.g., Stripe charge ID
