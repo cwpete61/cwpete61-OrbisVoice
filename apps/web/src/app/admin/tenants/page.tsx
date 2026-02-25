@@ -37,8 +37,8 @@ export default function TenantManagement() {
             <div className="p-8">
                 <header className="mb-10 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-[#f0f4fa]">Subscriber Management</h1>
-                        <p className="mt-2 text-[rgba(240,244,250,0.5)]">Review and manage platform subscribers</p>
+                        <h1 className="text-3xl font-bold text-[#f0f4fa]">Workspace Management</h1>
+                        <p className="mt-2 text-[rgba(240,244,250,0.5)]">Review and manage platform workspaces</p>
                     </div>
                 </header>
 
@@ -52,7 +52,7 @@ export default function TenantManagement() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-white/[0.02] text-[rgba(240,244,250,0.4)] uppercase text-[10px] font-bold tracking-widest border-b border-white/[0.06]">
                             <tr>
-                                <th className="px-6 py-4">Subscriber Name</th>
+                                <th className="px-6 py-4">Workspace Name</th>
                                 <th className="px-6 py-4">Email</th>
                                 <th className="px-6 py-4">ID</th>
                                 <th className="px-6 py-4">Plan</th>
@@ -73,7 +73,7 @@ export default function TenantManagement() {
                             ) : tenants.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
-                                        No subscribers found
+                                        No workspaces found
                                     </td>
                                 </tr>
                             ) : (

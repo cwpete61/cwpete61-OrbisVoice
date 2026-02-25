@@ -466,9 +466,9 @@ function UsersContent() {
         <DashboardShell>
             <div className="px-8 py-8">
                 <div className="mb-8">
-                    <h1 className="text-xl font-bold text-[#f0f4fa]">Subscribers</h1>
+                    <h1 className="text-xl font-bold text-[#f0f4fa]">All Users</h1>
                     <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">
-                        View all subscriber accounts in OrbisVoice
+                        View all user accounts in OrbisVoice
                     </p>
                 </div>
 
@@ -481,7 +481,7 @@ function UsersContent() {
                         {/* Admin Tabs */}
                         <div className="flex items-center gap-1 border-b border-white/[0.07] px-1">
                             {[
-                                { id: "users", label: "Subscribers", icon: "👥" },
+                                { id: "users", label: "All Users", icon: "👥" },
                                 { id: "affiliates", label: "Professional Partners", icon: "🤝" },
                                 { id: "settings", label: "Commission Settings", icon: "⚙️" },
                             ].map((tab) => (
