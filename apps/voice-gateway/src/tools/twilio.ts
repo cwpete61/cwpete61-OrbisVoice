@@ -1,7 +1,10 @@
 import { Twilio } from "twilio";
-import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+interface TwilioConfig {
+    accountSid: string;
+    authToken: string;
+    phoneNumber: string;
+}
 
 export const twilioTools = [
     {
@@ -30,12 +33,7 @@ export const twilioTools = [
     },
 ];
 
-export async function handleTwilioToolCall(toolName: string, args: any, tenantId: string) {
-    // Fetch config
-    const config = await prisma.tenantTwilioConfig.findUnique({
-        where: { tenantId },
-    });
-
+export async function handleTwilioToolCall(toolName: string, args: any, config: TwilioConfig) {
     if (!config) {
         throw new Error("Twilio not configured for this tenant");
     }
