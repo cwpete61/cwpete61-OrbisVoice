@@ -93,7 +93,7 @@ export class AffiliateManager {
                 clicks: 0, // Clicks tracking to be implemented later 
                 sales: referralStats.transactions.length,
                 revenue: referralStats.totalRewards,
-                totalReferrals: referralStats.totalSignups,
+                totalReferrals: referralStats.totalReferred,
                 convertedReferrals: referralStats.transactions.length,
                 balance: referralStats.availableRewards,
                 totalEarnings: referralStats.totalRewards,
