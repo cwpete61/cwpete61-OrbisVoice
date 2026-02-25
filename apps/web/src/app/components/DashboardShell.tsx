@@ -106,6 +106,17 @@ const NAV = [
   },
   {
     category: "Main",
+    href: "/admin/packages",
+    label: "Conversation Packs",
+    isAdminOnly: true,
+    icon: (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14v14m0-14l-8 4m0 0v10l8 4" />
+      </svg>
+    ),
+  },
+  {
+    category: "Main",
     href: "/stats",
     label: "Analytics",
     icon: (
@@ -197,17 +208,7 @@ const NAV = [
       </svg>
     ),
   },
-  {
-    category: "Admin",
-    href: "/admin/packages",
-    label: "Conversation Packs",
-    isAdminOnly: true,
-    icon: (
-      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14v14m0-14l-8 4m0 0v10l8 4" />
-      </svg>
-    ),
-  },
+
   {
     category: "Admin",
     href: "/admin/system",
