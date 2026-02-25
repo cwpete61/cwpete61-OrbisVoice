@@ -87,6 +87,7 @@ const NAV = [
     category: "Main",
     href: "/dashboard",
     label: "Agents",
+    isAffiliateHidden: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
@@ -97,6 +98,7 @@ const NAV = [
     category: "Main",
     href: "/billing",
     label: "Your Subscriptions",
+    isAffiliateHidden: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -129,6 +131,7 @@ const NAV = [
     category: "Partnership",
     href: "/referrals",
     label: "My Referrals",
+    isAffiliateHidden: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2a4 4 0 100-8 4 4 0 000 8zm6-2a3 3 0 100-6 3 3 0 000 6zm-12 0a3 3 0 100-6 3 3 0 000 6z" />
@@ -247,6 +250,7 @@ const NAV = [
     category: "System",
     href: "/settings",
     label: "Settings",
+    isAffiliateHidden: true,
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
         <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
@@ -384,9 +388,11 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
               if (item.category !== cat) return false;
 
               const isSystemAdmin = profile?.role === "SYSTEM_ADMIN";
+              const isAffiliateOnly = profile?.isAffiliate && !profile?.isAdmin;
 
               if (item.isSystemAdminOnly && !isSystemAdmin) return false;
               if (item.isAdminOnly && !profile?.isAdmin) return false;
+              if (item.isAffiliateHidden && isAffiliateOnly) return false;
 
               if (item.label === "My Affiliate Partnership") {
                 return profile?.isAdmin || profile?.isAffiliate;

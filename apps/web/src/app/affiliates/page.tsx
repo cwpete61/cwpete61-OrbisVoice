@@ -68,6 +68,24 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Commission rate + referral link */}
+      <div className="grid gap-6 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl">
+          <h2 className="mb-1 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">Your Commission Rate</h2>
+          <p className="text-4xl font-black text-[#14b8a6]">{commissionRate}%</p>
+          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.4)]">Per referred customer's first qualifying payment</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl">
+          <h2 className="mb-3 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">Your Partner Link</h2>
+          <div className="flex gap-2">
+            <input readOnly value={stats?.shareUrl || "Loading…"} className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[rgba(240,244,250,0.7)] outline-none truncate font-mono" />
+            <button onClick={copyLink} className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-bold text-[#05080f] hover:bg-[#0d9488] transition active:scale-95 shrink-0">
+              Copy
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Performance Metrics Section */}
       <section>
         <h3 className="text-xs uppercase tracking-[0.2em] font-black text-[rgba(240,244,250,0.4)] mb-6 flex items-center gap-2">
@@ -86,28 +104,32 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
         </div>
       </section>
 
-      {/* Earnings Pipeline - MOVED HERE */}
+      {/* Earnings Pipeline */}
       <section>
         <h3 className="text-xs uppercase tracking-[0.2em] font-black text-[rgba(240,244,250,0.4)] mb-6 flex items-center gap-2">
           <span className="h-px w-6 bg-white/10"></span>
           Earnings Pipeline
         </h3>
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
-          <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-lg shadow-[#14b8a6]/5">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             {[
-              { label: "Customer Pays", icon: "💳", desc: "Referral commission created", color: "border-purple-500/30 bg-purple-500/5" },
-              { label: "30-Day Hold", icon: "⏳", desc: "Refund protection period", color: "border-orange-500/30 bg-orange-500/5" },
-              { label: "Available", icon: "✅", desc: "Ready for payout queue", color: "border-[#14b8a6]/30 bg-[#14b8a6]/5" },
-              { label: "Transfer", icon: "🏦", desc: "Sent to your Stripe account", color: "border-green-500/30 bg-green-500/5" },
-              { label: "Bank Deposit", icon: "🎉", desc: "Lands in your bank account", color: "border-blue-500/30 bg-blue-500/5" },
+              { label: "Customer Pays", icon: "💳", desc: "Referral commission created", color: "border-purple-500/30 bg-purple-500/5 text-purple-400" },
+              { label: "30-Day Hold", icon: "⏳", desc: "Refund protection period", color: "border-orange-500/30 bg-orange-500/5 text-orange-400" },
+              { label: "Available", icon: "✅", desc: "Ready for payout queue", color: "border-[#14b8a6]/30 bg-[#14b8a6]/5 text-[#14b8a6]" },
+              { label: "Transfer", icon: "🏦", desc: "Sent to your Stripe account", color: "border-green-500/30 bg-green-500/5 text-green-400" },
+              { label: "Bank Deposit", icon: "🎉", desc: "Lands in your bank account", color: "border-blue-500/30 bg-blue-500/5 text-blue-400" },
             ].map((step, i, arr) => (
               <div key={step.label} className="flex items-center gap-2 shrink-0">
-                <div className={`rounded-xl border ${step.color} p-4 text-center min-w-[120px]`}>
+                <div className={`rounded-xl border ${step.color} p-4 text-center min-w-[130px]`}>
                   <div className="text-2xl mb-1">{step.icon}</div>
-                  <div className="text-xs font-semibold text-[#f0f4fa]">{step.label}</div>
-                  <div className="text-[10px] text-[rgba(240,244,250,0.4)] mt-0.5">{step.desc}</div>
+                  <div className="text-[11px] font-bold text-[#f0f4fa]">{step.label}</div>
+                  <div className="text-[9px] text-[rgba(240,244,250,0.4)] mt-0.5">{step.desc}</div>
                 </div>
-                {i < arr.length - 1 && <span className="text-[rgba(240,244,250,0.2)] text-xl">→</span>}
+                {i < arr.length - 1 && (
+                  <div className="flex flex-col items-center gap-1 mx-1">
+                    <span className="text-[rgba(240,244,250,0.15)] text-lg">→</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -187,24 +209,6 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
           </div>
         </div>
       </section>
-
-      {/* Commission rate + referral link */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
-          <h2 className="mb-1 text-sm font-semibold text-[#f0f4fa]">Your Commission Rate</h2>
-          <p className="text-4xl font-bold text-[#14b8a6]">{commissionRate}%</p>
-          <p className="mt-2 text-xs text-[rgba(240,244,250,0.4)]">Per referred customer's first qualifying payment</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6">
-          <h2 className="mb-3 text-sm font-semibold text-[#f0f4fa]">Your Partner Link</h2>
-          <div className="flex gap-2">
-            <input readOnly value={stats?.shareUrl || "Loading…"} className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[rgba(240,244,250,0.7)] outline-none truncate" />
-            <button onClick={copyLink} className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition active:scale-95 shrink-0">
-              Copy
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -559,7 +563,14 @@ function AffiliateDashboardContent() {
           tinSsn: d.data.tinSsn || "",
         });
       }
-      if (statsRes.ok) setStats((await statsRes.json()).data);
+      if (statsRes.ok) {
+        const statsData = (await statsRes.json()).data;
+        setStats(statsData);
+        // Sync isAffiliate from affiliate stats if profile hasn't updated yet
+        if (statsData?.isAffiliate) {
+          setProfile((prev: any) => prev ? { ...prev, isAffiliate: true } : prev);
+        }
+      }
       if (stripeRes.ok) setStripeStatus((await stripeRes.json()).data);
       if (programRes.ok) setCommissionRate((await programRes.json()).data?.commissionRate ?? 30);
       if (payoutsRes.ok) setPayouts((await payoutsRes.json()).data ?? []);
@@ -627,7 +638,7 @@ function AffiliateDashboardContent() {
     );
   }
 
-  if (profile && !profile.isAffiliate && !profile.isAdmin) {
+  if (profile && !profile.isAffiliate && !stats?.isAffiliate && !profile.isAdmin) {
     return (
       <DashboardShell tokenLoaded={tokenLoaded}>
         <div className="flex h-screen flex-col items-center justify-center text-center px-4">

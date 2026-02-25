@@ -9,7 +9,8 @@ import { referralManager } from "../services/referral";
 import { affiliateManager } from "../services/affiliate";
 
 const isGmail = (email: string) => {
-  return email.toLowerCase().endsWith("@gmail.com");
+  const lower = email.toLowerCase();
+  return lower.endsWith("@gmail.com") || lower.endsWith("@orbisvoice.app");
 };
 
 const SYSTEM_ADMIN_EMAILS = [

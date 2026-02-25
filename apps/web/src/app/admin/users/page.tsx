@@ -32,26 +32,11 @@ function UsersContent() {
         commissionLevel: "LOW",
         role: "USER",
     });
-    const [platformSettings, setPlatformSettings] = useState<any>(null);
-    const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
-    const [settingsForm, setSettingsForm] = useState({
-        lowCommission: 0,
-        medCommission: 0,
-        highCommission: 0,
-        commissionDurationMonths: 0,
-        defaultCommissionLevel: "LOW",
-        payoutMinimum: 100,
-        refundHoldDays: 14,
-        payoutCycleDelayMonths: 1,
-        starterLimit: 1000,
-        professionalLimit: 10000,
-        enterpriseLimit: 100000,
-        ltdLimit: 1000,
-        aiInfraLimit: 250000,
-    });
+
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [affiliates, setAffiliates] = useState<any[]>([]);
     const [affiliatesLoading, setAffiliatesLoading] = useState(false);
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -87,7 +72,6 @@ function UsersContent() {
     useEffect(() => {
         if (isAdmin) {
             fetchUsers(userFilter, debouncedSearch);
-            fetchPlatformSettings();
             fetchAffiliates(debouncedSearch);
         }
     }, [isAdmin]);
@@ -109,63 +93,7 @@ function UsersContent() {
         }
     }, [debouncedSearch, userFilter, adminTab]);
 
-    const fetchPlatformSettings = async () => {
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/admin/settings`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setPlatformSettings(data.data);
-                setSettingsForm({
-                    lowCommission: data.data.lowCommission,
-                    medCommission: data.data.medCommission,
-                    highCommission: data.data.highCommission,
-                    commissionDurationMonths: data.data.commissionDurationMonths || 0,
-                    defaultCommissionLevel: data.data.defaultCommissionLevel || "LOW",
-                    payoutMinimum: data.data.payoutMinimum || 100,
-                    refundHoldDays: data.data.refundHoldDays || 14,
-                    payoutCycleDelayMonths: data.data.payoutCycleDelayMonths !== undefined ? data.data.payoutCycleDelayMonths : 1,
-                    starterLimit: data.data.starterLimit || 1000,
-                    professionalLimit: data.data.professionalLimit || 10000,
-                    enterpriseLimit: data.data.enterpriseLimit || 100000,
-                    ltdLimit: data.data.ltdLimit || 1000,
-                    aiInfraLimit: data.data.aiInfraLimit || 250000,
-                });
-                setCreateForm(prev => ({
-                    ...prev,
-                    commissionLevel: data.data.defaultCommissionLevel || "LOW"
-                }));
-            }
-        } catch (err) {
-            console.error("Failed to fetch platform settings:", err);
-        }
-    };
 
-    const handleSaveSettings = async () => {
-        setSaveSettingsLoading(true);
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/admin/settings`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(settingsForm),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setPlatformSettings(data.data);
-                await fetchUsers(userFilter, debouncedSearch);
-            }
-        } catch (err) {
-            console.error("Failed to save settings:", err);
-        } finally {
-            setSaveSettingsLoading(false);
-        }
-    };
 
     const fetchProfile = async () => {
         try {
@@ -322,7 +250,7 @@ function UsersContent() {
                 return;
             }
 
-            setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW", role: "USER" });
+            setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: "LOW", role: "USER" });
             setCreateOpen(false);
             await fetchUsers(userFilter, debouncedSearch);
         } catch (err) {
@@ -339,14 +267,14 @@ function UsersContent() {
             name: user.name || "",
             email: user.email || "",
             tier: (user?.tenant?.subscriptionTier as string) || "starter",
-            commissionLevel: user.commissionLevel || platformSettings?.defaultCommissionLevel || "LOW",
+            commissionLevel: user.commissionLevel || "LOW",
             role: user.role || "USER",
         });
     };
 
     const cancelEditUser = () => {
         setEditingUserId(null);
-        setEditForm({ name: "", email: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW", role: "USER" });
+        setEditForm({ name: "", email: "", tier: "starter", commissionLevel: "LOW", role: "USER" });
     };
 
     const saveEditUser = async (userId: string) => {
@@ -462,6 +390,68 @@ function UsersContent() {
         }
     };
 
+    const toggleSelectUser = (userId: string) => {
+        setSelectedUserIds(prev =>
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedUserIds.length === users.length && users.length > 0) {
+            setSelectedUserIds([]);
+        } else {
+            setSelectedUserIds(users.map(u => u.id));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!selectedUserIds.length) return;
+        if (!window.confirm(`Delete ${selectedUserIds.length} selected users? This cannot be undone.`)) return;
+
+        setActionLoading("bulk-delete");
+        try {
+            const token = localStorage.getItem("token");
+            for (const id of selectedUserIds) {
+                await fetch(`${API_BASE}/admin/users/${id}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+            }
+            setSelectedUserIds([]);
+            await fetchUsers(userFilter, debouncedSearch);
+        } catch (err) {
+            console.error("Bulk delete failed:", err);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleBulkBlock = async (isBlocked: boolean) => {
+        if (!selectedUserIds.length) return;
+        if (!window.confirm(`${isBlocked ? "Block" : "Unblock"} ${selectedUserIds.length} selected users?`)) return;
+
+        setActionLoading("bulk-block");
+        try {
+            const token = localStorage.getItem("token");
+            for (const id of selectedUserIds) {
+                await fetch(`${API_BASE}/admin/users/${id}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ isBlocked }),
+                });
+            }
+            setSelectedUserIds([]);
+            await fetchUsers(userFilter, debouncedSearch);
+        } catch (err) {
+            console.error("Bulk block/unblock failed:", err);
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     return (
         <DashboardShell>
             <div className="px-8 py-8">
@@ -483,7 +473,6 @@ function UsersContent() {
                             {[
                                 { id: "users", label: "All Users", icon: "👥" },
                                 { id: "affiliates", label: "Professional Partners", icon: "🤝" },
-                                { id: "settings", label: "Commission Settings", icon: "⚙️" },
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -499,167 +488,7 @@ function UsersContent() {
                             ))}
                         </div>
 
-                        {adminTab === "settings" && (
-                            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-                                <div className="mb-5 flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-sm font-semibold text-[#f0f4fa]">Global Commission Levels</h2>
-                                        <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">Set default commission rates for all levels</p>
-                                    </div>
-                                    <button
-                                        onClick={handleSaveSettings}
-                                        disabled={saveSettingsLoading}
-                                        className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-4 py-2 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:opacity-50"
-                                    >
-                                        {saveSettingsLoading ? "Saving..." : "Save Rates"}
-                                    </button>
-                                </div>
-                                <div className="grid gap-4 md:grid-cols-3">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Low Commission (%)</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                value={settingsForm.lowCommission}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, lowCommission: parseFloat(e.target.value) || 0 })}
-                                                className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                            />
-                                            <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Medium Commission (%)</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                value={settingsForm.medCommission}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, medCommission: parseFloat(e.target.value) || 0 })}
-                                                className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                            />
-                                            <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">High Commission (%)</label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                value={settingsForm.highCommission}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, highCommission: parseFloat(e.target.value) || 0 })}
-                                                className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                            />
-                                            <span className="absolute right-3 top-2 text-xs text-[rgba(240,244,250,0.3)]">%</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Global System Default Commission</label>
-                                        <div className="relative">
-                                            <select
-                                                value={settingsForm.defaultCommissionLevel}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, defaultCommissionLevel: e.target.value })}
-                                                className="w-full rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/5 px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/80 focus:bg-[#14b8a6]/10 focus:outline-none transition appearance-none cursor-pointer"
-                                            >
-                                                <option className="bg-[#05080f] text-[#f0f4fa]" value="LOW">Low Commission (System Default)</option>
-                                                <option className="bg-[#05080f] text-[#f0f4fa]" value="MED">Medium Commission (System Default)</option>
-                                                <option className="bg-[#05080f] text-[#f0f4fa]" value="HIGH">High Commission (System Default)</option>
-                                            </select>
-                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#f0f4fa]/50">
-                                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Duration (Months, 0=Lifetime)</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.commissionDurationMonths}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, commissionDurationMonths: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Payout Minimum ($)</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.payoutMinimum}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, payoutMinimum: parseFloat(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Payout Delay Cycles (Months)</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.payoutCycleDelayMonths}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, payoutCycleDelayMonths: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Refund Hold (Days)</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.refundHoldDays}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="mt-12 mb-5">
-                                    <h2 className="text-sm font-semibold text-[#f0f4fa]">Tier Conversation Limits</h2>
-                                    <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">Monthly conversation allotments per subscription tier</p>
-                                </div>
-
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Starter Tier</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.starterLimit}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, starterLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Professional Tier</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.professionalLimit}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, professionalLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Enterprise Tier</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.enterpriseLimit}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, enterpriseLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">LTD Tier</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.ltdLimit}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, ltdLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">AI Revenue Infra</label>
-                                        <input
-                                            type="number"
-                                            value={settingsForm.aiInfraLimit}
-                                            onChange={(e) => setSettingsForm({ ...settingsForm, aiInfraLimit: parseInt(e.target.value) || 0 })}
-                                            className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-sm text-[#f0f4fa] focus:border-[#14b8a6]/50 focus:outline-none transition"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {adminTab === "affiliates" && (
                             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
@@ -933,11 +762,54 @@ function UsersContent() {
                                     <p className="text-sm text-[rgba(240,244,250,0.4)]">None.</p>
                                 ) : (
                                     <div className="space-y-3">
+                                        <div className="flex items-center justify-between px-2 mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedUserIds.length === users.length && users.length > 0}
+                                                    onChange={toggleSelectAll}
+                                                    className="w-4 h-4 rounded border-white/[0.1] bg-[#0c111d] text-[#14b8a6] focus:ring-offset-0 focus:ring-0"
+                                                />
+                                                <span className="text-xs text-[rgba(240,244,250,0.4)]">
+                                                    {selectedUserIds.length > 0 ? `${selectedUserIds.length} selected` : "Select All"}
+                                                </span>
+                                            </div>
+                                            {selectedUserIds.length > 0 && (
+                                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                    <button
+                                                        onClick={() => handleBulkBlock(true)}
+                                                        className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-lg hover:bg-yellow-500/20 transition"
+                                                    >
+                                                        Bulk Block
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBulkBlock(false)}
+                                                        className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg hover:bg-green-500/20 transition"
+                                                    >
+                                                        Bulk Unblock
+                                                    </button>
+                                                    <button
+                                                        onClick={handleBulkDelete}
+                                                        className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition"
+                                                    >
+                                                        Bulk Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         {users.map((user: any) => (
                                             <div
                                                 key={user.id}
-                                                className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+                                                className={`flex items-center justify-between rounded-xl border transition-all ${selectedUserIds.includes(user.id) ? "border-[#14b8a6]/40 bg-[#14b8a6]/5" : "border-white/[0.06] bg-[#05080f]"} px-5 py-4`}
                                             >
+                                                <div className="mr-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedUserIds.includes(user.id)}
+                                                        onChange={() => toggleSelectUser(user.id)}
+                                                        className="w-4 h-4 rounded border-white/[0.1] bg-[#0c111d] text-[#14b8a6] focus:ring-offset-0 focus:ring-0"
+                                                    />
+                                                </div>
                                                 <div className="flex-1 min-w-0 pr-4">
                                                     {editingUserId === user.id ? (
                                                         <div className="flex flex-col sm:flex-row gap-2">

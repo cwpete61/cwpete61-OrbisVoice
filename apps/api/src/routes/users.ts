@@ -92,6 +92,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
             username: true,
             role: true,
             isAdmin: true,
+            isAffiliate: true,
             isBlocked: true,
             avatar: true,
             tenantId: true,

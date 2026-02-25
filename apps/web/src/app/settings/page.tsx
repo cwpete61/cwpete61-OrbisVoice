@@ -177,6 +177,24 @@ function SettingsContent() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [systemRolesTab, setSystemRolesTab] = useState<"users" | "admins">("users");
 
+  const [platformSettings, setPlatformSettings] = useState<any>(null);
+  const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    lowCommission: 0,
+    medCommission: 0,
+    highCommission: 0,
+    commissionDurationMonths: 0,
+    defaultCommissionLevel: "LOW",
+    payoutMinimum: 100,
+    refundHoldDays: 14,
+    payoutCycleDelayMonths: 1,
+    starterLimit: 1000,
+    professionalLimit: 10000,
+    enterpriseLimit: 100000,
+    ltdLimit: 1000,
+    aiInfraLimit: 250000,
+  });
+
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -203,6 +221,7 @@ function SettingsContent() {
     fetchTwilioConfig();
     fetchSystemEmailConfig();
     fetchStripeConnectConfig();
+    fetchPlatformSettings();
     if (activeTab === "role-settings" || activeTab === "system-roles") {
       fetchUsers();
     }
@@ -232,6 +251,63 @@ function SettingsContent() {
       }
     } catch (err) {
       console.error("Failed to fetch Gmail credentials:", err);
+    }
+  };
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformSettings(data.data);
+        if (data.data) {
+          setSettingsForm({
+            lowCommission: data.data.lowCommission,
+            medCommission: data.data.medCommission,
+            highCommission: data.data.highCommission,
+            commissionDurationMonths: data.data.commissionDurationMonths,
+            defaultCommissionLevel: data.data.defaultCommissionLevel,
+            payoutMinimum: data.data.payoutMinimum,
+            refundHoldDays: data.data.refundHoldDays,
+            payoutCycleDelayMonths: data.data.payoutCycleDelayMonths,
+            starterLimit: data.data.starterLimit,
+            professionalLimit: data.data.professionalLimit,
+            enterpriseLimit: data.data.enterpriseLimit,
+            ltdLimit: data.data.ltdLimit,
+            aiInfraLimit: data.data.aiInfraLimit,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSaveSettingsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/settings`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(settingsForm),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformSettings(data.data);
+        setNotifMsg("Commission settings updated successfully");
+        setTimeout(() => setNotifMsg(null), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+    } finally {
+      setSaveSettingsLoading(false);
     }
   };
 
@@ -1075,6 +1151,19 @@ function SettingsContent() {
                   }`}
               >
                 System Roles
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("system-commissions");
+                  router.replace("/settings?tab=system-commissions");
+                  fetchPlatformSettings();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "system-commissions"
+                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                  }`}
+              >
+                System Commissions
               </button>
             </>
           )}
@@ -2217,6 +2306,161 @@ function SettingsContent() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* System Commissions Section */}
+        {activeTab === "system-commissions" && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">System Commission Settings</h2>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">Global commission rates and platform limits</p>
+              </div>
+              <button
+                onClick={handleSaveSettings}
+                disabled={saveSettingsLoading}
+                className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50"
+              >
+                {saveSettingsLoading ? "Saving…" : "Save Settings"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="space-y-6">
+                <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Commission Rates (%)</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Low Commission</label>
+                      <input
+                        type="number"
+                        value={settingsForm.lowCommission}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, lowCommission: parseFloat(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Medium Commission</label>
+                      <input
+                        type="number"
+                        value={settingsForm.medCommission}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, medCommission: parseFloat(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">High Commission</label>
+                      <input
+                        type="number"
+                        value={settingsForm.highCommission}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, highCommission: parseFloat(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Payout Rules</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Minimum Payout ($)</label>
+                      <input
+                        type="number"
+                        value={settingsForm.payoutMinimum}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, payoutMinimum: parseFloat(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Refund Hold Period (Days)</label>
+                      <input
+                        type="number"
+                        value={settingsForm.refundHoldDays}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Commission Duration (Months, 0=Lifetime)</label>
+                      <input
+                        type="number"
+                        value={settingsForm.commissionDurationMonths}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, commissionDurationMonths: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Default Level</label>
+                      <select
+                        value={settingsForm.defaultCommissionLevel}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, defaultCommissionLevel: e.target.value })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      >
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Platform Usage Limits (Conversations)</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Starter Plan Limit</label>
+                      <input
+                        type="number"
+                        value={settingsForm.starterLimit}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, starterLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Professional Plan Limit</label>
+                      <input
+                        type="number"
+                        value={settingsForm.professionalLimit}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, professionalLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Enterprise Plan Limit</label>
+                      <input
+                        type="number"
+                        value={settingsForm.enterpriseLimit}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, enterpriseLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">LTD Plan Limit</label>
+                      <input
+                        type="number"
+                        value={settingsForm.ltdLimit}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, ltdLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">AI Infrastructure Monthly Limit</label>
+                      <input
+                        type="number"
+                        value={settingsForm.aiInfraLimit}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, aiInfraLimit: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                      />
+                      <p className="mt-1 text-[10px] text-[rgba(240,244,250,0.35)]">Server-wide conversations pool for the entire infrastructure</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
