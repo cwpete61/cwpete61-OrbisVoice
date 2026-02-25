@@ -100,11 +100,15 @@ export class AffiliateManager {
                 ytdEarnings,
                 requiresTaxForm,
                 complianceBlocked,
-                referrals: (referralStats.transactions as any[]).map((t) => ({
-                    id: t.id,
-                    status: t.status === 'pending' ? 'PENDING' : 'CONVERTED',
-                    commissionAmount: t.amount,
-                    createdAt: t.createdAt
+                referrals: referralStats.referrals.map((r: any) => ({
+                    id: r.id,
+                    createdAt: r.createdAt,
+                    name: r.name,
+                    email: r.email,
+                    plan: r.plan,
+                    status: r.status,
+                    rewardAmount: r.rewardAmount,
+                    referralCodeUsed: r.referralCodeUsed
                 }))
             };
         } catch (err: unknown) {
@@ -268,10 +272,16 @@ export class AffiliateManager {
             if (txs.length === 0) throw new Error("No available funds");
 
             const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+            const payoutMinimum = settings?.payoutMinimum || 100;
             const feePercent = settings?.transactionFeePercent || 3.4;
             const payoutAmount = txs.reduce((sum: number, t: any) => sum + t.amount, 0);
+
+            if (payoutAmount < payoutMinimum) {
+                throw new Error(`Earnings must be at least $${payoutMinimum} for payout. Current balance: $${payoutAmount.toFixed(2)}`);
+            }
+
             const feeAmount = payoutAmount * (feePercent / 100);
-            const netAmount = Math.floor(payoutAmount - feeAmount);
+            const netAmount = Math.floor((payoutAmount - feeAmount) * 100); // Stripe expects cents, also rounding correctly
 
             if (netAmount <= 0) {
                 throw new Error("Net payout amount must be greater than zero after fees");

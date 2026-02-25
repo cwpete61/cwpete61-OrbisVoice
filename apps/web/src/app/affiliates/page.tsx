@@ -53,7 +53,7 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
     { label: "Accepted", value: stats?.accepted ?? 0, highlight: false },
     { label: "Converted", value: stats?.completed ?? 0, highlight: false },
     { label: "Total Earned", value: `$${(stats?.totalRewards ?? 0).toFixed(2)}`, highlight: false, mono: true },
-    { label: "Available", value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`, highlight: true, mono: true },
+    { label: "Available", value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`, highlight: true, mono: true, desc: "$100 minimum threshold" },
     {
       label: "Pending (Hold)",
       value: `$${(stats?.pendingRewards ?? 0).toFixed(2)}`,
@@ -158,27 +158,27 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
                       <td className="px-6 py-5 text-[rgba(240,244,250,0.6)] font-mono text-[10px]">{ref.referralCodeUsed || "—"}</td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-white/[0.05] to-white/[0.01] border border-white/[0.05] flex items-center justify-center text-[10px] font-bold text-[#f0f4fa]">
-                            {ref.name?.charAt(0) || "U"}
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-[10px] font-bold text-teal-400">
+                            {(ref.name || "U").charAt(0)}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-[#f0f4fa] font-semibold">{ref.name || "Unknown User"}</span>
-                            <span className="text-[10px] text-[rgba(240,244,250,0.4)]">{ref.email || "No email"}</span>
+                          <div>
+                            <div className="font-bold text-[#f0f4fa]">{ref.name || "Anonymous User"}</div>
+                            <div className="text-[10px] text-[rgba(240,244,250,0.4)]">{ref.email || "No email"}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <Badge color={ref.plan === 'free' ? 'teal' : 'purple'}>{ref.plan}</Badge>
+                        <Badge color={ref.plan === "enterprise" ? "purple" : ref.plan === "professional" ? "teal" : "teal"}>{ref.plan}</Badge>
                       </td>
-                      <td className="px-6 py-5 text-center">
-                        <Badge color={ref.status === "completed" ? "green" : "orange"}>{ref.status}</Badge>
+                      <td className="px-6 py-5">
+                        <div className="flex justify-center">
+                          <Badge color={ref.status === "completed" ? "green" : "orange"}>{ref.status}</Badge>
+                        </div>
                       </td>
-                      <td className="px-6 py-5 text-center text-[10px] font-medium text-[rgba(240,244,250,0.4)]">
-                        {getExpectedPayoutDate(ref.createdAt)}
+                      <td className="px-6 py-5 text-center font-medium text-[rgba(240,244,250,0.5)]">
+                        {ref.status === "completed" ? getExpectedPayoutDate(ref.createdAt) : "—"}
                       </td>
-                      <td className="px-6 py-5 text-right font-bold text-[#14b8a6] whitespace-nowrap">
-                        +${(ref.rewardAmount || 0).toFixed(2)}
-                      </td>
+                      <td className="px-6 py-5 text-right font-mono font-bold text-[#14b8a6]">${(ref.rewardAmount || 0).toFixed(2)}</td>
                     </tr>
                   ))
                 )}
