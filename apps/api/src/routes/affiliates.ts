@@ -99,7 +99,6 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
     // Public endpoint for users to apply for the affiliate program (creates account if new)
     fastify.post<{ Body: z.infer<typeof PublicApplySchema> }>(
         "/affiliates/public-apply",
-        { preHandler: [verifyAppCheck] },
         async (request, reply) => {
             try {
                 const body = PublicApplySchema.parse(request.body);
@@ -148,10 +147,19 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     });
                 }
 
-                // Apply for affiliate
-                const result = await affiliateManager.applyForAffiliate(user.id, "PENDING");
+                // Auto-approve as ACTIVE affiliate — no manual admin step required
+                const result = await affiliateManager.applyForAffiliate(user.id, "ACTIVE");
                 if (!result.success) {
-                    return reply.code(400).send({ ok: false, message: result.message });
+                    // If already an affiliate (existing user re-applying), that's fine — just log them in
+                    if (!result.message?.includes("Already")) {
+                        return reply.code(400).send({ ok: false, message: result.message });
+                    }
+                } else {
+                    // Ensure isAffiliate flag is set (applyForAffiliate handles this for ACTIVE, but be explicit)
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { isAffiliate: true },
+                    });
                 }
 
                 // Generate Auth JWT so they are logged in seamlessly
@@ -160,7 +168,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     { expiresIn: "7d" }
                 );
 
-                return reply.send({ ok: true, message: "Application submitted successfully", data: { token } } as ApiResponse);
+                return reply.send({ ok: true, message: "Welcome to the OrbisVoice Partner Program!", data: { token } } as ApiResponse);
             } catch (err) {
                 if (err instanceof z.ZodError) {
                     return reply.code(400).send({ ok: false, message: "Invalid application data: " + err.errors[0].message });

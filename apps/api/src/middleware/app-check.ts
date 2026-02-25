@@ -10,6 +10,12 @@ export async function verifyAppCheck(request: FastifyRequest, reply: FastifyRepl
     const appCheckToken = request.headers["x-firebase-appcheck"] as string;
     const hasSecret = !!process.env.RECAPTCHA_SECRET_KEY;
 
+    // Always bypass in development — App Check tokens only work in production Firebase apps
+    if (process.env.NODE_ENV !== "production") {
+        logger.warn({ path: request.url }, "App Check bypassed: development mode");
+        return;
+    }
+
     if (!appCheckToken) {
         if (hasSecret) {
             logger.warn({ path: request.url }, "Missing App Check token");

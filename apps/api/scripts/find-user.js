@@ -23,7 +23,7 @@ async function main() {
                 ]
             }
         });
-        users.forEach(u => console.log(`Found: ${u.email} (${u.username})`));
+        users.forEach((u) => console.log(`Found: ${u.email} (${u.username})`));
     }
 }
 main()
