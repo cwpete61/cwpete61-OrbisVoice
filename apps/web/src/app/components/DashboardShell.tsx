@@ -357,6 +357,17 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
 
   return (
     <div className="flex min-h-screen bg-[#05080f] text-[#f0f4fa]">
+      <style>{`
+        @keyframes navGlowPulse {
+          0%, 100% { box-shadow: 0 0 5px rgba(20, 184, 166, 0.2); background-color: rgba(20, 184, 166, 0.1); }
+          50% { box-shadow: 0 0 20px rgba(20, 184, 166, 0.6); background-color: rgba(20, 184, 166, 0.25); }
+        }
+        .nav-active-glow {
+          animation: navGlowPulse 2.5s infinite ease-in-out;
+          color: #14b8a6;
+        }
+      `}</style>
+
       {/* Sidebar */}
       <aside className="flex w-fit min-w-[200px] flex-col border-r border-white/[0.06] bg-[#080c16]">
         {/* Logo */}
@@ -390,17 +401,19 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
                   {cat}
                 </h3>
                 {items.map((item) => {
-                  const active =
-                    path === item.href ||
-                    (item.href !== "/dashboard" && path.startsWith(item.href));
+                  const exactMatchOnly = ['/', '/admin', '/dashboard', '/settings'];
+                  const active = exactMatchOnly.includes(item.href)
+                    ? path === item.href
+                    : path === item.href || (path.startsWith(item.href + '/') && item.href !== '/');
+
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${active
-                        ? "bg-[#14b8a6]/10 text-[#14b8a6]"
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition duration-300 ${active
+                        ? "nav-active-glow"
                         : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.04] hover:text-[#f0f4fa]"
-                        } ${(item.label === "Affiliate Professional" || item.label === "Partner Payouts")
+                        } ${(item.label === "Affiliate Professional" || item.label === "Partner Payouts") && !active
                           ? "!text-yellow-400/90"
                           : ""
                         }`}
