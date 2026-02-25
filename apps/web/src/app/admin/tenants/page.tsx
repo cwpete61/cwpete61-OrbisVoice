@@ -53,6 +53,7 @@ export default function TenantManagement() {
                         <thead className="bg-white/[0.02] text-[rgba(240,244,250,0.4)] uppercase text-[10px] font-bold tracking-widest border-b border-white/[0.06]">
                             <tr>
                                 <th className="px-6 py-4">Subscriber Name</th>
+                                <th className="px-6 py-4">Email</th>
                                 <th className="px-6 py-4">ID</th>
                                 <th className="px-6 py-4">Plan</th>
                                 <th className="px-6 py-4">Users</th>
@@ -80,11 +81,15 @@ export default function TenantManagement() {
                                     <tr key={tenant.id} className="hover:bg-white/[0.02] transition">
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-[#f0f4fa]">{tenant.name}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
                                             {tenant.billingEmail ? (
-                                                <div className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">{tenant.billingEmail}</div>
+                                                <div className="text-sm text-[rgba(240,244,250,0.6)]">{tenant.billingEmail}</div>
                                             ) : tenant.users?.[0]?.email ? (
-                                                <div className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">{tenant.users[0].email}</div>
-                                            ) : null}
+                                                <div className="text-sm text-[rgba(240,244,250,0.6)]">{tenant.users[0].email}</div>
+                                            ) : (
+                                                <div className="text-sm text-[rgba(240,244,250,0.3)]">Unknown</div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-mono text-xs text-[rgba(240,244,250,0.3)]">{tenant.id}</td>
                                         <td className="px-6 py-4">
