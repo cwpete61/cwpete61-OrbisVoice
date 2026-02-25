@@ -33,19 +33,29 @@ const getGoogleConfig = async (tenantId?: string) => {
       throw dbError;
     }
 
-    return {
+    const finalConfig = {
       clientId:
         config?.clientId ||
         (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_ID !== "654179326800-927mn2k7cskii5r3drg4on47574632qk.apps.googleusercontent.com"
           ? env.GOOGLE_CLIENT_ID
-          : "11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com"),
+          : "396898534779-ne5367lrpc8jt0dcn5o5mu7akqg6nbnt.apps.googleusercontent.com"),
       clientSecret: config?.clientSecret || env.GOOGLE_CLIENT_SECRET,
       redirectUri:
         config?.redirectUri ||
         env.GOOGLE_REDIRECT_URI ||
-        "https://myorbisvoice.com/auth/google/callback",
+        `${env.WEB_URL}/auth/google/callback`,
       enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID || true),
     };
+
+    console.log("DEBUG: Final Google Config:", {
+      clientId: finalConfig.clientId,
+      redirectUri: finalConfig.redirectUri,
+      envRedirect: env.GOOGLE_REDIRECT_URI,
+      envWebUrl: env.WEB_URL,
+      id: config?.id || "not-in-db"
+    });
+
+    return finalConfig;
   } catch (error) {
     console.error("getGoogleConfig error:", error);
     throw error;

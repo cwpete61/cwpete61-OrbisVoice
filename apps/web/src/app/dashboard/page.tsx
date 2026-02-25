@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Suspense, useState, useEffect } from "react";
-import AgentForm from "../../components/AgentForm";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
@@ -10,8 +9,6 @@ import { API_BASE } from "@/lib/api";
 function DashboardContent() {
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingAgent, setEditingAgent] = useState<any>(null);
   const [stats, setStats] = useState({ totalAgents: 0, totalConversations: 0, avgDuration: 0 });
   const [subscription, setSubscription] = useState<any>(null);
 
@@ -84,48 +81,6 @@ function DashboardContent() {
     }
   };
 
-  const handleCreateAgent = async (data: any) => {
-    try {
-      const res = await fetch(`${API_BASE}/agents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify(data),
-      });
-
-      if (res.ok) {
-        await fetchAgents();
-        setShowForm(false);
-        alert("Agent created successfully!");
-      } else {
-        throw new Error("Failed to create agent");
-      }
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  const handleUpdateAgent = async (data: any) => {
-    if (!editingAgent) return;
-    try {
-      const res = await fetch(`${API_BASE}/agents/${editingAgent.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify(data),
-      });
-
-      if (res.ok) {
-        await fetchAgents();
-        setEditingAgent(null);
-        setShowForm(false);
-        alert("Agent updated successfully!");
-      } else {
-        throw new Error("Failed to update agent");
-      }
-    } catch (err) {
-      throw err;
-    }
-  };
-
   const handleDeleteAgent = async (agentId: string) => {
     if (!confirm("Are you sure you want to delete this agent?")) return;
 
@@ -137,12 +92,35 @@ function DashboardContent() {
 
       if (res.ok) {
         await fetchAgents();
-        alert("Agent deleted successfully!");
       } else {
         throw new Error("Failed to delete agent");
       }
     } catch (err) {
       console.error("Failed to delete agent:", err);
+    }
+  };
+
+  const handleToggleActive = async (agentId: string, currentStatus: boolean) => {
+    try {
+      // Optimistically update UI
+      setAgents(agents.map(a => a.id === agentId ? { ...a, isActive: !currentStatus } : a));
+
+      const res = await fetch(`${API_BASE}/agents/${agentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ isActive: !currentStatus }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+      // Re-fetch in background to ensure sync
+      fetchAgents();
+    } catch (err) {
+      console.error("Failed to toggle agent active status:", err);
+      alert("Could not update agent status. Please try again.");
+      // Revert optimistic update
+      fetchAgents();
     }
   };
 
@@ -157,12 +135,15 @@ function DashboardContent() {
               Manage and monitor your deployed agents
             </p>
           </div>
-          <button
-            onClick={() => { setEditingAgent(null); setShowForm(true); }}
-            className="btn-primary text-sm"
+          <Link
+            href="/agents/new"
+            className="btn-primary text-sm flex items-center justify-center gap-2"
           >
-            + New Agent
-          </button>
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            New Agent
+          </Link>
         </div>
 
         {/* Current Plan */}
@@ -213,22 +194,6 @@ function DashboardContent() {
           ))}
         </div>
 
-        {/* Modal */}
-        {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0c111d] p-8 shadow-2xl">
-              <h2 className="mb-6 text-lg font-bold text-[#f0f4fa]">
-                {editingAgent ? "Edit Agent" : "Create Agent"}
-              </h2>
-              <AgentForm
-                agent={editingAgent}
-                onSubmit={editingAgent ? handleUpdateAgent : handleCreateAgent}
-                onCancel={() => { setShowForm(false); setEditingAgent(null); }}
-              />
-            </div>
-          </div>
-        )}
-
         {/* Agent grid */}
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-[rgba(240,244,250,0.4)]">
@@ -247,59 +212,85 @@ function DashboardContent() {
             </div>
             <p className="text-sm font-medium text-[#f0f4fa]">No agents yet</p>
             <p className="mt-1 text-xs text-[rgba(240,244,250,0.4)]">Create your first voice agent to get started</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="btn-primary mt-6 text-sm"
+            <Link
+              href="/agents/new"
+              className="btn-primary mt-6 text-sm flex items-center gap-2"
             >
               Create Your First Agent
-            </button>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {agents.map((agent: any) => (
               <div
                 key={agent.id}
-                className="group rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition hover:border-[#14b8a6]/40"
+                className={`group rounded-2xl border bg-[#0c111d] p-6 transition flex flex-col ${agent.isActive
+                    ? 'border-white/[0.07] hover:border-[#14b8a6]/40'
+                    : 'border-white/[0.03] opacity-60 hover:opacity-100 hover:border-white/[0.15]'
+                  }`}
               >
                 {/* Agent header */}
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#14b8a6]/10 text-[#14b8a6]">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                    </svg>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-2">
+                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors ${agent.isActive ? 'bg-[#14b8a6]/10 text-[#14b8a6]' : 'bg-white/[0.05] text-[rgba(240,244,250,0.4)]'
+                      }`}>
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                      </svg>
+                    </div>
                   </div>
-                  <span className="rounded-md bg-[#14b8a6]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#14b8a6]">
-                    {agent.voiceModel || "default"}
-                  </span>
+                  <div className="flex flex-col items-end gap-3">
+                    <button
+                      onClick={() => handleToggleActive(agent.id, agent.isActive)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-[#14b8a6] focus:ring-offset-2 focus:ring-offset-[#0c111d] transition-colors ${agent.isActive ? 'bg-[#14b8a6]' : 'bg-gray-600'
+                        }`}
+                    >
+                      <span className="sr-only">Toggle agent active status</span>
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${agent.isActive ? 'translate-x-2' : '-translate-x-2'
+                          }`}
+                      />
+                    </button>
+
+                    <span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${agent.isActive
+                        ? 'bg-[#14b8a6]/10 text-[#14b8a6]'
+                        : 'bg-white/[0.05] text-[rgba(240,244,250,0.3)]'
+                      }`}>
+                      {agent.voiceModel || "default"}
+                    </span>
+                  </div>
                 </div>
 
-                <h3 className="mb-1.5 font-semibold text-[#f0f4fa] group-hover:text-[#14b8a6] transition">
-                  {agent.name}
-                </h3>
-                <p className="mb-4 line-clamp-3 text-xs leading-relaxed text-[rgba(240,244,250,0.45)]">
-                  {agent.systemPrompt}
-                </p>
+                <div className="flex-1">
+                  <h3 className={`mb-1.5 font-semibold transition ${agent.isActive ? 'text-[#f0f4fa] group-hover:text-[#14b8a6]' : 'text-[rgba(240,244,250,0.7)]'
+                    }`}>
+                    {agent.name}
+                  </h3>
+                  <p className="mb-4 line-clamp-3 text-xs leading-relaxed text-[rgba(240,244,250,0.45)]">
+                    {agent.systemPrompt || <span className="italic">No persona configured</span>}
+                  </p>
+                </div>
 
-                <div className="flex items-center justify-between border-t border-white/[0.05] pt-4 text-xs">
+                <div className="flex items-center justify-between border-t border-white/[0.05] mt-auto pt-4 text-xs">
                   <span className="text-[rgba(240,244,250,0.3)]">
                     {new Date(agent.createdAt).toLocaleDateString()}
                   </span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 font-medium">
                     <Link
                       href={`/agents/${agent.id}/conversations`}
-                      className="text-[#14b8a6] hover:underline"
+                      className="text-[#14b8a6] hover:text-[#0d9488] transition"
                     >
-                      Conversations
+                      Logs
                     </Link>
-                    <button
-                      onClick={() => { setEditingAgent(agent); setShowForm(true); }}
+                    <Link
+                      href={`/agents/${agent.id}/edit`}
                       className="text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa] transition"
                     >
                       Edit
-                    </button>
+                    </Link>
                     <button
                       onClick={() => handleDeleteAgent(agent.id)}
-                      className="text-[#f97316]/70 hover:text-[#f97316] transition"
+                      className="text-red-400 hover:text-red-300 transition"
                     >
                       Delete
                     </button>

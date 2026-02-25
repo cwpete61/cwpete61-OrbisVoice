@@ -58,7 +58,7 @@ class VoiceGateway {
             // Fetch config from API
             let apiKey: string | undefined;
             try {
-              const response = await fetch(`${env.API_URL}/api/settings/google-config?include_secrets=true`, {
+              const response = await fetch(`${env.API_URL}/settings/google-config?include_secrets=true`, {
                 headers: {
                   Authorization: `Bearer ${token}`
                 }

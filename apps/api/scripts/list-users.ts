@@ -1,5 +1,5 @@
 
-import { PrismaClient } from "../prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -8,15 +8,17 @@ async function main() {
         select: {
             id: true,
             email: true,
-            name: true,
+            username: true,
+            role: true,
             isAdmin: true,
-            isAffiliate: true,
-            role: true
+            isBlocked: true
         }
     });
 
-    console.log("Total users:", users.length);
-    console.log(JSON.stringify(users, null, 2));
+    console.log("Users in database:");
+    users.forEach(u => {
+        console.log(`- ID: ${u.id}, Email: ${u.email}, Username: ${u.username}, Role: ${u.role}, Admin: ${u.isAdmin}, Blocked: ${u.isBlocked}`);
+    });
 }
 
 main()

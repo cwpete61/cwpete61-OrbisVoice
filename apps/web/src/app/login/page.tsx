@@ -7,8 +7,9 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { apiFetch } from "../../lib/api";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, User } from "firebase/auth";
 import { auth as firebaseAuth } from "../../lib/firebase";
+import { useEffect } from "react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,6 +17,46 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    // Handle redirect result if user was redirected back from Google
+    const handleRedirectResult = async () => {
+      if (!firebaseAuth) return;
+      try {
+        const result = await getRedirectResult(firebaseAuth);
+        if (result?.user) {
+          await syncWithBackend(result.user);
+        }
+      } catch (err: any) {
+        console.error("Redirect login error:", err);
+        setError("Failed to complete redirect login: " + err.message);
+      }
+    };
+    handleRedirectResult();
+  }, [firebaseAuth]);
+
+  const syncWithBackend = async (firebaseUser: User) => {
+    setLoading(true);
+    try {
+      const idToken = await firebaseUser.getIdToken();
+      const { res, data } = await apiFetch("/auth/firebase-signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: idToken }),
+      });
+
+      if (res.ok) {
+        localStorage.setItem("token", (data.data as any).token);
+        router.push("/dashboard");
+      } else {
+        setError(data.message || "Sync with backend failed");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to sync with backend");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,26 +91,29 @@ export default function LoginPage() {
 
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      const result = await signInWithPopup(firebaseAuth, provider);
-      const idToken = await result.user.getIdToken();
 
-      // Send to our backend to get app-specific JWT
-      const { res, data } = await apiFetch("/auth/firebase-signin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: idToken }),
-      });
-
-      if (res.ok) {
-        localStorage.setItem("token", (data.data as any).token);
-        router.push("/dashboard");
-      } else {
-        setError(data.message || "Sync with backend failed");
+      try {
+        // Try popup first
+        const result = await signInWithPopup(firebaseAuth, provider);
+        await syncWithBackend(result.user);
+      } catch (popupErr: any) {
+        if (popupErr.code === "auth/popup-closed-by-user" || popupErr.code === "auth/cancelled-by-user") {
+          // If popup failed due to user closing it or blocker, try redirect
+          console.log("Popup blocked or closed, falling back to redirect...");
+          await signInWithRedirect(firebaseAuth, provider);
+          // Page will redirect, so we don't need to do anything else here
+          return;
+        }
+        throw popupErr;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Google login error:", err);
-      // Don't show Firebase-internal errors directly to users if we can help it
-      const msg = err instanceof Error ? err.message : "Google login failed";
+      let msg = "Google login failed";
+
+      if (err.message) {
+        msg = err.message;
+      }
+
       setError(msg.includes("auth/invalid-api-key") ? "Firebase configuration is incorrect (Invalid API Key)." : msg);
     } finally {
       setLoading(false);

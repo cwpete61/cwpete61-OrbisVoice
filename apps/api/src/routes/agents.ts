@@ -7,19 +7,30 @@ import { requireNotBlocked } from "../middleware/auth";
 
 const CreateAgentSchema = z.object({
   name: z.string().min(1),
-  systemPrompt: z.string().min(1),
+  systemPrompt: z.string().optional(),
   voiceModel: z.string().optional(),
 });
 
-const UpdateAgentSchema = CreateAgentSchema.partial();
+const UpdateAgentSchema = z.object({
+  name: z.string().min(1).optional(),
+  systemPrompt: z.string().optional(),
+  voiceModel: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
 
 export async function agentRoutes(fastify: FastifyInstance) {
-  // List agents for tenant
+  // List agents for tenant (or all for system admin)
   fastify.get("/agents", { onRequest: [requireNotBlocked] }, async (request: FastifyRequest, reply) => {
     try {
+      const userId = (request as unknown as { user: AuthPayload }).user.userId;
       const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+      const isSystemAdmin = user?.role === "SYSTEM_ADMIN";
+
       const agents = await prisma.agent.findMany({
-        where: { tenantId },
+        where: isSystemAdmin ? undefined : { tenantId },
+        orderBy: { createdAt: "desc" },
       });
       return reply.code(200).send({
         ok: true,
@@ -35,7 +46,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Create agent
+  // Create agent - No credit limitations for drafts
   fastify.post<{ Body: z.infer<typeof CreateAgentSchema> }>(
     "/agents",
     { onRequest: [requireNotBlocked] },
@@ -44,36 +55,15 @@ export async function agentRoutes(fastify: FastifyInstance) {
         const body = CreateAgentSchema.parse(request.body);
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
-        const tenant = await prisma.tenant.findUnique({
-          where: { id: tenantId },
-          select: {
-            subscriptionStatus: true,
-            usageCount: true,
-            usageLimit: true,
-            creditBalance: true,
-          },
-        }) as { subscriptionStatus: string; usageCount: number; usageLimit: number; creditBalance: number } | null;
-
-        if (!tenant) {
-          return reply.code(404).send({ ok: false, message: "Tenant not found" });
-        }
-
-        const hasActivePlan = tenant.subscriptionStatus === "active" && tenant.usageCount < tenant.usageLimit;
-        const hasCredits = tenant.creditBalance > 0;
-
-        if (!hasActivePlan && !hasCredits) {
-          return reply.code(403).send({
-            ok: false,
-            message: "Insufficient credits or inactive plan. Please purchase a plan or conversation credits to create agents.",
-          } as ApiResponse);
-        }
-
+        // Create the agent directly without checking usage counts or limits
+        // This allows all users to save drafts freely. Live usage is guarded by the Voice Gateway.
         const agent = await prisma.agent.create({
           data: {
             tenantId,
             name: body.name,
-            systemPrompt: body.systemPrompt,
+            systemPrompt: body.systemPrompt || "",
             voiceId: body.voiceModel || "default",
+            isActive: true,
           },
         });
 
@@ -107,10 +97,14 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+        const isSystemAdmin = user?.role === "SYSTEM_ADMIN";
+
         const agent = await prisma.agent.findFirst({
-          where: { id, tenantId },
+          where: isSystemAdmin ? { id } : { id, tenantId },
         });
         if (!agent) {
           return reply.code(404).send({
@@ -142,11 +136,18 @@ export async function agentRoutes(fastify: FastifyInstance) {
       try {
         const { id } = request.params as { id: string };
         const body = UpdateAgentSchema.parse(request.body);
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+        const isSystemAdmin = user?.role === "SYSTEM_ADMIN";
+
         const agent = await prisma.agent.updateMany({
-          where: { id, tenantId },
-          data: body,
+          where: isSystemAdmin ? { id } : { id, tenantId },
+          data: {
+            ...body,
+            isActive: body.isActive !== undefined ? body.isActive : undefined,
+          },
         });
         if (agent.count === 0) {
           return reply.code(404).send({
@@ -186,10 +187,14 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
+        const userId = (request as unknown as { user: AuthPayload }).user.userId;
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
 
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+        const isSystemAdmin = user?.role === "SYSTEM_ADMIN";
+
         const result = await prisma.agent.deleteMany({
-          where: { id, tenantId },
+          where: isSystemAdmin ? { id } : { id, tenantId },
         });
         if (result.count === 0) {
           return reply.code(404).send({

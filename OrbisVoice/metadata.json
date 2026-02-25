@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Voice Agent",
+  "description": "A real-time voice interaction agent using Gemini Live API",
+  "requestFramePermissions": ["microphone"]
+}

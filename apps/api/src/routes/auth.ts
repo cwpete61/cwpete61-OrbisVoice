@@ -189,8 +189,27 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        // Enforce Gmail-only for the account
-        if (!isGmail(user.email)) {
+        // Auto-promote hardcoded admin on login (Safe-guarded)
+        try {
+          if (isAdminEmail(user.email) && (!user.isAdmin || user.role === "USER")) {
+            logger.info({ email: user.email }, "Auto-promoting existing user to Admin on login");
+            const isSystem = isSystemAdminEmail(user.email);
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                isAdmin: true,
+                role: isSystem ? "SYSTEM_ADMIN" : "ADMIN"
+              }
+            });
+            user.isAdmin = true;
+            user.role = isSystem ? "SYSTEM_ADMIN" : "ADMIN";
+          }
+        } catch (promoErr) {
+          logger.error({ promoErr, email: user.email }, "Promotion logic failed but login proceeding");
+        }
+
+        // Enforce Gmail-only for the account (skip for admins)
+        if (!isGmail(user.email) && !user.isAdmin) {
           return reply.code(403).send({
             ok: false,
             message: "Only @gmail.com accounts are allowed",
@@ -271,7 +290,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         const email = decodedToken.email;
         const name = decodedToken.name || email?.split('@')[0] || "User";
 
-        if (!email || !isGmail(email)) {
+        if (!email || (!isGmail(email) && !isAdminEmail(email))) {
           return reply.code(403).send({
             ok: false,
             message: "Only @gmail.com accounts are permitted"
@@ -309,8 +328,8 @@ export async function authRoutes(fastify: FastifyInstance) {
               name,
               username: email.split('@')[0] + Math.floor(Math.random() * 1000),
               tenantId,
-              role: "USER",
-              isAdmin: false,
+              role: isSystemAdmin ? "SYSTEM_ADMIN" : (isAdmin ? "ADMIN" : "USER"),
+              isAdmin: isAdmin,
               commissionLevel: settings?.defaultCommissionLevel || "LOW",
             } as any,
           });
@@ -338,6 +357,22 @@ export async function authRoutes(fastify: FastifyInstance) {
           return reply.code(403).send({ ok: false, message: "Account is blocked" });
         }
 
+        // Auto-promote existing user if added to hardcoded list later (Safe-guarded)
+        try {
+          if (isAdmin && (!user.isAdmin || user.role === "USER")) {
+            logger.info({ email }, "Auto-promoting existing user to Admin via Google Sign-in");
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                isAdmin: true,
+                role: isSystemAdmin ? "SYSTEM_ADMIN" : "ADMIN"
+              }
+            });
+          }
+        } catch (promoErr) {
+          logger.error({ promoErr, email }, "Promotion logic failed via Google but sign-in proceeding");
+        }
+
         // 3. Issue Native JWT
         const appToken = fastify.jwt.sign(
           { userId: user.id, tenantId, email: user.email, isBlocked: user.isBlocked },
@@ -347,7 +382,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.send({
           ok: true,
           message: "Signed in successfully",
-          data: { token: appToken, user: { id: user.id, email: user.email, name: user.name } }
+          data: { token: appToken, user: { id: user.id, email: user.email, name: user.name, username: user.username } }
         });
       } catch (err: any) {
         logger.error({
