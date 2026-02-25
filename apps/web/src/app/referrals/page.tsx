@@ -151,7 +151,7 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
           Referral Activity
         </h3>
         <div className="rounded-3xl border border-white/[0.07] bg-[#0c111d] overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#111827]/80 text-[rgba(240,244,250,0.4)] uppercase tracking-widest font-bold">
                 <tr>
@@ -572,7 +572,7 @@ function ReferralsContent() {
           </div>
 
           {(stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)) && (
-            <div className="text-[20px] font-black text-white animate-pulse tracking-tight pr-4">
+            <div className="bg-red-500/10 border border-red-500/20 px-5 py-3 rounded-2xl text-[20px] font-black text-white animate-pulse tracking-tight shadow-lg shadow-red-500/5">
               Next Payout: {getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}
             </div>
           )}
