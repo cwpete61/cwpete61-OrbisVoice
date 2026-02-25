@@ -190,6 +190,54 @@ export default async function billingRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // ─── CREATE STRIPE CUSTOMER PORTAL SESSION ───────────────────────
+  fastify.post(
+    "/billing/portal",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+
+      if (!env.STRIPE_API_KEY) {
+        return reply.code(500).send({ error: "Stripe API key not configured" });
+      }
+
+      try {
+        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!tenant || !tenant.stripeCustomerId) {
+          return reply.code(400).send({ error: "No active Stripe customer found" });
+        }
+
+        const webUrl = env.WEB_URL || "http://localhost:3000";
+
+        const params = new URLSearchParams({
+          customer: tenant.stripeCustomerId,
+          return_url: `${webUrl}/billing`,
+        });
+
+        const portalRes = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.STRIPE_API_KEY}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+
+        if (!portalRes.ok) {
+          const errText = await portalRes.text();
+          logger.error({ err: errText }, "Failed to create Stripe Portal session");
+          return reply.code(400).send({ error: "Failed to create portal session", details: errText });
+        }
+
+        const session = (await portalRes.json()) as any;
+        return reply.send({ url: session.url });
+      } catch (err) {
+        logger.error({ err }, "Portal creation error");
+        return reply.code(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
   // Get tenant subscription info
   fastify.get(
     "/billing/subscription",

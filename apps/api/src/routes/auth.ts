@@ -104,9 +104,9 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as any,
         });
 
-        // Handle affiliate if provided
         if ((body as any).affiliateSlug) {
           try {
+            logger.info({ slug: (body as any).affiliateSlug, userId: user.id }, "Recording affiliate referral on signup");
             await affiliateManager.recordReferral((body as any).affiliateSlug, user.id);
           } catch (err) {
             logger.error({ err, slug: (body as any).affiliateSlug, userId: user.id }, "Affiliate referral recording failed");
@@ -116,6 +116,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         // Handle referral if provided
         if (body.referralCode) {
           try {
+            logger.info({ code: body.referralCode, userId: user.id }, "Redeeming referral code on signup");
             await referralManager.redeemReferral(body.referralCode, user.id);
           } catch (err) {
             logger.error({ err, code: body.referralCode, userId: user.id }, "Referral redemption failed, but signup proceeding");
@@ -128,7 +129,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           { expiresIn: "7d" }
         );
 
-        logger.info({ userId: user.id, tenantId: tenant.id }, "User signed up");
+        logger.info({ userId: user.id, tenantId: tenant.id, referralCode: body.referralCode, affiliateSlug: (body as any).affiliateSlug }, "User signed up successfully");
         return reply.code(201).send({
           ok: true,
           message: "Signup successful",
@@ -136,6 +137,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         } as ApiResponse);
       } catch (err) {
         if (err instanceof z.ZodError) {
+          logger.warn({ err: err.errors }, "Signup validation error");
           return reply.code(400).send({
             ok: false,
             message: "Validation error",
@@ -314,10 +316,20 @@ export async function authRoutes(fastify: FastifyInstance) {
 
           // Handle affiliate/referral for new user
           if (affiliateSlug) {
-            try { await affiliateManager.recordReferral(affiliateSlug, user.id); } catch (e) { }
+            try {
+              logger.info({ slug: affiliateSlug, userId: user.id }, "Recording affiliate referral from Google Signin");
+              await affiliateManager.recordReferral(affiliateSlug, user.id);
+            } catch (e) {
+              logger.error({ err: e, slug: affiliateSlug, userId: user.id }, "Affiliate referral recording failed on Google Signin");
+            }
           }
           if (referralCode) {
-            try { await referralManager.redeemReferral(referralCode, user.id); } catch (e) { }
+            try {
+              logger.info({ code: referralCode, userId: user.id }, "Redeeming referral code from Google Signin");
+              await referralManager.redeemReferral(referralCode, user.id);
+            } catch (e) {
+              logger.error({ err: e, code: referralCode, userId: user.id }, "Referral redemption failed on Google Signin");
+            }
           }
         }
 

@@ -109,7 +109,26 @@ export default function TenantManagement() {
                                             <span className={`h-2 w-2 rounded-full inline-block mr-2 ${tenant.subscriptionStatus === 'active' ? 'bg-emerald-500' : 'bg-slate-500'}`} />
                                             <span className="text-xs">{tenant.subscriptionStatus || 'free'}</span>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 flex items-center gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await fetch(`${API_BASE}/billing/portal`, {
+                                                            method: 'POST',
+                                                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                                                        });
+                                                        const data = await res.json();
+                                                        if (data.url) window.location.href = data.url;
+                                                        else alert(data.error || 'Failed to open billing portal');
+                                                    } catch (err) {
+                                                        alert('Connection error');
+                                                    }
+                                                }}
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1.5 text-xs font-medium text-[#14b8a6] hover:bg-[#14b8a6]/20 transition"
+                                            >
+                                                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                                                Billing
+                                            </button>
                                             <a href={`/admin/subscribers/${tenant.id}`}
                                                 className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs font-medium text-[rgba(240,244,250,0.6)] hover:text-white hover:bg-white/[0.05] transition">
                                                 <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>

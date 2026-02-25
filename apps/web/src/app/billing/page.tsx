@@ -361,7 +361,7 @@ function BillingContent() {
           </div>
 
           {isOverLimit && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6 mb-6">
               <p className="text-red-400 font-semibold flex items-center gap-2">
                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" />
@@ -373,6 +373,35 @@ function BillingContent() {
               </p>
             </div>
           )}
+
+          {/* Manage Billing (Stripe Portal) */}
+          <div className="mt-6 pt-6 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-[#f0f4fa] font-medium text-sm">Need to update payment info?</h3>
+              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">Manage your cards, address, and invoices securely via Stripe.</p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_BASE}/billing/portal`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                  });
+                  const data = await res.json();
+                  if (data.url) window.location.href = data.url;
+                  else alert(data.error || 'Failed to open billing portal');
+                } catch (err) {
+                  alert('Connection error');
+                }
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex items-center gap-2 whitespace-nowrap"
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              Manage Billing Settings
+            </button>
+          </div>
         </section>
 
         {/* Available Plans */}

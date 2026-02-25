@@ -23,8 +23,19 @@ interface AgentStats {
   last30DaysTrend: Record<string, number>;
 }
 
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from "recharts";
+
+interface StatsChartData {
+  name: string;
+  "Agent Sales": number;
+  "Referrer Sales": number;
+  "Total Sales": number;
+}
+
 function StatsContent() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [chartData, setChartData] = useState<StatsChartData[]>([]);
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [agentStats, setAgentStats] = useState<AgentStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,23 +58,31 @@ function StatsContent() {
         throw new Error("Not authenticated. Please log in again.");
       }
 
-      const res = await fetch(`${API_BASE}/stats/dashboard`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const payload = JSON.parse(atob(token.split(".")[1] || ""));
+      const userEmail = payload?.email;
+      const isAdminUser = userEmail === "myorbislocal@gmail.com" || userEmail === "admin@orbisvoice.app" || userEmail === "myorbisvoice@gmail.com";
+      setIsSystemAdmin(isAdminUser);
 
-      if (res.status === 401) {
+      // Fetch dashboard stats
+      const [resDash, resChart] = await Promise.all([
+        fetch(`${API_BASE}/stats/dashboard`, { headers: { Authorization: `Bearer ${token}` } }),
+        isAdminUser ? fetch(`${API_BASE}/stats/sales-chart`, { headers: { Authorization: `Bearer ${token}` } }) : Promise.resolve(null)
+      ]);
+
+      if (resDash.status === 401) {
         throw new Error("Session expired. Please log in again.");
       }
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to fetch stats");
+      const dashData = await resDash.json();
+      setDashboardStats(dashData.data);
+
+      if (resChart && resChart.ok) {
+        const cData = await resChart.json();
+        if (cData.ok) {
+          setChartData(cData.data);
+        }
       }
 
-      const data = await res.json();
-      setDashboardStats(data.data);
     } catch (err: any) {
       setError(err.message || "Failed to load statistics");
       console.error("Stats fetch error:", err);
@@ -114,6 +133,30 @@ function StatsContent() {
                 </div>
               ))}
             </div>
+
+            {/* Sales Chart (Admin Only) */}
+            {isSystemAdmin && chartData.length > 0 && (
+              <div className="mb-8 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+                <h2 className="mb-4 text-sm font-semibold text-[#f0f4fa]">Gross Revenue by Channel (Est.)</h2>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                      <RechartsTooltip
+                        contentStyle={{ backgroundColor: '#0c111d', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                        itemStyle={{ color: '#f0f4fa' }}
+                      />
+                      <Legend iconType="circle" />
+                      <Line type="monotone" dataKey="Total Sales" stroke="#14b8a6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="Agent Sales" stroke="#a78bfa" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="Referrer Sales" stroke="#f97316" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
             {/* Breakdown */}
             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">

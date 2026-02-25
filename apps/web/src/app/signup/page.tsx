@@ -91,7 +91,7 @@ function SignupContent() {
       } else {
         setError(data.message || "Google sign-up failed on backend");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Google signup error:", err);
       const msg = err instanceof Error ? err.message : "Google sign-up failed";
       setError(msg.includes("auth/invalid-api-key") ? "Firebase configuration is incorrect (Invalid API Key)." : msg);
