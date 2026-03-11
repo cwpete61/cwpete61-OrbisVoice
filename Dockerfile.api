@@ -1,36 +1,51 @@
 # Build Stage
-FROM node:22-slim AS builder
+FROM node:20-slim AS builder
 
-# Install OpenSSL for Prisma
-RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-WORKDIR /app/apps/api
+# Install necessary build tools and OpenSSL for Prisma
+RUN apt-get update && apt-get install -y openssl libssl-dev python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Copy everything from apps/api and the base config
-COPY apps/api ./
-COPY tsconfig.base.json ../../
+# Copy root package files
+COPY package*.json ./
+COPY tsconfig.base.json ./
 
-# Install dependencies (including devDeps for building)
+# Copy all workspace package.json files to maintain monorepo structure for npm install
+COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
+COPY apps/voice-gateway/package.json ./apps/voice-gateway/
+COPY apps/referrals/package.json ./apps/referrals/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/config/package.json ./packages/config/
+
+# Install dependencies from root
 RUN npm install --legacy-peer-deps
 
+# Copy source code for the API and shared packages
+COPY apps/api ./apps/api
+COPY packages ./packages
+
 # Generate Prisma client and build the app
+WORKDIR /app/apps/api
 RUN npx prisma generate && npm run build
 
 # Production Stage
-FROM node:22-slim AS runner
+FROM node:20-slim AS runner
+
+WORKDIR /app/apps/api
 
 # Install OpenSSL for Prisma runtime
 RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app/apps/api
-
 ENV NODE_ENV=production
 
-# Copy only necessary files from the build stage
+# Copy built assets and necessary runtime dependencies
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/node_modules ./node_modules
 COPY --from=builder /app/apps/api/package*.json ./
 COPY --from=builder /app/apps/api/prisma ./prisma
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/package*.json /app/
 
 # Expose API port
 EXPOSE 4001
