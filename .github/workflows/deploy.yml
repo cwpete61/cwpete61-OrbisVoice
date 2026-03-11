@@ -104,10 +104,17 @@ jobs:
               ufw allow 443/tcp || true
             fi
 
+            echo "Exporting environment variables..."
+            export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            export POSTGRES_PASSWORD_ENCODED=$POSTGRES_PASSWORD_ENCODED
+            export JWT_SECRET=$JWT_SECRET
+            export GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+            export GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+            export GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
+            
             echo "Checking environment presence..."
             [ -z "$POSTGRES_PASSWORD" ] && echo "WARNING: POSTGRES_PASSWORD is empty" || echo "POSTGRES_PASSWORD is set"
             [ -z "$POSTGRES_PASSWORD_ENCODED" ] && echo "WARNING: POSTGRES_PASSWORD_ENCODED is empty" || echo "POSTGRES_PASSWORD_ENCODED is set"
-            [ -z "$JWT_SECRET" ] && echo "WARNING: JWT_SECRET is empty" || echo "JWT_SECRET is set"
             
             echo "Checking certificates..."
             ls -la nginx/certs/
