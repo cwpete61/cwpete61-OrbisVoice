@@ -1,6 +1,5 @@
 import * as WebSocket from "ws";
 import * as jwt from "jsonwebtoken";
-// @ts-expect-error - uuid types
 import { v4 as uuidv4 } from "uuid";
 import { env } from "./env";
 import { logger } from "./logger";
