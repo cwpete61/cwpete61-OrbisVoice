@@ -65,10 +65,13 @@ services:
       - orbisvoice-prod-network
 
   web:
+    container_name: orbisvoice-web-prod
     build:
       context: .
       dockerfile: Dockerfile.web
-    container_name: orbisvoice-web-prod
+      args:
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     restart: always
     environment:
       NODE_ENV: production
