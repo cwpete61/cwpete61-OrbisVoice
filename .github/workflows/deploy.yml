@@ -46,7 +46,7 @@ jobs:
           tags: ghcr.io/${{ env.OWNER_LC }}/orbisvoice-web:latest
           no-cache: true
           build-args: |
-            NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com' }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
             NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
@@ -82,10 +82,17 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'OrbisSecret' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || 'SET_IN_GITHUB' }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI || 'https://myorbisvoice.com/auth/google/callback' }}
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: POSTGRES_PASSWORD,JWT_SECRET,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI
           script: |
             cd /opt/orbisvoice
             mkdir -p nginx/certs
@@ -98,6 +105,12 @@ jobs:
 
             echo "Checking certificates..."
             ls -la nginx/certs/
+            
+            export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            export JWT_SECRET=$JWT_SECRET
+            export GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+            export GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+            export GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
             
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
@@ -115,6 +128,6 @@ jobs:
             docker logs orbisvoice-nginx-prod
             
             echo "--- API Logs ---"
-            docker logs orbisvoice-api-prod --tail 20
+            docker logs orbisvoice-api-prod --tail 50
             
             docker system prune -f
