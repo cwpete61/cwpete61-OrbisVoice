@@ -289,6 +289,7 @@ function SettingsContent() {
     fetchTwilioConfig();
     fetchSystemEmailConfig();
     fetchStripeConnectConfig();
+    fetchGoogleConfig();
     fetchPlatformSettings();
     if (activeTab === "role-settings" || activeTab === "system-roles") {
       fetchUsers();
@@ -1701,10 +1702,7 @@ function SettingsContent() {
                       Add Authorized redirect URIs:
                       <div className="mt-1 space-y-1 ml-3">
                         <div className="font-mono text-[#14b8a6]">
-                          http://localhost:3000/auth/google/callback
-                        </div>
-                        <div className="font-mono text-[#14b8a6]">
-                          https://yourdomain.com/auth/google/callback
+                          https://myorbisvoice.com/auth/google/callback
                         </div>
                       </div>
                     </span>
