@@ -90,4 +90,9 @@ jobs:
             cd /opt/orbisvoice
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
+            echo "Waiting for containers to stabilize..."
+            sleep 10
+            docker compose -f docker-compose.prod.yml ps
+            echo "--- Nginx Logs ---"
+            docker compose -f docker-compose.prod.yml logs --tail=50 nginx
             docker system prune -f
