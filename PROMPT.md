@@ -102,6 +102,13 @@ Build a Monorepo SaaS application called "OrbisVoice". This platform allows busi
 - Referral/affiliate system is a first-class feature (not add-on).
 - Brand direction in BRAND.md: deep space + studio hardware aesthetic.
 - All services assume HTTPS in production.
+- **Autonomous Research**: We maintain a dedicated workflow for model optimization (`/autoresearch`) focusing on `train.py` iterations within 5-minute budgets.
+
+## 🚀 Agentic Skills (Superpowers)
+
+**CRITICAL**: You are equipped with the **Superpowers** skills framework. 
+- ALWAYS check for a relevant superpower skill (`/skill:list`) before starting any engineering task.
+- Follow the **Superpowers Workflow**: Spec → Plan → Subagent Execution → TDD Verification.
 
 ## 🍯 Token Optimization (Distill)
 
