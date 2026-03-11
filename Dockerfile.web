@@ -6,11 +6,10 @@ WORKDIR /app
 # Install necessary build tools
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Copy root package files
+# Copy root package files first
 COPY package*.json ./
-COPY tsconfig.base.json ./
 
-# Copy all KNOWN workspace package.json files
+# Copy all workspace package.json files
 COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
@@ -19,9 +18,10 @@ COPY apps/referrals/package.json ./apps/referrals/
 # Install dependencies from root
 RUN npm install --legacy-peer-deps
 
-# Copy source code
-COPY apps/web ./apps/web
+# Copy config and source
+COPY tsconfig.base.json ./
 COPY packages ./packages
+COPY apps/web ./apps/web
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
@@ -43,33 +43,28 @@ ENV NEXT_PUBLIC_APPCHECK_KEY=$NEXT_PUBLIC_APPCHECK_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DISABLE_ESLINT_PLUGIN=true
-ENV TSC_COMPILE_ON_ERROR=true
 
-# Build the app
-WORKDIR /app/apps/web
-RUN npm run build
+# Build the app from the root workspace
+RUN npm run build --workspace=orbisvoice-web
 
 # Production Stage
 FROM node:20-slim AS runner
 
 WORKDIR /app
 
+# Set production environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy root dependency files
+# Copy ONLY what is absolutely necessary for production to root
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
-
-# Copy built assets and necessary runtime files for the web app
+COPY --from=builder /app/apps/web/package*.json ./apps/web/
 COPY --from=builder /app/apps/web/.next ./apps/web/.next
 COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder /app/apps/web/package*.json ./apps/web/
 
-# Expose port
+# Expose Next.js default port
 EXPOSE 3000
 
-# Start the application from the app workspace
-WORKDIR /app/apps/web
-CMD ["npm", "start"]
+# Start the application using 'npx' to ensure binary is found in root node_modules/.bin
+CMD ["npx", "next", "start", "apps/web"]
