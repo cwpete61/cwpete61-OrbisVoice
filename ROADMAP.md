@@ -71,4 +71,40 @@ Perform the final major update for the frontend framework.
 - [x] Verify component rendering and routing
 - [x] Perform visual regression check (screenshots)
 
+---
+
+## Phase 7: Update General Utilities [COMPLETED]
+Update utility libraries across the entire monorepo.
+### Tasks
+- [x] Upgrade `dotenv`, `uuid`, `bcryptjs`, and `@types/node` globally.
+- [x] Upgrade `google-auth-library` and `nodemailer` in `apps/api`.
+- [x] Upgrade `pino` and `pino-pretty` to v10.
+
+---
+
+## Phase 8: Upgrade Vitest (v1 -> v4) [COMPLETED]
+Updates the test runner.
+### Tasks
+- [x] Update `vitest` and `@vitest/ui` globally.
+- [x] Verify test suite runs (if any exist).
+
+---
+
+## Phase 9: ESLint Flat Config Migration (v8 -> v9+) [COMPLETED]
+Migrates monorepo linting to the modern ESLint v9 Flat Config paradigm.
+### Tasks
+- [x] Rewrite `apps/web/.eslintrc.json` to `eslint.config.mjs`.
+- [x] Rewrite backend ESLint configs.
+- [x] Update `eslint`, `@typescript-eslint/*`, and `eslint-config-next` globally.
+- [x] Run `npm run lint` and verify.
+
+---
+
+## Phase 10: TailwindCSS Migration (v3 -> v4) [ABORTED]
+Drafts upgrade for Tailwind CSS, aborted for Turbopack stability.
+### Tasks
+- [x] Update `tailwindcss` and `postcss` in `apps/web`. (Reverted for stability)
+- [x] Migrate `tailwind.config.ts/js` into `globals.css` using the v4 paradigm. (Reverted)
+- [x] Verify frontend build and layout visuals.
+
 
