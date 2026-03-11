@@ -56,7 +56,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy ONLY what is absolutely necessary for production to root
+# Copy everything needed for production to root
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/package*.json ./apps/web/
@@ -66,5 +66,6 @@ COPY --from=builder /app/apps/web/public ./apps/web/public
 # Expose Next.js default port
 EXPOSE 3000
 
-# Start the application using 'npx' to ensure binary is found in root node_modules/.bin
-CMD ["npx", "next", "start", "apps/web"]
+# Start the application FROM THE ROOT using the absolute path to next and the app folder
+# This bypasses all path resolution issues
+CMD ["./node_modules/.bin/next", "start", "apps/web"]
