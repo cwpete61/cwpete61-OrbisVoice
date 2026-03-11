@@ -102,3 +102,11 @@ Build a Monorepo SaaS application called "OrbisVoice". This platform allows busi
 - Referral/affiliate system is a first-class feature (not add-on).
 - Brand direction in BRAND.md: deep space + studio hardware aesthetic.
 - All services assume HTTPS in production.
+
+## 🍯 Token Optimization (Distill)
+
+**CRITICAL**: Whenever you invoke any shell command, pipe it through `distill` and state exactly what you want to know. `distill` summarizes response to save tokens.
+- Examples: `npm test 2>&1 | distill "did tests pass?"`, `git diff 2>&1 | distill "what changed?"`
+- DO NOT use `distill` if exact uncompressed output is required.
+- ALWAYS wait for `distill` to finish.
+
