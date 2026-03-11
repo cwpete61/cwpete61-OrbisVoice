@@ -35,8 +35,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV TSC_COMPILE_ON_ERROR=true
 
-# Build the app with skip linting
-RUN npm run build -- --no-lint
+# Build the app with skip linting (configured in next.config.js)
+RUN npm run build
 
 # Production Stage
 FROM node:22-slim AS runner
