@@ -27,3 +27,6 @@ backups/
 secrets/
 apps/api/reset_admin.ts
 
+# Prevent compiled JS from being committed in TS source folders
+**/src/**/*.js
+
