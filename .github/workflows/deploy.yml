@@ -83,7 +83,8 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis%408214%40%40' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis@8214@@' }}
+          POSTGRES_PASSWORD_ENCODED: ${{ secrets.POSTGRES_PASSWORD_ENCODED || 'Orbis%408214%40%40' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || 'SET_IN_GITHUB' }}
@@ -92,7 +93,7 @@ jobs:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: POSTGRES_PASSWORD,JWT_SECRET,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI
+          envs: POSTGRES_PASSWORD,POSTGRES_PASSWORD_ENCODED,JWT_SECRET,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI
           script: |
             cd /opt/orbisvoice
             mkdir -p nginx/certs
@@ -105,6 +106,7 @@ jobs:
 
             echo "Checking environment presence..."
             [ -z "$POSTGRES_PASSWORD" ] && echo "WARNING: POSTGRES_PASSWORD is empty" || echo "POSTGRES_PASSWORD is set"
+            [ -z "$POSTGRES_PASSWORD_ENCODED" ] && echo "WARNING: POSTGRES_PASSWORD_ENCODED is empty" || echo "POSTGRES_PASSWORD_ENCODED is set"
             [ -z "$JWT_SECRET" ] && echo "WARNING: JWT_SECRET is empty" || echo "JWT_SECRET is set"
             
             echo "Checking certificates..."

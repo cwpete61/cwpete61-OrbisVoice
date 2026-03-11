@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Orbis%408214%40%40}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Orbis@8214@@}
       POSTGRES_DB: orbisvoice
     ports:
       - "5440:5432"
@@ -46,7 +46,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-Orbis%408214%40%40}@postgres:5432/orbisvoice?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD_ENCODED:-Orbis%408214%40%40}@postgres:5432/orbisvoice?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-orbis-secret-change-me}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://myorbisvoice.com,https://www.myorbisvoice.com}
@@ -103,7 +103,7 @@ services:
     restart: always
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-Orbis%408214%40%40}@postgres:5432/orbisvoice?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD_ENCODED:-Orbis%408214%40%40}@postgres:5432/orbisvoice?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-orbis-secret-change-me}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
