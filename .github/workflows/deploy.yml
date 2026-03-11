@@ -77,7 +77,7 @@ jobs:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.prod.yml,nginx/nginx.conf"
+          source: "docker-compose.prod.yml,nginx/"
           target: "/opt/orbisvoice"
 
       - name: Deploy via SSH
