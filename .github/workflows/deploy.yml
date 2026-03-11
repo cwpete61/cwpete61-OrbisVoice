@@ -83,7 +83,7 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'OrbisSecret' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis%408214%40%40' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || 'SET_IN_GITHUB' }}
@@ -103,14 +103,12 @@ jobs:
               ufw allow 443/tcp || true
             fi
 
+            echo "Checking environment presence..."
+            [ -z "$POSTGRES_PASSWORD" ] && echo "WARNING: POSTGRES_PASSWORD is empty" || echo "POSTGRES_PASSWORD is set"
+            [ -z "$JWT_SECRET" ] && echo "WARNING: JWT_SECRET is empty" || echo "JWT_SECRET is set"
+            
             echo "Checking certificates..."
             ls -la nginx/certs/
-            
-            export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-            export JWT_SECRET=$JWT_SECRET
-            export GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
-            export GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
-            export GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
             
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
