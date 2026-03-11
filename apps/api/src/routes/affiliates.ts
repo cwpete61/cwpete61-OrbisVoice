@@ -1,7 +1,6 @@
 // Referral Roster: All users are pre-approved as ACTIVE referrers
 import { FastifyInstance } from "fastify";
 import { authenticate, requireAdmin } from "../middleware/auth";
-import { verifyAppCheck } from "../middleware/app-check";
 import { affiliateManager } from "../services/affiliate";
 import { prisma } from "../db";
 import { env } from "../env";
