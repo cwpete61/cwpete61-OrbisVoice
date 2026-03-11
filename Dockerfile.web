@@ -53,21 +53,23 @@ RUN npm run build
 # Production Stage
 FROM node:20-slim AS runner
 
-WORKDIR /app/apps/web
+WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy built assets
-COPY --from=builder /app/apps/web/.next ./.next
-COPY --from=builder /app/apps/web/public ./public
-COPY --from=builder /app/apps/web/package*.json ./
-# Crucial: Put node_modules where Next expects them
+# Copy root dependency files
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json /app/
+
+# Copy built assets and necessary runtime files for the web app
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/package*.json ./apps/web/
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
+# Start the application from the app workspace
+WORKDIR /app/apps/web
 CMD ["npm", "start"]

@@ -30,23 +30,25 @@ RUN npx prisma generate && npm run build
 # Production Stage
 FROM node:20-slim AS runner
 
-WORKDIR /app/apps/api
+WORKDIR /app
 
 # Install OpenSSL for Prisma runtime
 RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 
-# Copy built assets
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package*.json ./
-COPY --from=builder /app/apps/api/prisma ./prisma
-# Crucial: Put node_modules where script expects them
+# Copy root dependency files
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json /app/
+
+# Copy built assets and necessary runtime files for the API
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package*.json ./apps/api/
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
 # Expose API port
 EXPOSE 4001
 
 # Run Prisma db push to ensure schema is synced, then start the server
+WORKDIR /app/apps/api
 CMD sh -c "npx prisma db push --skip-generate && node dist/index.js"
