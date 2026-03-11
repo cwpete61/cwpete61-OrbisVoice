@@ -1,8 +1,6 @@
 /**
  * Central API client for OrbisVoice web app.
  */
-import { getToken } from "firebase/app-check";
-import { app as firebaseApp, appCheck as firebaseAppCheck } from "./firebase";
 
 const ENV_API_URL = process.env.NEXT_PUBLIC_API_URL;
 const DEV_SSR_URL = process.env.NODE_ENV === "production" ? "http://api:5000" : "http://localhost:4001";
@@ -35,26 +33,12 @@ export async function apiFetch<T = unknown>(
 ): Promise<{ res: Response; data: ApiResponse<T> }> {
     const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
-    // Inject Firebase App Check token if available
-    const extraHeaders: Record<string, string> = {};
-    if (typeof window !== "undefined" && firebaseAppCheck) {
-        try {
-            const tokenResult = await getToken(firebaseAppCheck);
-            if (tokenResult.token) {
-                extraHeaders["x-firebase-appcheck"] = tokenResult.token;
-            }
-        } catch (err) {
-            console.warn("App Check token acquisition failed", err);
-        }
-    }
-
     let res: Response;
     try {
         res = await fetch(url, {
             ...options,
             headers: {
                 ...options?.headers,
-                ...extraHeaders,
             }
         });
     } catch (_err) {

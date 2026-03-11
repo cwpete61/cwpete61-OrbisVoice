@@ -4,7 +4,6 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse, AuthPayload } from "../types";
-import { verifyAppCheck } from "../middleware/app-check";
 import { referralManager } from "../services/referral";
 import { affiliateManager } from "../services/affiliate";
 
@@ -251,7 +250,6 @@ export async function authRoutes(fastify: FastifyInstance) {
           { expiresIn: "7d" }
         );
 
-        logger.info({ userId: user.id }, "User logged in");
         return reply.code(200).send({
           ok: true,
           message: "Login successful",
@@ -270,138 +268,6 @@ export async function authRoutes(fastify: FastifyInstance) {
           ok: false,
           message: "Internal server error",
         } as ApiResponse);
-      }
-    }
-  );
-
-  // Firebase Sign-in / Signup Unified
-  fastify.post<{ Body: { token: string; referralCode?: string; affiliateSlug?: string } }>(
-    "/auth/firebase-signin",
-    async (request, reply) => {
-      try {
-        const { token, referralCode, affiliateSlug } = request.body;
-        if (!token) {
-          return reply.code(400).send({ ok: false, message: "Firebase token is required" });
-        }
-
-        // 1. Verify Token
-        const { auth } = await import("../lib/firebase");
-        const decodedToken = await auth.verifyIdToken(token);
-        const email = decodedToken.email;
-        const name = decodedToken.name || email?.split('@')[0] || "User";
-
-        if (!email || (!isGmail(email) && !isAdminEmail(email))) {
-          return reply.code(403).send({
-            ok: false,
-            message: "Only @gmail.com accounts are permitted"
-          });
-        }
-
-        // 2. Find or Create User
-        let user = await prisma.user.findUnique({
-          where: { email },
-        }) as any;
-
-        // Auto-promote hardcoded admin
-        const isAdmin = isAdminEmail(email);
-        const isSystemAdmin = isSystemAdminEmail(email);
-
-        let tenantId = user?.tenantId;
-
-        if (!user) {
-          // Chaos-free Auto-Signup
-          logger.info({ email }, "Auto-creating user from Firebase sign-in");
-
-          const tenant = await prisma.tenant.create({
-            data: { name: `${name}'s Workspace` },
-          });
-          tenantId = tenant.id;
-
-          const settings = await prisma.platformSettings.findUnique({
-            where: { id: "global" }
-          });
-
-          const isSystemAdmin = isSystemAdminEmail(email);
-          user = await prisma.user.create({
-            data: {
-              email,
-              name,
-              username: email.split('@')[0] + Math.floor(Math.random() * 1000),
-              tenantId,
-              role: isSystemAdmin ? "SYSTEM_ADMIN" : (isAdmin ? "ADMIN" : "USER"),
-              isAdmin: isAdmin,
-              commissionLevel: settings?.defaultCommissionLevel || "LOW",
-            } as any,
-          });
-
-          // Handle affiliate/referral for new user
-          if (affiliateSlug) {
-            try {
-              logger.info({ slug: affiliateSlug, userId: user.id }, "Recording affiliate referral from Google Signin");
-              await affiliateManager.recordReferral(affiliateSlug, user.id);
-            } catch (e) {
-              logger.error({ err: e, slug: affiliateSlug, userId: user.id }, "Affiliate referral recording failed on Google Signin");
-            }
-          }
-          if (referralCode) {
-            try {
-              logger.info({ code: referralCode, userId: user.id }, "Redeeming referral code from Google Signin");
-              await referralManager.redeemReferral(referralCode, user.id);
-            } catch (e) {
-              logger.error({ err: e, code: referralCode, userId: user.id }, "Referral redemption failed on Google Signin");
-            }
-          }
-        }
-
-        if (user.isBlocked) {
-          return reply.code(403).send({ ok: false, message: "Account is blocked" });
-        }
-
-        // Auto-promote existing user if added to hardcoded list later (Safe-guarded)
-        try {
-          if (isAdmin && (!user.isAdmin || user.role === "USER")) {
-            logger.info({ email }, "Auto-promoting existing user to Admin via Google Sign-in");
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                isAdmin: true,
-                role: isSystemAdmin ? "SYSTEM_ADMIN" : "ADMIN"
-              }
-            });
-          }
-        } catch (promoErr) {
-          logger.error({ promoErr, email }, "Promotion logic failed via Google but sign-in proceeding");
-        }
-
-        // 3. Issue Native JWT
-        const appToken = fastify.jwt.sign(
-          { userId: user.id, tenantId, email: user.email, isBlocked: user.isBlocked },
-          { expiresIn: "7d" }
-        );
-
-        return reply.send({
-          ok: true,
-          message: "Signed in successfully",
-          data: { token: appToken, user: { id: user.id, email: user.email, name: user.name, username: user.username } }
-        });
-      } catch (err: any) {
-        logger.error({
-          err: {
-            message: err.message,
-            stack: err.stack,
-            code: err.code,
-            details: err.details
-          },
-          body: request.body
-        }, "Firebase sign-in error");
-
-        // Return more specific error message if it's a known constraint issue
-        let message = "Authentication failed";
-        if (err.code === 'P2002') {
-          message = "This email or username is already in use.";
-        }
-
-        return reply.code(401).send({ ok: false, message });
       }
     }
   );

@@ -3,9 +3,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   async rewrites() {
     // In development, proxy /api/* calls from the browser to the local API server
     if (process.env.NODE_ENV === 'development') {

@@ -26,7 +26,6 @@ import { referralManager } from "./services/referral";
 import { leadRoutes } from "./routes/leads";
 import { payoutRoutes } from "./routes/payouts";
 import { adminRoutes } from "./routes/admin";
-import { firebaseAuthRoutes } from "./routes/firebase-auth";
 import { notificationRoutes } from "./routes/notifications";
 import { helpRoutes } from "./routes/help";
 import { prisma } from "./db";
@@ -53,7 +52,7 @@ fastify.register(helmet, {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://*.firebaseio.com", "https://*.googleapis.com"],
+      connectSrc: ["'self'", "https://*.googleapis.com"],
     },
   },
   crossOriginOpenerPolicy: { policy: "unsafe-none" },
@@ -76,8 +75,7 @@ fastify.register(rateLimit, {
 fastify.addHook("onRoute", (routeOptions) => {
   if (
     routeOptions.url === "/auth/login" ||
-    routeOptions.url === "/auth/signup" ||
-    routeOptions.url === "/auth/firebase-signin"
+    routeOptions.url === "/auth/signup"
   ) {
     routeOptions.config = {
       ...routeOptions.config,
@@ -118,7 +116,6 @@ fastify.register(stripeWebhookRoutes);
 fastify.register(payoutRoutes);
 fastify.register(leadRoutes, { prefix: "/api/leads" });
 fastify.register(adminRoutes);
-fastify.register(firebaseAuthRoutes);
 fastify.register(notificationRoutes);
 fastify.register(helpRoutes);
 
