@@ -1,0 +1,845 @@
+< !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>MyOrbisVoice — AI Voice Agents</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"><style>*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #0a0f14;
+    --bg2: #0d1420;
+    --teal: #00d4b8;
+    --teal-dim: #00b89e;
+    --white: #ffffff;
+    --gray: #8a9ab0;
+    --gray2: #5a6a7a;
+    --card-bg: #101820;
+    --card-border: #1e2d3d;
+    --font: 'Inter', sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* ── NAV ── */
+nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: rgba(10, 15, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+}
+
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+}
+
+.nav-logo-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #0a0f14;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    list-style: none;
+}
+
+.nav-links a {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7);
+    transition: color 0.2s;
+}
+
+.nav-links a:hover {
+    color: var(--white);
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-signin {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 6px 14px;
+    transition: color 0.2s;
+}
+
+.btn-signin:hover {
+    color: var(--white);
+}
+
+.btn-getstarted {
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--teal);
+    color: #0a0f14;
+    padding: 7px 16px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.btn-getstarted:hover {
+    background: var(--teal-dim);
+}
+
+/* ── HERO ── */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 100px 24px 80px;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 180, 160, 0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 80% 60%, rgba(255, 100, 50, 0.08) 0%, transparent 60%),
+        var(--bg);
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 10% 80%, rgba(0, 80, 60, 0.15) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 28px;
+    letter-spacing: 0.01em;
+}
+
+.hero-badge::before {
+    content: '★';
+    color: var(--teal);
+    font-size: 10px;
+}
+
+.hero-h1 {
+    font-size: clamp(38px, 5vw, 58px);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    max-width: 680px;
+    color: var(--white);
+    margin-bottom: 6px;
+}
+
+.hero-h1 .teal-italic {
+    color: var(--teal);
+    font-style: italic;
+    font-weight: 800;
+}
+
+.hero-sub {
+    font-size: 15px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.55);
+    max-width: 420px;
+    margin: 0 auto 32px;
+    line-height: 1.65;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+.btn-primary {
+    background: var(--teal);
+    color: #0a0f14;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--teal-dim);
+}
+
+.btn-outline {
+    background: transparent;
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 22px;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.btn-outline:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.hero-note {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.28);
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stat {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 22px 28px;
+    text-align: center;
+}
+
+.stat-num {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--teal);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.stat-label {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.4;
+}
+
+/* ── SECTION SHARED ── */
+.section {
+    padding: 88px 24px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.section-full {
+    max-width: 100%;
+    padding: 88px 0;
+}
+
+.section-tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 14px;
+    text-align: center;
+}
+
+.section-h2 {
+    font-size: clamp(26px, 3vw, 36px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    text-align: center;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.section-sub {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    max-width: 440px;
+    margin: 0 auto 52px;
+    line-height: 1.7;
+}
+
+/* ── FOUR DELTAS ── */
+.deltas-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.delta-card {
+    background: var(--card-bg);
+    padding: 32px 28px;
+    transition: background 0.2s;
+}
+
+.delta-card:hover {
+    background: #141f2a;
+}
+
+.delta-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 14px;
+}
+
+.delta-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 10px;
+    line-height: 1.25;
+}
+
+.delta-body {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+.delta-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--teal);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.delta-link:hover {
+    color: #fff;
+}
+
+/* ── HOW IT WORKS ── */
+.how-section {
+    padding: 88px 24px;
+    background: rgba(255, 255, 255, 0.01);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.step-num-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(0, 212, 184, 0.12);
+    border: 1px solid rgba(0, 212, 184, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 18px;
+}
+
+.step-body {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.7;
+}
+
+/* ── COMPARISON ── */
+.compare-section {
+    padding: 88px 24px;
+    max-width: 780px;
+    margin: 0 auto;
+}
+
+.compare-h2 {
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 700;
+    color: var(--white);
+    text-align: center;
+    margin-bottom: 48px;
+    letter-spacing: -0.02em;
+}
+
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.compare-table th {
+    padding: 14px 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.compare-table th:first-child {
+    text-align: left;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.compare-table th:nth-child(2) {
+    color: var(--teal);
+    text-align: center;
+}
+
+.compare-table th:last-child {
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+}
+
+.compare-table td {
+    padding: 13px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 13px;
+}
+
+.compare-table tr:last-child td {
+    border-bottom: none;
+}
+
+.compare-table td:first-child {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.compare-table td:nth-child(2) {
+    text-align: center;
+    color: var(--teal);
+    font-size: 15px;
+}
+
+.compare-table td:last-child {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 15px;
+}
+
+.compare-table tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+/* ── TESTIMONIALS ── */
+.testimonials-section {
+    padding: 88px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.testi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.testi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 26px 24px;
+}
+
+.testi-text {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.72;
+    margin-bottom: 22px;
+}
+
+.testi-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.testi-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 212, 184, 0.12);
+    border: 1px solid rgba(0, 212, 184, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--teal);
+    flex-shrink: 0;
+}
+
+.testi-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+}
+
+.testi-role {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 1px;
+}
+
+.testi-badge {
+    margin-top: 8px;
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(0, 212, 184, 0.1);
+    color: var(--teal);
+}
+
+/* ── FAQ ── */
+.faq-section {
+    padding: 88px 24px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 64px;
+    max-width: 900px;
+    margin: 0 auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.faq-left .section-tag {
+    text-align: left;
+}
+
+.faq-left h2 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.faq-left p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 28px;
+    line-height: 1.7;
+}
+
+.faq-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.faq-item {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 18px 0;
+}
+
+.faq-q {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.faq-q-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
+}
+
+.faq-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: transform 0.2s;
+}
+
+.faq-item.open .faq-icon {
+    transform: rotate(45deg);
+    color: var(--teal);
+    border-color: var(--teal);
+}
+
+.faq-a {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.7;
+    padding-top: 12px;
+    display: none;
+}
+
+.faq-item.open .faq-a {
+    display: block;
+}
+
+/* ── BOTTOM CTA ── */
+.bottom-cta {
+    padding: 100px 24px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(0, 180, 160, 0.1) 0%, transparent 70%);
+    position: relative;
+    overflow: hidden;
+}
+
+.bottom-cta-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 20px;
+}
+
+.bottom-cta h2 {
+    font-size: clamp(34px, 5vw, 54px);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    margin-bottom: 6px;
+}
+
+.bottom-cta h2 .teal-italic {
+    color: var(--teal);
+    font-style: italic;
+}
+
+.bottom-cta p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.45);
+    max-width: 400px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+}
+
+.bottom-cta-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.bottom-cta-note {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.22);
+}
+
+/* ── FOOTER ── */
+footer {
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 56px 60px 36px;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+    margin-bottom: 48px;
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.footer-logo-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #0a0f14;
+}
+
+.footer-desc {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.35);
+    line-height: 1.7;
+    max-width: 220px;
+}
+
+.footer-col h4 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.35);
+    margin-bottom: 16px;
+}
+
+.footer-col ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.footer-col ul a {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    transition: color 0.2s;
+}
+
+.footer-col ul a:hover {
+    color: var(--white);
+}
+
+.footer-contact p {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.8;
+}
+
+.footer-contact a {
+    color: var(--teal);
+}
+
+.footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 24px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+/* ── WHY SECTION ── */
+.why-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+</style></head><body>< !-- NAV --><nav><a href="#" class="nav-logo"><div class="nav-logo-icon">M</div>MyOrbisVoice </a><ul class="nav-links"><li><a href="#features">Features</a></li><li><a href="#how">How It Works</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#partners">Partner Program</a></li><li><a href="#blog">Blog</a></li></ul><div class="nav-right"><a href="#" class="btn-signin">Sign In</a><a href="#" class="btn-getstarted">Get Started</a></div></nav>< !-- HERO --><section class="hero"><div class="hero-badge">Now live: AI voice agents powered by Google Gemini</div><h1 class="hero-h1">Why are your best leads<br><span class="teal-italic">silent</span>after the first call? </h1><p class="hero-sub">OrbisVoice builds AI voice agents that listen,
+execute tools,
+and close intent — so no call,
+booking,
+or payment escapes. </p><div class="hero-buttons"><button class="btn-primary">Deploy Your Agent Free</button><button class="btn-outline">See How It Works</button></div><p class="hero-note">No credit card required · Live in under 5 minutes</p></section>< !-- STATS BAR --><div class="stats-bar"><div class="stat"><div class="stat-num">28%</div><div class="stat-label">faster call resolution</div></div><div class="stat"><div class="stat-num">3.4x</div><div class="stat-label">agent utilization lift</div></div><div class="stat"><div class="stat-num">12 days</div><div class="stat-label">average go-live</div></div><div class="stat"><div class="stat-num">99.8%</div><div class="stat-label">call completion accuracy</div></div></div>< !-- FOUR VOICE AGENT DELTAS --><div class="section" id="features"><div class="section-tag">Voice Intelligence</div><h2 class="section-h2">The Four Voice Agent Deltas</h2><p class="section-sub">We analyze every voice session through four critical lenses to find exactly where you're losing calls and revenue.</p>
+ <div class="deltas-grid"><div class="delta-card"><div class="delta-tag">Lite</div><div class="delta-title">Intent Capture</div><p class="delta-body">Does your voice agent understand what the caller actually wants? We detect intent gaps,
+topic drift,
+and dead-end responses before they cost you a call.</p><a href="#" class="delta-link">→ Minimize session</a></div><div class="delta-card"><div class="delta-tag">Realtime</div><div class="delta-title">Tool Execution Gap</div><p class="delta-body">Why do callers hang up before booking? Identify friction in your voice-to-CRM funnel — from missed slots to failed payment authorizations.</p><a href="#" class="delta-link">→ Minimize session</a></div><div class="delta-card"><div class="delta-tag">AI</div><div class="delta-title">Voice Quality Delta</div><p class="delta-body">Low-latency WebSocket streaming via Gemini. We monitor audio drop-offs,
+barge-in errors,
+and TTS artifacts in every session.</p><a href="#" class="delta-link">→ Minimize session</a></div><div class="delta-card"><div class="delta-tag">Analytics</div><div class="delta-title">Outcome Intelligence</div><p class="delta-body">Correlate conversation signals with real outcomes — bookings,
+payments,
+transfers — and close the loop on what's actually working.</p>
+ <a href="#" class="delta-link">→ Minimize session</a></div></div></div>< !-- HOW IT WORKS --><div class="how-section" id="how"><div class="section-tag" style="text-align:center;">Process</div><h2 class="section-h2">How It Works</h2><p class="section-sub">From sign-up to a production voice agent in under 5 minutes.</p><div class="steps-grid"><div><div class="step-num-badge">01</div><p class="step-body">Enter your use case,
+prompt,
+and preferred voice. MyOrbisVoice auto-generates a baseline configuration from your business description.</p></div><div><div class="step-num-badge">02</div><p class="step-body">Our engine wires Gemini Live,
+your tool stack (Calendar, CRM, Stripe, Twilio),
+and a policy layer — ready in under 5 minutes.</p></div><div><div class="step-num-badge">03</div><p class="step-body">Grab a single embed snippet or use the REST API. Your branded voice agent is live on your website,
+phone line,
+or app.</p></div><div><div class="step-num-badge">04</div><p class="step-body">Audit logs,
+per-call transcripts,
+tool execution records,
+and outcome analytics give you the full picture — and the levers to improve it.</p></div></div></div>< !-- WHY MYORBISVOICE --><div class="compare-section"><div class="why-tag">Why MyOrbisVoice?</div><h2 class="compare-h2">We go deeper than any basic IVR or chatbot.</h2><table class="compare-table"><thead><tr><th>Feature</th><th>MyOrbisVoice</th><th>Basic Tools</th></tr></thead><tbody><tr><td>Real-time Gemini voice streaming</td><td>✓</td><td>✗</td></tr><tr><td>Tool calling (Calendar, CRM, Stripe, Twilio)</td><td>✓</td><td>✗</td></tr><tr><td>Per-call audit logs &amp;
+transcripts</td><td>✓</td><td>✗</td></tr><tr><td>Intent gap detection</td><td>✓</td><td>✗</td></tr><tr><td>One-click embed snippet</td><td>✓</td><td>✗</td></tr><tr><td>Outcome analytics dashboard</td><td>✓</td><td>✗</td></tr><tr><td>Multi-tenant isolation</td><td>✓</td><td>✗</td></tr><tr><td>Bring your own API keys</td><td>✓</td><td>✗</td></tr></tbody></table></div>< !-- TESTIMONIALS --><div class="testimonials-section"><div class="section-tag" style="text-align:center;">Social Proof</div><h2 class="section-h2">Trusted by teams that run on calls</h2><div style="margin-bottom:48px;"></div><div class="testi-grid"><div class="testi-card"><p class="testi-text">"We had no idea our call agent was dropping 40% of intents. OrbisVoice showed us exactly where callers were hitting dead ends. Fixed in a week." </p><div class="testi-author"><div class="testi-avatar">MM</div><div><div class="testi-name">Marcus Mwera</div><div class="testi-role">Owner,
+Direct Plumbing</div><div class="testi-badge">+47% bookings</div></div></div></div><div class="testi-card"><p class="testi-text">"The Stripe and Calendar integrations alone paid for themselves in a month. Patients book, pay, and get confirmations — all in one call." </p><div class="testi-author"><div class="testi-avatar">SC</div><div><div class="testi-name">Dr Sarah Chen</div><div class="testi-role">Practice Manager,
+Bright Smile Group</div><div class="testi-badge">$330k recovered</div></div></div></div><div class="testi-card"><p class="testi-text">"We manage 6 locations. MyOrbisVoice's audit logs let us spot which agents need tuning before they lost calls. It's like X-ray vision for voice ops." </p><div class="testi-author"><div class="testi-avatar">JT</div><div><div class="testi-name">Jake Thompson</div><div class="testi-role">Operations Director,
+Thompson Resto Group</div><div class="testi-badge">9 locations live</div></div></div></div></div></div>< !-- FAQ --><div class="faq-section"><div class="faq-left"><div class="section-tag">FAQ</div><h2>Frequently Asked Questions</h2><p>Everything you need to know about MyOrbisVoice's AI voice agent platform.</p>
+ <button class="btn-primary">Deploy Your Agent Free</button></div><div class="faq-right"><div class="faq-item open"><div class="faq-q"><span class="faq-q-text">What voice models does MyOrbisVoice support?</span><span class="faq-icon">+</span></div><div class="faq-a">MyOrbisVoice currently supports Google Gemini Live as the primary real-time voice engine,
+with additional TTS providers including ElevenLabs and Google TTS for non-streaming use cases.</div></div><div class="faq-item"><div class="faq-q"><span class="faq-q-text">How long does it take to deploy a voice agent?</span><span class="faq-icon">+</span></div><div class="faq-a">Most agents are live in under 5 minutes. Our auto-configuration engine generates a baseline from your business description,
+and the embed snippet is ready immediately after setup.</div></div><div class="faq-item"><div class="faq-q"><span class="faq-q-text">Can I integrate with my existing CRM and calendar?</span><span class="faq-icon">+</span></div><div class="faq-a">Yes. MyOrbisVoice natively supports Google Calendar,
+Calendly,
+HubSpot,
+Salesforce,
+Stripe,
+and Twilio. Custom integrations are available via REST API and webhooks.</div></div><div class="faq-item"><div class="faq-q"><span class="faq-q-text">Is my call data secure and private?</span><span class="faq-icon">+</span></div><div class="faq-a">All sessions are encrypted in transit and at rest. Multi-tenant isolation ensures your data is never shared. You can also bring your own API keys for full data sovereignty.</div></div><div class="faq-item"><div class="faq-q"><span class="faq-q-text">What does the free plan include?</span><span class="faq-icon">+</span></div><div class="faq-a">The free plan includes one active voice agent,
+up to 50 calls/month,
+basic analytics,
+and one tool integration. No credit card required to get started.</div></div></div></div>< !-- BOTTOM CTA --><section class="bottom-cta"><div class="bottom-cta-tag">Free Agent Analysis</div><h2>Stop losing customers you<br><span class="teal-italic">can't hear.</span></h2>
+ <p>Deploy your first AI voice agent and discover exactly where calls are dropping — and how much revenue it's costing you.</p>
+ <div class="bottom-cta-buttons"><button class="btn-primary">Deploy Your Agent Free</button><button class="btn-outline">Schedule a Walkthrough</button></div><p class="bottom-cta-note">No credit card required · Live in under 5 minutes</p></section>< !-- FOOTER --><footer><div class="footer-grid"><div><div class="footer-logo"><div class="footer-logo-icon">M</div>MyOrbisVoice </div><p class="footer-desc">AI voice agents that listen,
+execute tools,
+and read intent for local businesses.</p></div><div class="footer-col"><h4>Legal</h4><ul><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li><li><a href="#">Cookie Policy</a></li><li><a href="#">Compliance</a></li></ul></div><div class="footer-col"><h4>Resources</h4><ul><li><a href="#">Blog</a></li><li><a href="#">Documentation</a></li><li><a href="#">API Reference</a></li><li><a href="#">Support Center</a></li></ul></div><div class="footer-col footer-contact"><h4>Contact</h4><p><a href="mailto:hello@myorbisvoice.com">hello@myorbisvoice.com</a><br>+1 (555) ORBIS-AI<br><br>12 Voice Street<br>San Francisco, CA 94105<br>United States </p></div></div><div class="footer-bottom">© 2026 MyOrbisVoice. All rights reserved.</div></footer><script> // FAQ accordion
+
+document.querySelectorAll('.faq-q').forEach(q=> {
+        q.addEventListener('click', ()=> {
+                const item=q.parentElement;
+                const wasOpen=item.classList.contains('open');
+                document.querySelectorAll('.faq-item').forEach(i=> i.classList.remove('open'));
+                if ( !wasOpen) item.classList.add('open');
+            });
+    });
+</script></body></html>

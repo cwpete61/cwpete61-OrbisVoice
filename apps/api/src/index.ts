@@ -32,7 +32,7 @@ import { helpRoutes } from "./routes/help";
 import { prisma } from "./db";
 
 const fastify = Fastify({
-  logger: logger.child({ context: "fastify" }) as any,
+  loggerInstance: logger.child({ context: "fastify" }) as any,
 });
 
 // Register CORS

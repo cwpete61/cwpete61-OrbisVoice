@@ -22,3 +22,8 @@ build/
 *.txt
 .turbo
 apps/api/.env
+backups/
+*.backup
+secrets/
+apps/api/reset_admin.ts
+
