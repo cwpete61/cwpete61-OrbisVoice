@@ -88,6 +88,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/orbisvoice
+            mkdir -p nginx/certs
+            echo "Checking certificates..."
+            ls -l nginx/certs/
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
             echo "Waiting for containers to stabilize..."
