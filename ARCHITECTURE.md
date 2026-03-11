@@ -148,7 +148,13 @@ Referral Portal   ←────────→ Referrals Service ←──→ 
 ## Multi-Tenancy Model
 
 - **Tenant**: Organization owning one or more voice agents
-- **Agent**: Isolated config (system prompt, voice ID, tools) per tenant
+- **Agent Limitations**: Strictly enforced active and total limits based on subscription tier:
+  - *Starter*: 1 Active / 2 Total
+  - *Professional*: 2 Active / 4 Total
+  - *Enterprise*: 4 Active / 8 Total
+  - *AI Revenue Infrastructure*: 8 Active / 18 Total
+- **Knowledge Base (Google Drive)**: Each tenant gets a dedicated OrbisVoice-managed Google Workspace (Gmail). A shared Google Drive folder acts as the sole, dynamic knowledge base for the agents via Gemini File API.
+- **Agent**: Isolated config (system prompt, voice ID, allowed tools) per tenant. Allowed tools are injected dynamically based on subscription tier.
 - **API Key**: Per-agent or per-tenant key for widget embedding
 - **Rate Limiting**: Applied per API key / per tenant
 - **Data Isolation**: SQL queries filtered by tenant_id

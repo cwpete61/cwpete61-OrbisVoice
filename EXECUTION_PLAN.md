@@ -63,9 +63,10 @@ Four-phase phased delivery for OrbisVoice, targeting production MVP by end of Ph
 **Deliverables**:
 
 1. **Agent Management Dashboard**
-   - UI components: agent list, create/edit/delete forms
-   - Form fields: agent name, system prompt, voice selection (placeholder dropdown)
-   - Voice preview: list of available Gemini voices (mock data for now)
+   - UI components: agent list, create/edit/delete forms, and "Activation" toggle.
+   - Enforce limits: prevent Activation if user exceeds tier limit (Starter: 1, Pro: 2, Ent: 4, Rev: 8).
+   - Form fields: agent name, system prompt, voice selection
+   - Knowledge Base Status: Link/refresh status for Google Drive folder indexing.
    - Agent testing: "Try This Agent" button → WebSocket placeholder (non-Gemini)
    - Sync to Backend API: POST/PUT/DELETE `/agents`
    - Error handling + loading states
@@ -133,12 +134,13 @@ Four-phase phased delivery for OrbisVoice, targeting production MVP by end of Ph
    - Voice ID: select Gemini voice from agent.voiceId
    - Error handling: graceful fallback if Gemini is down
 
-2. **Tool/Function Calling**
-   - Gemini supports function calling (e.g., "book a meeting")
-   - Voice gateway intercepts function calls
+2. **Tool/Function Calling & Ecosystem**
+   - Gemini connects to a dedicated Google Workspace (Gmail, Calendar, Drive) created specifically for the Tenant by OrbisVoice.
+   - Gemini File API / Vertex AI indexes the Tenant's shared Google Drive folder to use as the primary knowledge base.
+   - Gateway intercepts function calls (e.g., `check_calendar_availability`, `book_appointment`).
+   - Tools are dynamically injected/gated based on the Tenant's subscription tier.
    - Route to Backend API: `POST /agents/:id/tools/:toolId/invoke`
    - Pass tool result back to Gemini for next response
-   - Example: agent can call "sendEmail" tool via gateway
 
 3. **Session State Management**
    - Store session context in Redis (agent message history, user ID, call start time)

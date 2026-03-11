@@ -6,12 +6,15 @@ Build a Monorepo SaaS application called "OrbisVoice". This platform allows busi
 
 ## Key Features
 
-- **Voice Agent Creation**: Businesses define agent personality, system prompt, and voice via a dashboard.
-- **Widget Embedding**: Drop-in JavaScript widget for easy website integration.
+- **Voice Agent Creation**: Businesses configure agent personality, system prompt, and voice via a dashboard.
+- **Dedicated Google Ecosystem**: Each client receives a dedicated OrbisVoice-managed Google Workspace (Gmail, Calendar) to isolate data and provide seamless agent access to tools.
+- **Knowledge Base (Google Drive)**: Voice Agents ground their knowledge dynamically using the Gemini File API and Vertex AI connected to a shared Google Drive folder, replacing clunky manual upload portals.
+- **Tiered Agent Limits**: Strict enforcement of active vs. total agents based on subscription tiers (e.g., Starter: 1 Active/2 Total, Pro: 2 Active/4 Total).
+- **Widget Embedding**: Drop-in JavaScript widget for easy website integration, validated by unique embed IDs.
 - **Real-Time Audio**: Full-duplex WebSocket streaming between client and voice-gateway.
 - **Gemini Voice Integration**: Gateway proxies audio and chat requests to Google's Gemini API (AI Studio).
 - **Referral Program**: RefRef-powered affiliate/referral module for user acquisition and partner incentives.
-- **Multi-Tenant**: Tenant isolation, rate limiting, and usage tracking.
+- **Multi-Tenant**: Tenant isolation, tier-based feature gating (tool access), rate limiting, and usage tracking.
 - **Analytics**: Basic call metrics, transcript logging, and referral attribution.
 
 ## Voice Stack (Gemini AI Studio)
