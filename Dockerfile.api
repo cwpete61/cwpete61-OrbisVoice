@@ -10,20 +10,17 @@ RUN apt-get update && apt-get install -y openssl libssl-dev python3 make g++ && 
 COPY package*.json ./
 COPY tsconfig.base.json ./
 
-# Copy all workspace package.json files to maintain monorepo structure for npm install
+# Copy all KNOWN workspace package.json files to maintain monorepo structure for npm install
 COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
 COPY apps/referrals/package.json ./apps/referrals/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/config/package.json ./packages/config/
 
 # Install dependencies from root
 RUN npm install --legacy-peer-deps
 
-# Copy source code for the API and shared packages
+# Copy source code for the API
 COPY apps/api ./apps/api
-COPY packages ./packages
 
 # Generate Prisma client and build the app
 WORKDIR /app/apps/api
