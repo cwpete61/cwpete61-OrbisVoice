@@ -7,35 +7,67 @@ import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
 
-
-function NotificationPrefsPanel({ notifPrefs, masterEmail, setMasterEmail, savingNotif, notifMsg, onSave, setNotifPrefs }: any) {
+function NotificationPrefsPanel({
+  notifPrefs,
+  masterEmail,
+  setMasterEmail,
+  savingNotif,
+  notifMsg,
+  onSave,
+  setNotifPrefs,
+}: any) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token || loaded) return;
-    fetch(`${API_BASE}/notifications/preferences`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/notifications/preferences`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => r.json())
       .then((d) => {
         const p = d.data;
         if (p) {
           setMasterEmail(p.emailEnabled ?? true);
-          setNotifPrefs({ commissions: p.commissions ?? true, payouts: p.payouts ?? true, leads: p.leads ?? true, usageWarnings: p.usageWarnings ?? true, announcements: p.announcements ?? true });
+          setNotifPrefs({
+            commissions: p.commissions ?? true,
+            payouts: p.payouts ?? true,
+            leads: p.leads ?? true,
+            usageWarnings: p.usageWarnings ?? true,
+            announcements: p.announcements ?? true,
+          });
         }
         setLoaded(true);
       });
   }, []);
 
   const PREFS = [
-    { key: "commissions", label: "Commission Earned", desc: "When you earn a commission from a referral" },
-    { key: "payouts", label: "Payout Notifications", desc: "When a payout is processed or scheduled" },
+    {
+      key: "commissions",
+      label: "Commission Earned",
+      desc: "When you earn a commission from a referral",
+    },
+    {
+      key: "payouts",
+      label: "Payout Notifications",
+      desc: "When a payout is processed or scheduled",
+    },
     { key: "leads", label: "Lead Captured", desc: "When a new lead is captured by your agent" },
-    { key: "usageWarnings", label: "Usage Warnings", desc: "When you're approaching your conversation limit" },
+    {
+      key: "usageWarnings",
+      label: "Usage Warnings",
+      desc: "When you're approaching your conversation limit",
+    },
     { key: "announcements", label: "Announcements", desc: "Platform announcements and updates" },
   ];
 
   const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
-    <div onClick={onChange} className={`relative h-5 w-9 rounded-full cursor-pointer transition-colors ${value ? "bg-[#14b8a6]" : "bg-white/20"}`}>
-      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-0.5"}`} />
+    <div
+      onClick={onChange}
+      className={`relative h-5 w-9 rounded-full cursor-pointer transition-colors ${value ? "bg-[#14b8a6]" : "bg-white/20"}`}
+    >
+      <span
+        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-0.5"}`}
+      />
     </div>
   );
 
@@ -47,14 +79,18 @@ function NotificationPrefsPanel({ notifPrefs, masterEmail, setMasterEmail, savin
       <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
         <div>
           <p className="text-sm font-semibold text-[#f0f4fa]">Email Notifications</p>
-          <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">Master toggle — turn off to disable all notification emails</p>
+          <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
+            Master toggle — turn off to disable all notification emails
+          </p>
         </div>
         <Toggle value={masterEmail} onChange={() => setMasterEmail((v: boolean) => !v)} />
       </div>
 
       {/* Per-type toggles */}
       <div className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Email Preferences</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+          Email Preferences
+        </p>
         <div className="rounded-xl border border-white/[0.06] bg-[#080c16] divide-y divide-white/[0.04]">
           {PREFS.map((p) => (
             <div key={p.key} className="flex items-center justify-between px-5 py-3.5">
@@ -64,7 +100,10 @@ function NotificationPrefsPanel({ notifPrefs, masterEmail, setMasterEmail, savin
               </div>
               <Toggle
                 value={masterEmail && (notifPrefs?.[p.key] ?? true)}
-                onChange={() => masterEmail && setNotifPrefs((prev: any) => ({ ...prev, [p.key]: !(prev?.[p.key] ?? true) }))}
+                onChange={() =>
+                  masterEmail &&
+                  setNotifPrefs((prev: any) => ({ ...prev, [p.key]: !(prev?.[p.key] ?? true) }))
+                }
               />
             </div>
           ))}
@@ -72,8 +111,11 @@ function NotificationPrefsPanel({ notifPrefs, masterEmail, setMasterEmail, savin
       </div>
 
       {notifMsg && <p className="text-sm text-green-400">✅ {notifMsg}</p>}
-      <button onClick={onSave} disabled={savingNotif}
-        className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50">
+      <button
+        onClick={onSave}
+        disabled={savingNotif}
+        className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50"
+      >
         {savingNotif ? "Saving…" : "Save Preferences"}
       </button>
     </div>
@@ -103,7 +145,10 @@ function SettingsContent() {
   const [googleSaving, setGoogleSaving] = useState(false);
   const [googleSaveSuccess, setGoogleSaveSuccess] = useState(false);
   const [googleTesting, setGoogleTesting] = useState(false);
-  const [googleTestResult, setGoogleTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [googleTestResult, setGoogleTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [tokenEmail, setTokenEmail] = useState<string | null>(null);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -114,22 +159,31 @@ function SettingsContent() {
   const [gmailVerified, setGmailVerified] = useState(false);
   const [gmailConnectUrl, setGmailConnectUrl] = useState<string | null>(null);
   const [gmailTesting, setGmailTesting] = useState(false);
-  const [gmailTestResult, setGmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [gmailTestResult, setGmailTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [gmailClientId, setGmailClientId] = useState("");
   const [gmailClientSecret, setGmailClientSecret] = useState("");
   const [gmailCredentialsSaving, setGmailCredentialsSaving] = useState(false);
-  const [gmailCredentialsResult, setGmailCredentialsResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [gmailCredentialsResult, setGmailCredentialsResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   // Tenant Google Config State
   const [tenantGoogleConfig, setTenantGoogleConfig] = useState<any>({
-    clientId: "",
+    clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
     clientSecret: "",
     geminiApiKey: "",
     hasConfig: false,
   });
   const [tenantConfigLoading, setTenantConfigLoading] = useState(false);
   const [tenantConfigSaving, setTenantConfigSaving] = useState(false);
-  const [tenantConfigMessage, setTenantConfigMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [tenantConfigMessage, setTenantConfigMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // Twilio State
   const [twilioConfig, setTwilioConfig] = useState<any>({
@@ -139,7 +193,10 @@ function SettingsContent() {
   });
   const [twilioLoading, setTwilioLoading] = useState(false);
   const [twilioSaving, setTwilioSaving] = useState(false);
-  const [twilioMessage, setTwilioMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [twilioMessage, setTwilioMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   // System Email State
   const [systemEmailConfig, setSystemEmailConfig] = useState<any>({
@@ -157,9 +214,15 @@ function SettingsContent() {
   });
   const [systemEmailLoading, setSystemEmailLoading] = useState(false);
   const [systemEmailSaving, setSystemEmailSaving] = useState(false);
-  const [systemEmailMessage, setSystemEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [systemEmailMessage, setSystemEmailMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [systemEmailTesting, setSystemEmailTesting] = useState(false);
-  const [systemEmailTestResult, setSystemEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [systemEmailTestResult, setSystemEmailTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [systemTestEmailTarget, setSystemTestEmailTarget] = useState("");
 
   const [stripeConnectConfig, setStripeConnectConfig] = useState({
@@ -168,10 +231,17 @@ function SettingsContent() {
     minimumPayout: 100,
   });
   const [stripeConnectSaving, setStripeConnectSaving] = useState(false);
-  const [stripeConnectMessage, setStripeConnectMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [stripeConnectMessage, setStripeConnectMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [stripeConnectTesting, setStripeConnectTesting] = useState(false);
-  const [stripeConnectTestResult, setStripeConnectTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
+  const [stripeConnectTestResult, setStripeConnectTestResult] = useState<{
+    success: boolean;
+    message: string;
+    data?: any;
+  } | null>(null);
 
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -207,9 +277,7 @@ function SettingsContent() {
     tokenEmail === "admin@orbisvoice.app" ||
     tokenEmail === "myorbislocal@gmail.com";
 
-  const isSystemAdmin =
-    profile?.role === "SYSTEM_ADMIN" ||
-    tokenEmail === "myorbislocal@gmail.com";
+  const isSystemAdmin = profile?.role === "SYSTEM_ADMIN" || tokenEmail === "myorbislocal@gmail.com";
 
   useEffect(() => {
     fetchApiKeys();
@@ -352,7 +420,6 @@ function SettingsContent() {
     }
   };
 
-
   const fetchApiKeys = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -401,7 +468,6 @@ function SettingsContent() {
     } catch (err) {
       console.error("Failed to fetch Google config:", err);
     }
-
   };
 
   const fetchTenantGoogleConfig = async () => {
@@ -450,15 +516,18 @@ function SettingsContent() {
 
       const data = await res.json();
       if (res.ok) {
-        setTenantConfigMessage({ type: 'success', text: 'Configuration saved successfully' });
+        setTenantConfigMessage({ type: "success", text: "Configuration saved successfully" });
         fetchTenantGoogleConfig();
         setTimeout(() => setTenantConfigMessage(null), 3000);
       } else {
-        setTenantConfigMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+        setTenantConfigMessage({
+          type: "error",
+          text: data.message || "Failed to save configuration",
+        });
       }
     } catch (err) {
       console.error("Failed to save tenant config:", err);
-      setTenantConfigMessage({ type: 'error', text: 'Network error occurred' });
+      setTenantConfigMessage({ type: "error", text: "Network error occurred" });
     } finally {
       setTenantConfigSaving(false);
     }
@@ -477,7 +546,10 @@ function SettingsContent() {
       });
 
       if (res.ok) {
-        setTenantConfigMessage({ type: 'success', text: 'Configuration removed. Using platform defaults.' });
+        setTenantConfigMessage({
+          type: "success",
+          text: "Configuration removed. Using platform defaults.",
+        });
         setTenantGoogleConfig({
           clientId: "",
           clientSecret: "",
@@ -533,15 +605,15 @@ function SettingsContent() {
       });
 
       if (res.ok) {
-        setTwilioMessage({ type: 'success', text: 'Twilio configuration saved successfully' });
+        setTwilioMessage({ type: "success", text: "Twilio configuration saved successfully" });
         setTimeout(() => setTwilioMessage(null), 3000);
       } else {
         const data = await res.json();
-        setTwilioMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+        setTwilioMessage({ type: "error", text: data.message || "Failed to save configuration" });
       }
     } catch (err) {
       console.error("Failed to save Twilio config:", err);
-      setTwilioMessage({ type: 'error', text: 'Network error occurred' });
+      setTwilioMessage({ type: "error", text: "Network error occurred" });
     } finally {
       setTwilioSaving(false);
     }
@@ -595,15 +667,21 @@ function SettingsContent() {
       });
 
       if (res.ok) {
-        setSystemEmailMessage({ type: 'success', text: 'System Email configuration saved successfully' });
+        setSystemEmailMessage({
+          type: "success",
+          text: "System Email configuration saved successfully",
+        });
         setTimeout(() => setSystemEmailMessage(null), 3000);
       } else {
         const data = await res.json();
-        setSystemEmailMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+        setSystemEmailMessage({
+          type: "error",
+          text: data.message || "Failed to save configuration",
+        });
       }
     } catch (err) {
       console.error("Failed to save System Email config:", err);
-      setSystemEmailMessage({ type: 'error', text: 'Network error occurred' });
+      setSystemEmailMessage({ type: "error", text: "Network error occurred" });
     } finally {
       setSystemEmailSaving(false);
     }
@@ -630,13 +708,22 @@ function SettingsContent() {
 
       const data = await res.json();
       if (res.ok) {
-        setSystemEmailTestResult({ success: true, message: data.message || "Test email sent successfully!" });
+        setSystemEmailTestResult({
+          success: true,
+          message: data.message || "Test email sent successfully!",
+        });
       } else {
-        setSystemEmailTestResult({ success: false, message: data.message || "Failed to send test email" });
+        setSystemEmailTestResult({
+          success: false,
+          message: data.message || "Failed to send test email",
+        });
       }
     } catch (err: any) {
       console.error("Test email connection failed:", err);
-      setSystemEmailTestResult({ success: false, message: `Connection failed: ${err.message || "Unknown error"}` });
+      setSystemEmailTestResult({
+        success: false,
+        message: `Connection failed: ${err.message || "Unknown error"}`,
+      });
     } finally {
       setSystemEmailTesting(false);
     }
@@ -673,20 +760,26 @@ function SettingsContent() {
         },
         body: JSON.stringify({
           ...stripeConnectConfig,
-          minimumPayout: Number(stripeConnectConfig.minimumPayout) || 100
+          minimumPayout: Number(stripeConnectConfig.minimumPayout) || 100,
         }),
       });
 
       if (res.ok) {
-        setStripeConnectMessage({ type: 'success', text: 'Stripe Connect configuration saved successfully' });
+        setStripeConnectMessage({
+          type: "success",
+          text: "Stripe Connect configuration saved successfully",
+        });
         setTimeout(() => setStripeConnectMessage(null), 3000);
       } else {
         const data = await res.json();
-        setStripeConnectMessage({ type: 'error', text: data.message || 'Failed to save configuration' });
+        setStripeConnectMessage({
+          type: "error",
+          text: data.message || "Failed to save configuration",
+        });
       }
     } catch (err) {
       console.error("Failed to save Stripe Connect config:", err);
-      setStripeConnectMessage({ type: 'error', text: 'Network error occurred' });
+      setStripeConnectMessage({ type: "error", text: "Network error occurred" });
     } finally {
       setStripeConnectSaving(false);
     }
@@ -707,19 +800,19 @@ function SettingsContent() {
         setStripeConnectTestResult({
           success: true,
           message: data.message,
-          data: data.data
+          data: data.data,
         });
       } else {
         setStripeConnectTestResult({
           success: false,
-          message: data.message || "Failed to connect to Stripe"
+          message: data.message || "Failed to connect to Stripe",
         });
       }
     } catch (err) {
       console.error("Failed to test Stripe connection:", err);
       setStripeConnectTestResult({
         success: false,
-        message: "Network error occurred while testing connection"
+        message: "Network error occurred while testing connection",
       });
     } finally {
       setStripeConnectTesting(false);
@@ -745,9 +838,19 @@ function SettingsContent() {
         await fetchGoogleConfig();
         setGoogleSaveSuccess(true);
         setTimeout(() => setGoogleSaveSuccess(false), 3000);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        setGoogleTestResult({
+          success: false,
+          message: errorData.message || `Failed to save configuration (HTTP ${res.status})`,
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save Google config:", err);
+      setGoogleTestResult({
+        success: false,
+        message: `Network error: ${err.message || "Unknown error"}`,
+      });
     } finally {
       setGoogleSaving(false);
     }
@@ -951,8 +1054,6 @@ function SettingsContent() {
     }
   };
 
-
-
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKeyName) return;
@@ -1002,7 +1103,9 @@ function SettingsContent() {
       <div className="px-8 py-8">
         <div className="mb-8">
           <h1 className="text-xl font-bold text-[#f0f4fa]">Settings</h1>
-          <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">Manage API keys and integrations</p>
+          <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">
+            Manage API keys and integrations
+          </p>
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
@@ -1011,10 +1114,11 @@ function SettingsContent() {
               setActiveTab("api");
               router.replace("/settings?tab=api");
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "api"
-              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-              }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "api"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
           >
             API Keys
           </button>
@@ -1026,10 +1130,11 @@ function SettingsContent() {
                   router.replace("/settings?tab=google");
                   fetchGoogleConfig();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "google"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "google"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 Google Config
               </button>
@@ -1041,10 +1146,11 @@ function SettingsContent() {
               router.replace("/settings?tab=integrations");
               fetchTenantGoogleConfig();
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "integrations"
-              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-              }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "integrations"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
           >
             Integrations
           </button>
@@ -1054,10 +1160,11 @@ function SettingsContent() {
               router.replace("/settings?tab=calendar");
               checkCalendarConnection();
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "calendar"
-              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-              }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "calendar"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
           >
             Calendar
           </button>
@@ -1067,10 +1174,11 @@ function SettingsContent() {
               router.replace("/settings?tab=gmail");
               checkGmailConnection();
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "gmail"
-              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-              }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "gmail"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
           >
             Gmail
           </button>
@@ -1080,10 +1188,11 @@ function SettingsContent() {
               router.replace("/settings?tab=twilio");
               fetchTwilioConfig();
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "twilio"
-              ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-              : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-              }`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "twilio"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
           >
             Twilio
           </button>
@@ -1095,10 +1204,11 @@ function SettingsContent() {
                   router.replace("/settings?tab=system-email");
                   fetchSystemEmailConfig();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "system-email"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "system-email"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 System Email
               </button>
@@ -1107,10 +1217,11 @@ function SettingsContent() {
                   setActiveTab("affiliates");
                   router.replace("/settings?tab=affiliates");
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "affiliates"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "affiliates"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 Affiliates
               </button>
@@ -1119,10 +1230,11 @@ function SettingsContent() {
                   setActiveTab("referrals");
                   router.replace("/settings?tab=referrals");
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "referrals"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "referrals"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 Referrals
               </button>
@@ -1131,10 +1243,11 @@ function SettingsContent() {
                   setActiveTab("notifications");
                   router.replace("/settings?tab=notifications");
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "notifications"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "notifications"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 🔔 Notifications
               </button>
@@ -1145,10 +1258,11 @@ function SettingsContent() {
                   router.replace("/settings?tab=system-roles");
                   fetchUsers();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "system-roles"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "system-roles"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 System Roles
               </button>
@@ -1158,10 +1272,11 @@ function SettingsContent() {
                   router.replace("/settings?tab=system-commissions");
                   fetchPlatformSettings();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "system-commissions"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "system-commissions"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 System Commissions
               </button>
@@ -1174,10 +1289,11 @@ function SettingsContent() {
                   setActiveTab("stripe-connect");
                   router.replace("/settings?tab=stripe-connect");
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "stripe-connect"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "stripe-connect"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 Stripe Connect
               </button>
@@ -1187,10 +1303,11 @@ function SettingsContent() {
                   router.replace("/settings?tab=role-settings");
                   fetchUsers();
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${activeTab === "role-settings"
-                  ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                  : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                  }`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "role-settings"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
               >
                 Role Settings
               </button>
@@ -1201,18 +1318,24 @@ function SettingsContent() {
         {/* New key banner */}
         {showNewKey && (
           <div className="mb-6 rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/10 p-5">
-            <p className="mb-3 text-sm text-[#f0f4fa]">Your new API key — copy it now, you won&apos;t see it again:</p>
+            <p className="mb-3 text-sm text-[#f0f4fa]">
+              Your new API key — copy it now, you won&apos;t see it again:
+            </p>
             <div className="mb-4 rounded-lg border border-white/[0.08] bg-[#05080f] p-4 font-mono text-sm break-all text-[#14b8a6]">
               {showNewKey}
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => { navigator.clipboard.writeText(showNewKey); }}
+                onClick={() => {
+                  navigator.clipboard.writeText(showNewKey);
+                }}
                 className="btn-primary text-sm"
               >
                 Copy to Clipboard
               </button>
-              <button onClick={() => setShowNewKey(null)} className="btn-secondary text-sm">Done</button>
+              <button onClick={() => setShowNewKey(null)} className="btn-secondary text-sm">
+                Done
+              </button>
             </div>
           </div>
         )}
@@ -1226,7 +1349,8 @@ function SettingsContent() {
             savingNotif={savingNotif}
             notifMsg={notifMsg}
             onSave={async () => {
-              setSavingNotif(true); setNotifMsg(null);
+              setSavingNotif(true);
+              setNotifMsg(null);
               const token = localStorage.getItem("token");
               await fetch(`${API_BASE}/notifications/preferences`, {
                 method: "PUT",
@@ -1266,25 +1390,27 @@ function SettingsContent() {
             <div className="space-y-3">
               {apiKeys.length === 0 ? (
                 <p className="text-sm text-[rgba(240,244,250,0.4)]">No API keys yet.</p>
-              ) : apiKeys.map((key: any) => (
-                <div
-                  key={key.id}
-                  className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-[#f0f4fa]">{key.name}</p>
-                    <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
-                      Created {new Date(key.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleRevokeKey(key.id)}
-                    className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-3 py-1.5 text-xs text-[#f97316] transition hover:bg-[#f97316]/25"
+              ) : (
+                apiKeys.map((key: any) => (
+                  <div
+                    key={key.id}
+                    className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
                   >
-                    Revoke
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <p className="text-sm font-semibold text-[#f0f4fa]">{key.name}</p>
+                      <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.35)]">
+                        Created {new Date(key.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleRevokeKey(key.id)}
+                      className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-3 py-1.5 text-xs text-[#f97316] transition hover:bg-[#f97316]/25"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -1292,34 +1418,47 @@ function SettingsContent() {
         {/* Stripe Connect Section */}
         {activeTab === "stripe-connect" && isAdmin && (
           <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Stripe Connect Configuration</h2>
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
+              Stripe Connect Configuration
+            </h2>
             <p className="mb-5 text-sm text-[rgba(240,244,250,0.45)]">
               Configure Stripe Connect to automate agent payouts securely.
             </p>
 
             <form onSubmit={saveStripeConnectConfig} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Client ID</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Client ID
+                </label>
                 <input
                   type="text"
                   value={stripeConnectConfig.clientId}
-                  onChange={(e) => setStripeConnectConfig({ ...stripeConnectConfig, clientId: e.target.value })}
+                  onChange={(e) =>
+                    setStripeConnectConfig({ ...stripeConnectConfig, clientId: e.target.value })
+                  }
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                   placeholder="ca_1234567890abcdef"
                 />
                 <p className="mt-1.5 text-[11px] text-[rgba(240,244,250,0.4)]">
-                  Found in your Stripe Dashboard under Settings {'->'} Connect settings.
+                  Found in your Stripe Dashboard under Settings {"->"} Connect settings.
                 </p>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Minimum Payout Amount ($)</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Minimum Payout Amount ($)
+                </label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
                   value={stripeConnectConfig.minimumPayout}
-                  onChange={(e) => setStripeConnectConfig({ ...stripeConnectConfig, minimumPayout: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setStripeConnectConfig({
+                      ...stripeConnectConfig,
+                      minimumPayout: parseFloat(e.target.value) || 0,
+                    })
+                  }
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                   placeholder="100"
                 />
@@ -1329,7 +1468,9 @@ function SettingsContent() {
                 <input
                   type="checkbox"
                   checked={stripeConnectConfig.enabled}
-                  onChange={(e) => setStripeConnectConfig({ ...stripeConnectConfig, enabled: e.target.checked })}
+                  onChange={(e) =>
+                    setStripeConnectConfig({ ...stripeConnectConfig, enabled: e.target.checked })
+                  }
                   className="h-4 w-4 rounded border-white/[0.2] bg-[#05080f]"
                 />
                 Enable Stripe Connect Onboarding
@@ -1337,27 +1478,35 @@ function SettingsContent() {
 
               {stripeConnectMessage && (
                 <div
-                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${stripeConnectMessage.type === "success"
-                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                    }`}
+                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                    stripeConnectMessage.type === "success"
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
                 >
-                  {stripeConnectMessage.type === "success" ? "✓ " : "⚠️ "}{stripeConnectMessage.text}
+                  {stripeConnectMessage.type === "success" ? "✓ " : "⚠️ "}
+                  {stripeConnectMessage.text}
                 </div>
               )}
 
               {stripeConnectTestResult && (
                 <div
-                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${stripeConnectTestResult.success
-                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                    }`}
+                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                    stripeConnectTestResult.success
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
                 >
-                  <p className="font-semibold">{stripeConnectTestResult.success ? "✓ Connected successfully!" : "⚠️ Connection failed"}</p>
+                  <p className="font-semibold">
+                    {stripeConnectTestResult.success
+                      ? "✓ Connected successfully!"
+                      : "⚠️ Connection failed"}
+                  </p>
                   <p className="mt-1 opacity-80">{stripeConnectTestResult.message}</p>
                   {stripeConnectTestResult.data && (
                     <div className="mt-2 text-xs opacity-75 font-mono">
-                      Connected to: {stripeConnectTestResult.data.name} ({stripeConnectTestResult.data.email})
+                      Connected to: {stripeConnectTestResult.data.name} (
+                      {stripeConnectTestResult.data.email})
                     </div>
                   )}
                 </div>
@@ -1394,7 +1543,9 @@ function SettingsContent() {
 
             <form onSubmit={saveGoogleConfig} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Client ID</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Client ID
+                </label>
                 <input
                   type="text"
                   value={googleConfig.clientId}
@@ -1407,7 +1558,9 @@ function SettingsContent() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Client Secret</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Client Secret
+                </label>
                 <PasswordInput
                   value={googleConfig.clientSecret}
                   onChange={(e) => {
@@ -1419,7 +1572,9 @@ function SettingsContent() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Redirect URI</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Redirect URI
+                </label>
                 <input
                   type="text"
                   value={googleConfig.redirectUri}
@@ -1452,10 +1607,11 @@ function SettingsContent() {
 
               {googleTestResult && (
                 <div
-                  className={`rounded-lg border px-4 py-3 text-sm ${googleTestResult.success
-                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                    }`}
+                  className={`rounded-lg border px-4 py-3 text-sm ${
+                    googleTestResult.success
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
                 >
                   {googleTestResult.message}
                 </div>
@@ -1481,7 +1637,9 @@ function SettingsContent() {
 
               {/* Instructions */}
               <div className="mt-6 rounded-lg border border-white/[0.06] bg-[#05080f]/50 p-4">
-                <h4 className="mb-3 text-xs font-semibold text-[#f0f4fa]">How to get your Google OAuth credentials:</h4>
+                <h4 className="mb-3 text-xs font-semibold text-[#f0f4fa]">
+                  How to get your Google OAuth credentials:
+                </h4>
                 <ol className="space-y-3 text-xs text-[rgba(240,244,250,0.55)]">
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">1.</span>
@@ -1528,29 +1686,34 @@ function SettingsContent() {
                     <span className="text-[#14b8a6] font-semibold">4.</span>
                     <span>
                       Go to &quot;Credentials&quot; and click{" "}
-                      <span className="text-[#14b8a6]">Create Credentials → OAuth 2.0 Client ID</span>
+                      <span className="text-[#14b8a6]">
+                        Create Credentials → OAuth 2.0 Client ID
+                      </span>
                     </span>
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">5.</span>
-                    <span>
-                      Choose &quot;Web application&quot; as the application type
-                    </span>
+                    <span>Choose &quot;Web application&quot; as the application type</span>
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">6.</span>
                     <span>
                       Add Authorized redirect URIs:
                       <div className="mt-1 space-y-1 ml-3">
-                        <div className="font-mono text-[#14b8a6]">http://localhost:3000/auth/google/callback</div>
-                        <div className="font-mono text-[#14b8a6]">https://yourdomain.com/auth/google/callback</div>
+                        <div className="font-mono text-[#14b8a6]">
+                          http://localhost:3000/auth/google/callback
+                        </div>
+                        <div className="font-mono text-[#14b8a6]">
+                          https://yourdomain.com/auth/google/callback
+                        </div>
                       </div>
                     </span>
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">7.</span>
                     <span>
-                      Click &quot;Create&quot; and copy the Client ID and Client Secret to the fields above
+                      Click &quot;Create&quot; and copy the Client ID and Client Secret to the
+                      fields above
                     </span>
                   </li>
                   <li className="flex gap-3">
@@ -1569,11 +1732,15 @@ function SettingsContent() {
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">9.</span>
-                    <span>Scroll to <strong>Test users</strong> section</span>
+                    <span>
+                      Scroll to <strong>Test users</strong> section
+                    </span>
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">10.</span>
-                    <span>Click <strong>+ ADD USERS</strong></span>
+                    <span>
+                      Click <strong>+ ADD USERS</strong>
+                    </span>
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">11.</span>
@@ -1581,7 +1748,9 @@ function SettingsContent() {
                   </li>
                   <li className="flex gap-3">
                     <span className="text-[#14b8a6] font-semibold">12.</span>
-                    <span>Click <strong>Save</strong></span>
+                    <span>
+                      Click <strong>Save</strong>
+                    </span>
                   </li>
                 </ol>
               </div>
@@ -1589,13 +1758,13 @@ function SettingsContent() {
           </div>
         )}
 
-
         {/* Widget embed */}
         {activeTab === "calendar" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Calendar Connection</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
-              Connect your Google Calendar to allow Voice Automation to check availability and book appointments automatically.
+              Connect your Google Calendar to allow Voice Automation to check availability and book
+              appointments automatically.
             </p>
 
             <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-5">
@@ -1603,7 +1772,9 @@ function SettingsContent() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-full bg-[#14b8a6]" />
-                    <span className="text-sm text-[rgba(240,244,250,0.75)]">Calendar is connected</span>
+                    <span className="text-sm text-[rgba(240,244,250,0.75)]">
+                      Calendar is connected
+                    </span>
                   </div>
                   <button
                     onClick={handleDisconnectCalendar}
@@ -1616,7 +1787,8 @@ function SettingsContent() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-[rgba(240,244,250,0.55)]">
-                    No calendar connected yet. Click the button below to authorize access to your Google Calendar.
+                    No calendar connected yet. Click the button below to authorize access to your
+                    Google Calendar.
                   </p>
                   <button
                     onClick={handleConnectCalendar}
@@ -1630,11 +1802,15 @@ function SettingsContent() {
             </div>
 
             <div className="mt-6 rounded-xl border border-white/[0.07] bg-[#05080f] p-4">
-              <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">What this enables:</p>
+              <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">
+                What this enables:
+              </p>
               <ul className="space-y-2 text-xs text-[rgba(240,244,250,0.45)]">
                 <li className="flex items-start gap-2">
                   <span className="text-[#14b8a6] mt-1">✓</span>
-                  <span>Voice AI checks your calendar availability before booking appointments</span>
+                  <span>
+                    Voice AI checks your calendar availability before booking appointments
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#14b8a6] mt-1">✓</span>
@@ -1654,7 +1830,8 @@ function SettingsContent() {
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Gmail Account</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
-              Connect your Gmail account to enable voice automation to send emails and manage your inbox.
+              Connect your Gmail account to enable voice automation to send emails and manage your
+              inbox.
             </p>
 
             {/* Gmail Connection Section */}
@@ -1685,7 +1862,8 @@ function SettingsContent() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-[rgba(240,244,250,0.55)]">
-                    No Gmail account connected. You&apos;ll be able to send emails from your Gmail address once connected.
+                    No Gmail account connected. You&apos;ll be able to send emails from your Gmail
+                    address once connected.
                   </p>
                   <button
                     onClick={handleConnectGmail}
@@ -1698,10 +1876,10 @@ function SettingsContent() {
               )}
             </div>
 
-
-
             <div className="rounded-xl border border-white/[0.07] bg-[#05080f] p-4">
-              <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">What this enables:</p>
+              <p className="text-xs font-medium text-[rgba(240,244,250,0.55)] mb-2">
+                What this enables:
+              </p>
               <ul className="space-y-2 text-xs text-[rgba(240,244,250,0.45)]">
                 <li className="flex items-start gap-2">
                   <span className="text-[#14b8a6] mt-1">✓</span>
@@ -1723,10 +1901,13 @@ function SettingsContent() {
         {/* Integrations Section */}
         {activeTab === "integrations" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Google Cloud & Gemini Integration</h2>
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
+              Google Cloud & Gemini Integration
+            </h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
-              Configure your own Google Cloud Project credentials and Gemini API Key &lpar;Bring Your Own Key&rpar;.
-              This allows you to control quotas and use your custom branding for authentication screens.
+              Configure your own Google Cloud Project credentials and Gemini API Key &lpar;Bring
+              Your Own Key&rpar;. This allows you to control quotas and use your custom branding for
+              authentication screens.
             </p>
 
             <form onSubmit={saveTenantGoogleConfig} className="space-y-4">
@@ -1734,7 +1915,9 @@ function SettingsContent() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xs font-semibold text-[#f0f4fa]">Custom Credentials</h3>
                   <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${tenantGoogleConfig.hasConfig ? "bg-[#14b8a6]" : "bg-[#64748b]"}`} />
+                    <span
+                      className={`h-2 w-2 rounded-full ${tenantGoogleConfig.hasConfig ? "bg-[#14b8a6]" : "bg-[#64748b]"}`}
+                    />
                     <span className="text-xs text-[rgba(240,244,250,0.55)]">
                       {tenantGoogleConfig.hasConfig ? "Active" : "Using Platform Defaults"}
                     </span>
@@ -1743,44 +1926,82 @@ function SettingsContent() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Google Client ID</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Google Client ID
+                    </label>
                     <input
                       type="text"
                       value={tenantGoogleConfig.clientId}
-                      onChange={(e) => setTenantGoogleConfig({ ...tenantGoogleConfig, clientId: e.target.value })}
+                      onChange={(e) =>
+                        setTenantGoogleConfig({ ...tenantGoogleConfig, clientId: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="Your Google Cloud Client ID"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Google Client Secret</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Google Client Secret
+                    </label>
                     <PasswordInput
                       value={tenantGoogleConfig.clientSecret}
-                      onChange={(e) => setTenantGoogleConfig({ ...tenantGoogleConfig, clientSecret: e.target.value })}
+                      onChange={(e) =>
+                        setTenantGoogleConfig({
+                          ...tenantGoogleConfig,
+                          clientSecret: e.target.value,
+                        })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-                      placeholder={tenantGoogleConfig.hasConfig && !tenantGoogleConfig.clientSecret ? "********" : "Your Google Cloud Client Secret"}
+                      placeholder={
+                        tenantGoogleConfig.hasConfig && !tenantGoogleConfig.clientSecret
+                          ? "********"
+                          : "Your Google Cloud Client Secret"
+                      }
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Gemini API Key</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Gemini API Key
+                    </label>
                     <PasswordInput
                       value={tenantGoogleConfig.geminiApiKey}
-                      onChange={(e) => setTenantGoogleConfig({ ...tenantGoogleConfig, geminiApiKey: e.target.value })}
+                      onChange={(e) =>
+                        setTenantGoogleConfig({
+                          ...tenantGoogleConfig,
+                          geminiApiKey: e.target.value,
+                        })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-                      placeholder={tenantGoogleConfig.hasConfig && !tenantGoogleConfig.geminiApiKey ? "********" : "Your Gemini API Key (AI Studio)"}
+                      placeholder={
+                        tenantGoogleConfig.hasConfig && !tenantGoogleConfig.geminiApiKey
+                          ? "********"
+                          : "Your Gemini API Key (AI Studio)"
+                      }
                     />
                     <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">
-                      Required for the Voice Agent. Get one at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Google AI Studio</a>.
+                      Required for the Voice Agent. Get one at{" "}
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Google AI Studio
+                      </a>
+                      .
                     </p>
                   </div>
                 </div>
               </div>
 
               {tenantConfigMessage && (
-                <div className={`rounded-lg border px-4 py-3 text-sm ${tenantConfigMessage.type === 'success'
-                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                  }`}>
+                <div
+                  className={`rounded-lg border px-4 py-3 text-sm ${
+                    tenantConfigMessage.type === "success"
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
+                >
                   {tenantConfigMessage.text}
                 </div>
               )}
@@ -1811,25 +2032,41 @@ function SettingsContent() {
                   <li className="flex gap-2">
                     <span className="text-[#14b8a6]">1.</span>
                     <span>
-                      Create a project in the <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Google Cloud Console</a>.
+                      Create a project in the{" "}
+                      <a
+                        href="https://console.cloud.google.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Google Cloud Console
+                      </a>
+                      .
                     </span>
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[#14b8a6]">2.</span>
                     <span>
-                      Create OAuth credentials (Client ID &amp; Secret) and add the following redirect URIs:
+                      Create OAuth credentials (Client ID &amp; Secret) and add the following
+                      redirect URIs:
                     </span>
                   </li>
                   <li className="ml-5 font-mono text-[#14b8a6]">
-                    https://[your-domain]/auth/google/gmail/callback
-                  </li>
-                  <li className="ml-5 font-mono text-[#14b8a6]">
-                    https://[your-domain]/auth/google/calendar/callback
+                    https://myorbisvoice.com/auth/google/callback
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[#14b8a6]">3.</span>
                     <span>
-                      Get your Gemini API Key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Google AI Studio</a>.
+                      Get your Gemini API Key from{" "}
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Google AI Studio
+                      </a>
+                      .
                     </span>
                   </li>
                 </ol>
@@ -1848,7 +2085,9 @@ function SettingsContent() {
 
             <form onSubmit={saveTwilioConfig} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Account SID</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Account SID
+                </label>
                 <input
                   type="text"
                   value={twilioConfig.accountSid}
@@ -1858,7 +2097,9 @@ function SettingsContent() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Auth Token</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Auth Token
+                </label>
                 <PasswordInput
                   value={twilioConfig.authToken}
                   onChange={(e) => setTwilioConfig({ ...twilioConfig, authToken: e.target.value })}
@@ -1867,21 +2108,28 @@ function SettingsContent() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Phone Number</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Phone Number
+                </label>
                 <input
                   type="text"
                   value={twilioConfig.phoneNumber}
-                  onChange={(e) => setTwilioConfig({ ...twilioConfig, phoneNumber: e.target.value })}
+                  onChange={(e) =>
+                    setTwilioConfig({ ...twilioConfig, phoneNumber: e.target.value })
+                  }
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                   placeholder="+1234567890"
                 />
               </div>
 
               {twilioMessage && (
-                <div className={`rounded-lg border px-4 py-3 text-sm ${twilioMessage.type === 'success'
-                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                  }`}>
+                <div
+                  className={`rounded-lg border px-4 py-3 text-sm ${
+                    twilioMessage.type === "success"
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
+                >
                   {twilioMessage.text}
                 </div>
               )}
@@ -1903,19 +2151,38 @@ function SettingsContent() {
                   <li className="flex gap-2">
                     <span className="text-[#14b8a6]">1.</span>
                     <span>
-                      Log in to the <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Twilio Console</a>.
+                      Log in to the{" "}
+                      <a
+                        href="https://console.twilio.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Twilio Console
+                      </a>
+                      .
                     </span>
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[#14b8a6]">2.</span>
                     <span>
-                      Copy your <strong>Account SID</strong> and <strong>Auth Token</strong> from the dashboard (under &quot;Account Info&quot;).
+                      Copy your <strong>Account SID</strong> and <strong>Auth Token</strong> from
+                      the dashboard (under &quot;Account Info&quot;).
                     </span>
                   </li>
                   <li className="flex gap-2">
                     <span className="text-[#14b8a6]">3.</span>
                     <span>
-                      Go to <a href="https://console.twilio.com/us1/develop/phone-numbers/manage/active" target="_blank" rel="noopener noreferrer" className="text-[#14b8a6] hover:underline">Phone Numbers &gt; Manage &gt; Active numbers</a> to get your phone number.
+                      Go to{" "}
+                      <a
+                        href="https://console.twilio.com/us1/develop/phone-numbers/manage/active"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#14b8a6] hover:underline"
+                      >
+                        Phone Numbers &gt; Manage &gt; Active numbers
+                      </a>{" "}
+                      to get your phone number.
                     </span>
                   </li>
                 </ol>
@@ -1928,14 +2195,20 @@ function SettingsContent() {
         {activeTab === "api" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-3 text-sm font-semibold text-[#f0f4fa]">Embedded Widget</h2>
-            <p className="mb-4 text-sm text-[rgba(240,244,250,0.45)]">Add this script tag to any website to embed the MyOrbisVoice widget:</p>
+            <p className="mb-4 text-sm text-[rgba(240,244,250,0.45)]">
+              Add this script tag to any website to embed the MyOrbisVoice widget:
+            </p>
             <div className="overflow-auto rounded-xl border border-white/[0.07] bg-[#05080f] p-4 font-mono text-sm text-[#14b8a6]">
-              {`<script src="https://app.myorbisvoice.com/widget.js"`}<br />
-              {`  data-agent-id="YOUR_AGENT_ID"`}<br />
+              {`<script src="https://app.myorbisvoice.com/widget.js"`}
+              <br />
+              {`  data-agent-id="YOUR_AGENT_ID"`}
+              <br />
               {`  data-api-key="YOUR_API_KEY"></script>`}
             </div>
             <p className="mt-3 text-xs text-[rgba(240,244,250,0.35)]">
-              Replace YOUR_AGENT_ID and YOUR_API_KEY with your values. Add <code className="text-[#14b8a6]">data-position=&quot;bottom-left&quot;</code> to change widget position.
+              Replace YOUR_AGENT_ID and YOUR_API_KEY with your values. Add{" "}
+              <code className="text-[#14b8a6]">data-position=&quot;bottom-left&quot;</code> to
+              change widget position.
             </p>
           </div>
         )}
@@ -1943,7 +2216,9 @@ function SettingsContent() {
         {/* System Email Section */}
         {activeTab === "system-email" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">System Email Configuration</h2>
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
+              System Email Configuration
+            </h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
               Configure the global email settings used to send transactional emails for the SaaS.
             </p>
@@ -1951,23 +2226,33 @@ function SettingsContent() {
             <form onSubmit={saveSystemEmailConfig} className="space-y-6">
               {/* Account Information */}
               <div>
-                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">Account information</h3>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">
+                  Account information
+                </h3>
                 <div className="space-y-4 pt-2">
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Username</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Username
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.username}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, username: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, username: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="talk@myorbisvoice.com"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Password</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Password
+                    </label>
                     <PasswordInput
                       value={systemEmailConfig.password}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, password: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, password: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="use your password for this email account"
                     />
@@ -1977,33 +2262,47 @@ function SettingsContent() {
 
               {/* IMAP */}
               <div>
-                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">IMAP (Incoming)</h3>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">
+                  IMAP (Incoming)
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="md:col-span-2">
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming server name</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Incoming server name
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.imapServer}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, imapServer: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, imapServer: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="mail.spacemail.com"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming port</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Incoming port
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.imapPort}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, imapPort: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, imapPort: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="993"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Type of Security</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Type of Security
+                    </label>
                     <select
                       value={systemEmailConfig.imapSecurity}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, imapSecurity: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, imapSecurity: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                     >
                       <option value="SSL">SSL</option>
@@ -2016,33 +2315,47 @@ function SettingsContent() {
 
               {/* SMTP */}
               <div>
-                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">SMTP (Outgoing)</h3>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">
+                  SMTP (Outgoing)
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="md:col-span-2">
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Outgoing server name</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Outgoing server name
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.smtpServer}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, smtpServer: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, smtpServer: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="mail.spacemail.com"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Outgoing port</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Outgoing port
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.smtpPort}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, smtpPort: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, smtpPort: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="465 or 587"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Type of Security</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Type of Security
+                    </label>
                     <select
                       value={systemEmailConfig.smtpSecurity}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, smtpSecurity: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, smtpSecurity: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                     >
                       <option value="SSL">SSL</option>
@@ -2056,33 +2369,47 @@ function SettingsContent() {
 
               {/* POP3 */}
               <div>
-                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">POP3 (Alternative Incoming)</h3>
+                <h3 className="mb-3 text-xs font-semibold text-[rgba(240,244,250,0.8)] border-b border-white/[0.07] pb-2">
+                  POP3 (Alternative Incoming)
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="md:col-span-2">
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming server name</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Incoming server name
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.pop3Server}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, pop3Server: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, pop3Server: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="mail.spacemail.com"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Incoming port</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Incoming port
+                    </label>
                     <input
                       type="text"
                       value={systemEmailConfig.pop3Port}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, pop3Port: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, pop3Port: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                       placeholder="995"
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Type of Security</label>
+                    <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Type of Security
+                    </label>
                     <select
                       value={systemEmailConfig.pop3Security}
-                      onChange={(e) => setSystemEmailConfig({ ...systemEmailConfig, pop3Security: e.target.value })}
+                      onChange={(e) =>
+                        setSystemEmailConfig({ ...systemEmailConfig, pop3Security: e.target.value })
+                      }
                       className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                     >
                       <option value="SSL">SSL</option>
@@ -2094,10 +2421,13 @@ function SettingsContent() {
               </div>
 
               {systemEmailMessage && (
-                <div className={`rounded-lg border px-4 py-3 text-sm ${systemEmailMessage.type === 'success'
-                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                  }`}>
+                <div
+                  className={`rounded-lg border px-4 py-3 text-sm ${
+                    systemEmailMessage.type === "success"
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
+                >
                   {systemEmailMessage.text}
                 </div>
               )}
@@ -2116,7 +2446,8 @@ function SettingsContent() {
             <div className="mt-8 border-t border-white/[0.07] pt-6">
               <h3 className="mb-3 text-xs font-semibold text-[#f0f4fa]">Test Configuration</h3>
               <p className="mb-4 text-xs text-[rgba(240,244,250,0.55)]">
-                Send a test email to verify your SMTP settings are correct. Ensure you save your configuration first.
+                Send a test email to verify your SMTP settings are correct. Ensure you save your
+                configuration first.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 items-start">
@@ -2149,15 +2480,17 @@ function SettingsContent() {
               </div>
 
               {systemEmailTestResult && (
-                <div className={`mt-4 rounded-lg border px-4 py-3 text-sm ${systemEmailTestResult.success
-                  ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                  : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
-                  }`}>
+                <div
+                  className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                    systemEmailTestResult.success
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                  }`}
+                >
                   {systemEmailTestResult.message}
                 </div>
               )}
             </div>
-
           </div>
         )}
 
@@ -2186,7 +2519,9 @@ function SettingsContent() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-[#f0f4fa]">Role Settings</h2>
-                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">Manage user access roles across the platform</p>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
+                  Manage user access roles across the platform
+                </p>
               </div>
               <button
                 onClick={fetchUsers}
@@ -2197,7 +2532,9 @@ function SettingsContent() {
             </div>
 
             {usersLoading ? (
-              <div className="py-12 text-center text-sm text-[rgba(240,244,250,0.45)]">Loading users...</div>
+              <div className="py-12 text-center text-sm text-[rgba(240,244,250,0.45)]">
+                Loading users...
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -2216,10 +2553,15 @@ function SettingsContent() {
                           <div className="text-xs text-[rgba(240,244,250,0.4)]">{u.email}</div>
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === "SYSTEM_ADMIN" ? "bg-purple-500/10 text-purple-400" :
-                            u.role === "ADMIN" ? "bg-[#14b8a6]/10 text-[#14b8a6]" :
-                              "bg-blue-500/10 text-blue-400"
-                            }`}>
+                          <span
+                            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                              u.role === "SYSTEM_ADMIN"
+                                ? "bg-purple-500/10 text-purple-400"
+                                : u.role === "ADMIN"
+                                  ? "bg-[#14b8a6]/10 text-[#14b8a6]"
+                                  : "bg-blue-500/10 text-blue-400"
+                            }`}
+                          >
                             {u.role}
                           </span>
                         </td>
@@ -2251,7 +2593,9 @@ function SettingsContent() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-[#f0f4fa]">System Roles</h2>
-                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">View and manage platform users by role</p>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
+                  View and manage platform users by role
+                </p>
               </div>
               <button
                 onClick={fetchUsers}
@@ -2265,44 +2609,70 @@ function SettingsContent() {
             <div className="mb-6 flex gap-2 border-b border-white/[0.06] pb-4">
               <button
                 onClick={() => setSystemRolesTab("users")}
-                className={`px-4 py-2 text-xs font-medium transition ${systemRolesTab === "users" ? "text-[#14b8a6] border-b-2 border-[#14b8a6]" : "text-[rgba(240,244,250,0.45)] hover:text-[#f0f4fa]"
-                  }`}
+                className={`px-4 py-2 text-xs font-medium transition ${
+                  systemRolesTab === "users"
+                    ? "text-[#14b8a6] border-b-2 border-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.45)] hover:text-[#f0f4fa]"
+                }`}
               >
                 Users
               </button>
               <button
                 onClick={() => setSystemRolesTab("admins")}
-                className={`px-4 py-2 text-xs font-medium transition ${systemRolesTab === "admins" ? "text-[#14b8a6] border-b-2 border-[#14b8a6]" : "text-[rgba(240,244,250,0.45)] hover:text-[#f0f4fa]"
-                  }`}
+                className={`px-4 py-2 text-xs font-medium transition ${
+                  systemRolesTab === "admins"
+                    ? "text-[#14b8a6] border-b-2 border-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.45)] hover:text-[#f0f4fa]"
+                }`}
               >
                 Admins
               </button>
             </div>
 
             {usersLoading ? (
-              <div className="py-12 text-center text-sm text-[rgba(240,244,250,0.45)]">Loading...</div>
+              <div className="py-12 text-center text-sm text-[rgba(240,244,250,0.45)]">
+                Loading...
+              </div>
             ) : (
               <div className="space-y-4">
                 {allUsers
-                  .filter(u => systemRolesTab === "admins" ? (u.role === "ADMIN" || u.role === "SYSTEM_ADMIN") : u.role === "USER")
-                  .map(u => (
-                    <div key={u.id} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4">
+                  .filter((u) =>
+                    systemRolesTab === "admins"
+                      ? u.role === "ADMIN" || u.role === "SYSTEM_ADMIN"
+                      : u.role === "USER"
+                  )
+                  .map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+                    >
                       <div>
                         <div className="font-medium text-[#f0f4fa]">{u.name}</div>
                         <div className="text-xs text-[rgba(240,244,250,0.4)]">{u.email}</div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === "SYSTEM_ADMIN" ? "bg-purple-500/10 text-purple-400" :
-                          u.role === "ADMIN" ? "bg-[#14b8a6]/10 text-[#14b8a6]" :
-                            "bg-blue-500/10 text-blue-400"
-                          }`}>
+                        <span
+                          className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            u.role === "SYSTEM_ADMIN"
+                              ? "bg-purple-500/10 text-purple-400"
+                              : u.role === "ADMIN"
+                                ? "bg-[#14b8a6]/10 text-[#14b8a6]"
+                                : "bg-blue-500/10 text-blue-400"
+                          }`}
+                        >
                           {u.role}
                         </span>
                       </div>
                     </div>
                   ))}
-                {allUsers.filter(u => systemRolesTab === "admins" ? (u.role === "ADMIN" || u.role === "SYSTEM_ADMIN") : u.role === "USER").length === 0 && (
-                  <p className="py-8 text-center text-xs text-[rgba(240,244,250,0.35)]">No {systemRolesTab} found.</p>
+                {allUsers.filter((u) =>
+                  systemRolesTab === "admins"
+                    ? u.role === "ADMIN" || u.role === "SYSTEM_ADMIN"
+                    : u.role === "USER"
+                ).length === 0 && (
+                  <p className="py-8 text-center text-xs text-[rgba(240,244,250,0.35)]">
+                    No {systemRolesTab} found.
+                  </p>
                 )}
               </div>
             )}
@@ -2315,7 +2685,9 @@ function SettingsContent() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-semibold text-[#f0f4fa]">System Commission Settings</h2>
-                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">Global commission rates and platform limits</p>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
+                  Global commission rates and platform limits
+                </p>
               </div>
               <button
                 onClick={handleSaveSettings}
@@ -2329,32 +2701,55 @@ function SettingsContent() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="space-y-6">
                 <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
-                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Commission Rates (%)</h3>
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                    Commission Rates (%)
+                  </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Low Commission</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Low Commission
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.lowCommission}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, lowCommission: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            lowCommission: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Medium Commission</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Medium Commission
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.medCommission}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, medCommission: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            medCommission: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">High Commission</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        High Commission
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.highCommission}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, highCommission: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            highCommission: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
@@ -2362,40 +2757,70 @@ function SettingsContent() {
                 </div>
 
                 <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
-                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Payout Rules</h3>
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                    Payout Rules
+                  </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Minimum Payout ($)</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Minimum Payout ($)
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.payoutMinimum}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, payoutMinimum: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            payoutMinimum: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Refund Hold Period (Days)</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Refund Hold Period (Days)
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.refundHoldDays}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, refundHoldDays: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            refundHoldDays: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Commission Duration (Months, 0=Lifetime)</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Commission Duration (Months, 0=Lifetime)
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.commissionDurationMonths}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, commissionDurationMonths: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            commissionDurationMonths: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Default Level</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Default Level
+                      </label>
                       <select
                         value={settingsForm.defaultCommissionLevel}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, defaultCommissionLevel: e.target.value })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            defaultCommissionLevel: e.target.value,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       >
                         <option value="LOW">Low</option>
@@ -2409,53 +2834,92 @@ function SettingsContent() {
 
               <div className="space-y-6">
                 <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
-                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">Platform Usage Limits (Conversations)</h3>
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                    Platform Usage Limits (Conversations)
+                  </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Starter Plan Limit</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Starter Plan Limit
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.starterLimit}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, starterLimit: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            starterLimit: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Professional Plan Limit</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Professional Plan Limit
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.professionalLimit}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, professionalLimit: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            professionalLimit: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">Enterprise Plan Limit</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        Enterprise Plan Limit
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.enterpriseLimit}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, enterpriseLimit: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            enterpriseLimit: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">LTD Plan Limit</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        LTD Plan Limit
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.ltdLimit}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, ltdLimit: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            ltdLimit: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">AI Infrastructure Monthly Limit</label>
+                      <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
+                        AI Infrastructure Monthly Limit
+                      </label>
                       <input
                         type="number"
                         value={settingsForm.aiInfraLimit}
-                        onChange={(e) => setSettingsForm({ ...settingsForm, aiInfraLimit: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            aiInfraLimit: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       />
-                      <p className="mt-1 text-[10px] text-[rgba(240,244,250,0.35)]">Server-wide conversations pool for the entire infrastructure</p>
+                      <p className="mt-1 text-[10px] text-[rgba(240,244,250,0.35)]">
+                        Server-wide conversations pool for the entire infrastructure
+                      </p>
                     </div>
                   </div>
                 </div>

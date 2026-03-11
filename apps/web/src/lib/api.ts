@@ -3,16 +3,16 @@
  */
 
 const ENV_API_URL = process.env.NEXT_PUBLIC_API_URL;
-const DEV_SSR_URL = process.env.NODE_ENV === "production" ? "http://api:5000" : "http://localhost:4001";
+const DEV_SSR_URL = process.env.NODE_ENV === "production" ? "http://api:4001" : "http://localhost:4001";
 
 export const API_BASE = (() => {
-    // If NEXT_PUBLIC_API_URL is set and valid, use it
-    if (ENV_API_URL && ENV_API_URL !== "undefined" && ENV_API_URL !== "null" && ENV_API_URL !== "") {
-        return ENV_API_URL;
-    }
-    // Default for browser is relative /api (proxied by Nginx)
+    // In browser, always use relative /api (proxied by Nginx or Next.js rewrites)
     if (typeof window !== "undefined") {
         return "/api";
+    }
+    // If NEXT_PUBLIC_API_URL is set (e.g. for SSR or specific overrides), use it
+    if (ENV_API_URL && ENV_API_URL !== "undefined" && ENV_API_URL !== "null" && ENV_API_URL !== "") {
+        return ENV_API_URL;
     }
     // Fallback for SSR (intra-container or localhost)
     return DEV_SSR_URL;

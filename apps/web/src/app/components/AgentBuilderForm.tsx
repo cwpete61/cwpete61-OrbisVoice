@@ -143,7 +143,7 @@ export default function AgentBuilderForm({
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.message || "Failed to create draft");
-                setAgentId(data.agent.id);
+                setAgentId(data.data.id);
             } else {
                 // Update PUT
                 const res = await fetch(`${API_BASE}/agents/${agentId}`, {
