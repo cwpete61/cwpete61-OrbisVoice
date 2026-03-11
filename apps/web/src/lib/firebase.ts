@@ -33,7 +33,8 @@ if (isConfigured) {
             analytics = getAnalytics(app);
         }
 
-        // Initialize App Check
+        // Initialize App Check (Temporarily disabled for diagnostic)
+        /*
         if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
             const siteKey = process.env.NEXT_PUBLIC_APPCHECK_KEY;
             if (siteKey) {
@@ -43,6 +44,7 @@ if (isConfigured) {
                 });
             }
         }
+        */
     } catch (error) {
         console.error("Firebase initialization failed:", error);
     }
