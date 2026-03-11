@@ -3,18 +3,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 async function main() {
-    console.log("Global config:");
-    const globalConfig = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-    console.log(globalConfig);
-    // Actually, wait, the table is called GoogleAuthConfig but it's not in the main schema, wait. 
-    // Let's use prisma.$queryRaw since we don't know the exact name.
-    console.log("Trying to find GoogleAuthConfig...");
-    try {
-        const res = await prisma.$queryRaw `SELECT * FROM "GoogleAuthConfig"`;
-        console.log(res);
-    }
-    catch (e) {
-        console.log("No GoogleAuthConfig table");
-    }
+    console.log("Checking Google Auth Config in database...");
+    const config = await prisma.googleAuthConfig.findFirst();
+    console.log("Global Config:", JSON.stringify(config, null, 2));
+    const tenantConfigs = await prisma.tenantGoogleConfig.findMany();
+    console.log("Tenant Configs:", JSON.stringify(tenantConfigs, null, 2));
 }
-main().finally(() => prisma.$disconnect());
+main()
+    .catch((e) => {
+    console.error(e);
+    process.exit(1);
+})
+    .finally(async () => {
+    await prisma.$disconnect();
+});

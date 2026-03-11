@@ -1,20 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const client_1 = require("../prisma/client");
+const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 async function main() {
     const users = await prisma.user.findMany({
         select: {
             id: true,
             email: true,
-            name: true,
+            username: true,
+            role: true,
             isAdmin: true,
-            isAffiliate: true,
-            role: true
+            isBlocked: true
         }
     });
-    console.log("Total users:", users.length);
-    console.log(JSON.stringify(users, null, 2));
+    console.log("Users in database:");
+    users.forEach(u => {
+        console.log(`- ID: ${u.id}, Email: ${u.email}, Username: ${u.username}, Role: ${u.role}, Admin: ${u.isAdmin}, Blocked: ${u.isBlocked}`);
+    });
 }
 main()
     .catch((e) => {
