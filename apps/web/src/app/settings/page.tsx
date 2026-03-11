@@ -173,7 +173,7 @@ function SettingsContent() {
 
   // Tenant Google Config State
   const [tenantGoogleConfig, setTenantGoogleConfig] = useState<any>({
-    clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+    clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com",
     clientSecret: "",
     geminiApiKey: "",
     hasConfig: false,

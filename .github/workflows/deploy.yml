@@ -46,15 +46,15 @@ jobs:
           tags: ghcr.io/${{ env.OWNER_LC }}/orbisvoice-web:latest
           no-cache: true
           build-args: |
-            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
-            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}
-            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
-            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
-            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-            NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
-            NEXT_PUBLIC_APPCHECK_KEY=${{ secrets.APPCHECK_KEY }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com' }}
+            NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+            NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+            NEXT_PUBLIC_APPCHECK_KEY: ${{ secrets.APPCHECK_KEY }}
 
       - name: Build and Push Voice Gateway
         uses: docker/build-push-action@v5
@@ -89,13 +89,32 @@ jobs:
           script: |
             cd /opt/orbisvoice
             mkdir -p nginx/certs
+            
+            # Ensure firewall is open
+            if command -v ufw > /dev/null; then
+              ufw allow 80/tcp || true
+              ufw allow 443/tcp || true
+            fi
+
             echo "Checking certificates..."
-            ls -l nginx/certs/
+            ls -la nginx/certs/
+            
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
+            
             echo "Waiting for containers to stabilize..."
-            sleep 10
+            sleep 15
+            
+            echo "--- Container Status ---"
             docker compose -f docker-compose.prod.yml ps
-            echo "--- Nginx Logs ---"
-            docker compose -f docker-compose.prod.yml logs --tail=50 nginx
+            
+            echo "--- Nginx Config Test ---"
+            docker exec orbisvoice-nginx-prod nginx -t || true
+            
+            echo "--- Nginx Error Logs ---"
+            docker logs orbisvoice-nginx-prod
+            
+            echo "--- API Logs ---"
+            docker logs orbisvoice-api-prod --tail 20
+            
             docker system prune -f
