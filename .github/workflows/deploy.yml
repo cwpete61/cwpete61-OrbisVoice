@@ -8,7 +8,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -68,6 +68,9 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -131,35 +134,60 @@ jobs:
             echo "Syncing database schema..."
             docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
             
-            echo "### deployment Diagnostics" >> $GITHUB_STEP_SUMMARY
-            echo "#### File Layout" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            ls -R /opt/orbisvoice >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "### deployment Diagnostics" > deployment_report.md
+            echo "#### File Layout" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            ls -R /opt/orbisvoice >> deployment_report.md
+            echo '```' >> deployment_report.md
             
-            echo "#### Port Usage (Host)" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            ss -tulpn | grep -E ":80|:443|:4001|:5440" >> $GITHUB_STEP_SUMMARY || echo "No ports found" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "#### Port Usage (Host)" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            ss -tulpn | grep -E ":80|:443|:4001|:5440" >> deployment_report.md || echo "No ports found" >> deployment_report.md
+            echo '```' >> deployment_report.md
             
-            echo "#### Container Status" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            docker ps -a >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "#### Container Status" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            docker ps -a >> deployment_report.md
+            echo '```' >> deployment_report.md
 
-            echo "#### Nginx Logs" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            docker logs orbisvoice-nginx-prod | tail -n 20 >> $GITHUB_STEP_SUMMARY || echo "No nginx logs" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "#### Nginx Logs (First 50 lines)" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            docker logs orbisvoice-nginx-prod | head -n 50 >> deployment_report.md || echo "No nginx logs" >> deployment_report.md
+            echo '```' >> deployment_report.md
 
-            echo "#### API Logs" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            docker logs orbisvoice-api-prod | tail -n 50 >> $GITHUB_STEP_SUMMARY || echo "No api logs" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "#### API Logs (Last 100 lines)" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            docker logs orbisvoice-api-prod | tail -n 100 >> deployment_report.md || echo "No api logs" >> deployment_report.md
+            echo '```' >> deployment_report.md
             
-            echo "#### Database status" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            docker exec orbisvoice-postgres-prod pg_isready -U postgres >> $GITHUB_STEP_SUMMARY || echo "Postgres not ready" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            cp deployment_report.md $GITHUB_STEP_SUMMARY || true
             
             docker system prune -f
+
+      - name: Git Telemetry
+        run: |
+          git config --global user.name "Deployment Bot"
+          git config --global user.email "bot@orbisvoice.app"
+          git fetch origin telemetry || git checkout -b telemetry
+          git checkout telemetry
+          # We need to get the file from the VPS back to the runner
+          # Since scp-action only goes one way, we use a trick or just use the summary
+          # Actually, the best way is to cat it in a step and redirect it
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Fetch Telemetry
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ secrets.VPS_IP }}:/opt/orbisvoice/deployment_report.md .
+
+      - name: Push Telemetry to Branch
+        run: |
+          git config --global user.name "Deployment Bot"
+          git config --global user.email "bot@orbisvoice.app"
+          git checkout -b telemetry || git checkout telemetry
+          git add deployment_report.md
+          git commit -m "chore(telemetry): update deployment report [skip ci]" || echo "No changes to commit"
+          git push origin telemetry --force
