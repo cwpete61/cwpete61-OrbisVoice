@@ -4,17 +4,32 @@
 
 | Parameter             | Value                     |
 | --------------------- | ------------------------- |
-| **Host/IP**           | `62.169.19.231`           |
+| **Host/IP**           | `147.93.183.4`            |
 | **Username**          | `root`                    |
 | **SSH Port**          | `22`                      |
-| **SSH Key Path**      | `~/.ssh/orbis_deploy_key` |
+| **SSH Key Path**      | `C:\Users\crawf\.ssh\orbis_deploy_key` |
 | **Project Directory** | `/opt/orbisvoice`         |
 
 ## Quick SSH Command
 
 ```bash
-ssh -i ~/.ssh/orbis_deploy_key root@62.169.19.231
+ssh -i C:\Users\crawf\.ssh\orbis_deploy_key -o StrictHostKeyChecking=no root@147.93.183.4
 ```
+
+## Saved Connection Configuration (PuTTY-style)
+
+To make it easy for Opencode (or you) to connect without typing everything every time, add this to your **local computer's** SSH config file (usually at `C:\Users\crawf\.ssh\config`):
+
+```ssh
+Host orbisvoice-prod
+    HostName 147.93.183.4
+    User root
+    IdentityFile C:\Users\crawf\.ssh\orbis_deploy_key
+    StrictHostKeyChecking no
+```
+
+**Once saved, Opencode can connect simply by using:**
+`ssh orbisvoice-prod`
 
 ## Deploy Commands
 
@@ -58,8 +73,8 @@ chmod 600 ~/.ssh/authorized_keys
 ### Option 2: Use Password (Temporary)
 
 ```bash
-ssh root@62.169.19.231
-# Password: Orbis@8214@@
+ssh root@147.93.183.4
+# Password: Orbis@8214@@!!
 ```
 
 ## Docker Services
