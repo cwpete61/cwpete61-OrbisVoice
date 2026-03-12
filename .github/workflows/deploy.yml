@@ -110,8 +110,9 @@ jobs:
             ls -la nginx/certs/
             
             # Clean slate deployment steps
-            echo "Performing Clean Slate (Nuke and Pave)..."
-            docker compose -f docker-compose.prod.yml down || true
+            echo "Performing Hard Reset (including volumes)..."
+            docker compose -f docker-compose.prod.yml down --volumes || true
+            docker system prune -af --volumes || true
             
             echo "Pulling latest images..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
@@ -120,7 +121,7 @@ jobs:
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml up -d
             
             echo "Waiting for stabilization..."
-            sleep 20
+            sleep 30
             
             echo "Syncing database schema..."
             docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
@@ -129,10 +130,9 @@ jobs:
             docker exec -T orbisvoice-api-prod node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.\$queryRaw\`SELECT 1\`.then(() => console.log('DB_CONNECTION_SUCCESS')).catch(err => { console.error('DB_CONNECTION_FAILED:', err.message); process.exit(1); })" || echo "Database test failed"
             
             echo "### deployment Diagnostics" > deployment_report.md
-            echo "#### File Health Check" >> deployment_report.md
+            echo "#### API Logs (Last 50 lines)" >> deployment_report.md
             echo '```' >> deployment_report.md
-            ls -l /opt/orbisvoice/nginx/nginx.conf >> deployment_report.md || echo "Nginx config missing" >> deployment_report.md
-            ls -l /opt/orbisvoice/nginx/certs/cert.pem >> deployment_report.md || echo "Certs missing" >> deployment_report.md
+            docker logs orbisvoice-api-prod --tail 50 >> deployment_report.md 2>&1 || echo "No api logs" >> deployment_report.md
             echo '```' >> deployment_report.md
             
             echo "#### Port Usage (Host)" >> deployment_report.md
