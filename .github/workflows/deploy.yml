@@ -129,7 +129,7 @@ jobs:
             
             echo "Wait for Database to be ready..."
             for i in {1..10}; do
-              if docker exec -T orbisvoice-api-prod pg_isready -h postgres -U postgres; then
+              if docker exec -T orbisvoice-postgres-prod pg_isready -h localhost -U postgres; then
                 echo "Postgres is READY"
                 break
               fi
@@ -137,15 +137,18 @@ jobs:
               sleep 5
             done
             
-            echo "Syncing database schema..."
-            docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss > prisma_push.log 2>&1
+            echo "Performing Out-of-Band Database Migration..."
+            docker run --rm --network orbisvoice-prod-network \
+              -e DATABASE_URL=$DATABASE_URL \
+              ghcr.io/cwpete61/orbisvoice-api:latest \
+              npx prisma db push --accept-data-loss > prisma_push.log 2>&1
             cat prisma_push.log
             
-            echo "Testing Database Connection..."
+            echo "Testing Database Connection (via API)..."
             docker exec -T orbisvoice-api-prod node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.\$queryRaw\`SELECT 1\`.then(() => console.log('DB_CONNECTION_SUCCESS')).catch(err => { console.error('DB_CONNECTION_FAILED:', err.message); process.exit(1); })" || echo "Database test failed"
             
             echo "### deployment Diagnostics" > deployment_report.md
-            echo "#### Prisma Push Log" >> deployment_report.md
+            echo "#### Prisma Push Log (Out-of-Band)" >> deployment_report.md
             echo '```' >> deployment_report.md
             cat prisma_push.log >> deployment_report.md
             echo '```' >> deployment_report.md
