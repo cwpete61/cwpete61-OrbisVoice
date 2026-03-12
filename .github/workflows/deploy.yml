@@ -84,11 +84,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis8214Boss' }}
-          POSTGRES_PASSWORD_ENCODED: ${{ secrets.POSTGRES_PASSWORD_ENCODED || 'Orbis%408214%40%40' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || 'SET_IN_GITHUB' }}
-          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI || 'https://myorbisvoice.com/auth/google/callback' }}
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
@@ -107,11 +103,7 @@ jobs:
 
             echo "Exporting environment variables..."
             export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-            export POSTGRES_PASSWORD_ENCODED=$POSTGRES_PASSWORD_ENCODED
             export JWT_SECRET=$JWT_SECRET
-            export GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
-            export GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
-            export GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
             
             echo "Checking environment presence..."
             [ -z "$POSTGRES_PASSWORD" ] && echo "WARNING: POSTGRES_PASSWORD is empty" || echo "POSTGRES_PASSWORD is set"
@@ -129,13 +121,13 @@ jobs:
             echo "--- Container Status ---"
             docker compose -f docker-compose.prod.yml ps
             
+            echo "--- API Logs ---"
+            docker logs orbisvoice-api-prod --tail 100
+            
+            echo "--- Database Status ---"
+            docker exec orbisvoice-postgres-prod pg_isready -U postgres
+            
             echo "--- Nginx Config Test ---"
             docker exec orbisvoice-nginx-prod nginx -t || true
-            
-            echo "--- Nginx Error Logs ---"
-            docker logs orbisvoice-nginx-prod
-            
-            echo "--- API Logs ---"
-            docker logs orbisvoice-api-prod --tail 50
             
             docker system prune -f
