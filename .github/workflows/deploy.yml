@@ -131,27 +131,35 @@ jobs:
             echo "Syncing database schema..."
             docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
             
-            echo "--- VERBOSE DIAGNOSTICS START ---"
-            echo "1. File Layout:"
-            ls -R /opt/orbisvoice
+            echo "### deployment Diagnostics" >> $GITHUB_STEP_SUMMARY
+            echo "#### File Layout" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            ls -R /opt/orbisvoice >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             
-            echo "2. Port Usage (Host):"
-            ss -tulpn | grep -E ":80|:443|:4001|:5440" || echo "No ports found"
+            echo "#### Port Usage (Host)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            ss -tulpn | grep -E ":80|:443|:4001|:5440" >> $GITHUB_STEP_SUMMARY || echo "No ports found" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             
-            echo "3. Container Status & Logs:"
-            docker ps -a
-            echo "Nginx Logs:"
-            docker logs orbisvoice-nginx-prod || echo "No nginx logs"
-            echo "API Logs:"
-            docker logs orbisvoice-api-prod || echo "No api logs"
+            echo "#### Container Status" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            docker ps -a >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            echo "#### Nginx Logs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            docker logs orbisvoice-nginx-prod | tail -n 20 >> $GITHUB_STEP_SUMMARY || echo "No nginx logs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
+            echo "#### API Logs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            docker logs orbisvoice-api-prod | tail -n 50 >> $GITHUB_STEP_SUMMARY || echo "No api logs" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             
-            echo "4. Database Health Check:"
-            docker exec orbisvoice-postgres-prod pg_isready -U postgres || echo "Postgres not ready"
-            
-            echo "5. Network Check:"
-            docker network ls
-            docker network inspect orbisvoice-prod-network || echo "Network missing"
-            
-            echo "--- VERBOSE DIAGNOSTICS END ---"
+            echo "#### Database status" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            docker exec orbisvoice-postgres-prod pg_isready -U postgres >> $GITHUB_STEP_SUMMARY || echo "Postgres not ready" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             
             docker system prune -f
