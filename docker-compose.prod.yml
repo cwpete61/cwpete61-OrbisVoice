@@ -67,6 +67,8 @@ services:
         condition: service_healthy
     networks:
       - orbisvoice-prod-network
+    ports:
+      - "4001:4001"
 
   web:
     image: ghcr.io/cwpete61/orbisvoice-web:latest
