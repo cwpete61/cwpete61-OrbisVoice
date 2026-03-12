@@ -102,7 +102,7 @@ jobs:
             fi
 
             echo "Exporting environment variables..."
-            export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            export POSTGRES_PASSWORD='Orbis@8214@'
             export JWT_SECRET=$JWT_SECRET
             
             echo "Checking environment presence..."
@@ -118,17 +118,20 @@ jobs:
             echo "Waiting for containers to stabilize..."
             sleep 15
             
-            echo "--- Container Status ---"
-            docker compose -f docker-compose.prod.yml ps
+            echo "--- DIAGNOSTICS START ---"
+            echo "1. API Logs (Last 100 lines):"
+            docker compose -f docker-compose.prod.yml logs --tail 100 api
             
-            echo "--- API Logs ---"
-            docker logs orbisvoice-api-prod --tail 100
+            echo "2. Database Reachability:"
+            docker compose -f docker-compose.prod.yml exec -T postgres pg_isready
             
-            echo "--- Running Database Migrations ---"
-            docker exec orbisvoice-api-prod npx prisma db push --skip-generate --accept-data-loss || echo "Migrations failed or still waiting..."
+            echo "3. API Container Health:"
+            docker inspect orbisvoice-api-prod | grep -A 10 "Health" || echo "No health status yet"
             
-            echo "--- Database Status ---"
-            docker exec orbisvoice-postgres-prod pg_isready -U postgres
+            echo "4. Environment Variable Check (Grep):"
+            [ -f .env.prod ] && grep -E "DATABASE_URL|REDIS_URL|JWT_SECRET|POSTGRES_PASSWORD" .env.prod | sed 's/:.*/:****/' || echo ".env.prod not found"
+            
+            echo "--- DIAGNOSTICS END ---"
             
             echo "--- Nginx Config Test ---"
             docker exec orbisvoice-nginx-prod nginx -t || true
