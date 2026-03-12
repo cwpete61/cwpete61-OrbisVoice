@@ -101,19 +101,21 @@ jobs:
               ufw allow 4001/tcp || true
             fi
 
-            echo "Exporting environment variables..."
-            export POSTGRES_PASSWORD='Orbis@8214@'
-            export JWT_SECRET=$JWT_SECRET
+            echo "Preparing encoded credentials..."
+            # URL encode the password for the DATABASE_URL (specifically the @ symbol)
+            # Orbis@8214@ becomes Orbis%408214%40
+            export POSTGRES_PASSWORD="Orbis@8214@"
+            export ENCODED_PW="Orbis%408214%40"
+            export DATABASE_URL="postgresql://postgres:${ENCODED_PW}@postgres:5432/orbisvoice?schema=public"
             
             echo "Checking environment presence..."
-            [ -z "$POSTGRES_PASSWORD" ] && echo "WARNING: POSTGRES_PASSWORD is empty" || echo "POSTGRES_PASSWORD is set"
-            [ -z "$POSTGRES_PASSWORD_ENCODED" ] && echo "WARNING: POSTGRES_PASSWORD_ENCODED is empty" || echo "POSTGRES_PASSWORD_ENCODED is set"
+            echo "DATABASE_URL: postgresql://postgres:****@postgres:5432/orbisvoice"
             
             echo "Checking certificates..."
             ls -la nginx/certs/
             
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml up -d
             
             echo "Waiting for containers to stabilize..."
             sleep 15
