@@ -105,10 +105,9 @@ jobs:
             fi
 
             echo "Preparing encoded credentials..."
-            # URL encode the password for the DATABASE_URL (specifically the @ symbol)
-            # Orbis@8214@ becomes Orbis%408214%40
-            export POSTGRES_PASSWORD="Orbis@8214@"
-            export ENCODED_PW="Orbis%408214%40"
+            # Dynamic URL encoding using python (readily available in most environments)
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD || 'Orbis8214Boss' }}"
+            export ENCODED_PW=$(python3 -c "import urllib.parse; print(urllib.parse.quote(input()))" <<< "$POSTGRES_PASSWORD")
             export DATABASE_URL="postgresql://postgres:${ENCODED_PW}@postgres:5432/orbisvoice?schema=public"
             
             echo "Checking environment presence..."
