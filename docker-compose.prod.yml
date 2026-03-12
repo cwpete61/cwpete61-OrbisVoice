@@ -141,6 +141,7 @@ services:
 
 networks:
   orbisvoice-prod-network:
+    name: orbisvoice-prod-network
 
 
 volumes:
