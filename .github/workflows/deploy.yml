@@ -83,16 +83,22 @@ jobs:
           source: "docker-compose.prod.yml,nginx/"
           target: "/opt/orbisvoice"
 
+      - name: Prepare Database URL
+        id: db-url
+        run: |
+          # Use node to safely URL encode the password on the runner
+          PW="${{ secrets.POSTGRES_PASSWORD || 'Orbis@8214@@' }}"
+          ENCODED_PW=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$PW")
+          echo "DATABASE_URL=postgresql://postgres:${ENCODED_PW}@postgres:5432/orbisvoice?schema=public" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD=$PW" >> $GITHUB_ENV
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis8214Boss' }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: POSTGRES_PASSWORD,POSTGRES_PASSWORD_ENCODED,JWT_SECRET,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI
+          envs: POSTGRES_PASSWORD,DATABASE_URL,JWT_SECRET
           script: |
             cd /opt/orbisvoice
             mkdir -p nginx/certs
@@ -103,16 +109,9 @@ jobs:
               ufw allow 443/tcp || true
               ufw allow 4001/tcp || true
             fi
-
-            echo "Preparing encoded credentials..."
-            # URL encode the password for the DATABASE_URL (specifically the @ symbol)
-            # Orbis@8214@ becomes Orbis%408214%40
-            export POSTGRES_PASSWORD="Orbis@8214@"
-            export ENCODED_PW="Orbis%408214%40"
-            export DATABASE_URL="postgresql://postgres:${ENCODED_PW}@postgres:5432/orbisvoice?schema=public"
             
-            echo "Checking environment presence..."
-            echo "DATABASE_URL: postgresql://postgres:****@postgres:5432/orbisvoice"
+            echo "Environment variables passed. Constructing fresh deployment..."
+            export JWT_SECRET="${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}"
             
             echo "Checking certificates..."
             ls -la nginx/certs/
@@ -120,7 +119,6 @@ jobs:
             # Clean slate deployment steps
             echo "Performing Clean Slate (Nuke and Pave)..."
             docker compose -f docker-compose.prod.yml down || true
-            docker system prune -af --volumes || true
             
             echo "Pulling latest images..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
@@ -138,8 +136,7 @@ jobs:
             echo "#### File Health Check" >> deployment_report.md
             echo '```' >> deployment_report.md
             ls -l /opt/orbisvoice/nginx/nginx.conf >> deployment_report.md || echo "Nginx config missing" >> deployment_report.md
-            ls -l /opt/orbisvoice/nginx/certs/fullchain.pem >> deployment_report.md || echo "Certs missing" >> deployment_report.md
-            find /opt/orbisvoice -maxdepth 2 -not -path '*/node_modules*' >> deployment_report.md
+            ls -l /opt/orbisvoice/nginx/certs/cert.pem >> deployment_report.md || echo "Certs missing" >> deployment_report.md
             echo '```' >> deployment_report.md
             
             echo "#### Port Usage (Host)" >> deployment_report.md
