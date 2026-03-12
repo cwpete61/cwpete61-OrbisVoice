@@ -102,6 +102,7 @@ jobs:
             if command -v ufw > /dev/null; then
               ufw allow 80/tcp || true
               ufw allow 443/tcp || true
+              ufw allow 4001/tcp || true
             fi
 
             echo "Exporting environment variables..."
