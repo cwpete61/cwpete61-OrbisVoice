@@ -159,10 +159,23 @@ Referral Portal   ←────────→ Referrals Service ←──→ 
 - **Rate Limiting**: Applied per API key / per tenant
 - **Data Isolation**: SQL queries filtered by tenant_id
 
-## Error Handling & Resilience
+## Deployment & Operations
 
-- WebSocket reconnection logic (client-side exponential backoff)
-- Session timeout (default 30 min idle)
-- Tool call timeout (Backend API response time limit)
-- Fallback responses if Gemini or Backend API fail
-- Logging: all errors to PostgreSQL + centralized log aggregation (future)
+### 1. Production Infrastructure
+The live application is hosted on a **Contabo VPS** (Ubuntu Linux) at `147.93.183.4`.
+
+### 2. CI/CD Pipeline (GitHub Actions)
+Deployment is triggered automatically when code is pushed to the `master` branch.
+- **Build**: GitHub Actions builds Docker images for `api`, `web`, and `voice-gateway`.
+- **Push**: Images are pushed to GitHub Container Registry (GHCR).
+- **Run**: The action SSHs into the VPS and executes `/opt/orbisvoice/deploy-vps.sh` to pull images and restart containers via `docker-compose.prod.yml`.
+
+### 3. Database Strategy
+- **Prisma**: We use Prisma 6 as the ORM. Production client generation must include the `debian-openssl-3.0.x` binary target.
+- **Migrations**: Database schema updates are managed via `npx prisma db push` or migrations, usually performed out-of-band to ensure zero downtime.
+- **Backups**: Daily automated snapshots via GitHub Actions.
+
+## Error Handling & Resilience
+- **WebSocket**: Reconnection logic with exponential backoff on the client.
+- **API**: Resilient upstream handling in Nginx to prevent boot crashes if backend services are slow to start.
+- **Persistence**: Database connection retries and health checks.

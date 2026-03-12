@@ -3,32 +3,32 @@
 ## Frontend Stack
 
 **Web App (apps/web)**
-- **Runtime**: Node.js 18+
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **Styling**: TailwindCSS + custom brand colors (from BRAND.md)
-- **State**: React Context + optional SWR/TanStack Query for data fetching
-- **Authentication**: NextAuth.js or custom JWT-based (Backend API)
-- **Embedded Widget**: Vanilla JS loader script (async initializer) or iframe-based isolation
+- **Runtime**: Node.js 20+ (LTS)
+- **Framework**: Next.js 15+ (App Router)
+- **Language**: TypeScript 5.7+
+- **Styling**: TailwindCSS 3.4 (Stable v3)
+- **State**: React Context / React Server Components
+- **Authentication**: Firebase / Google OAuth (Live)
+- **Embedded Widget**: Vanilla JS loader script (managed via `apps/api`)
 
 **Browser Support**: Modern browsers (Chrome, Firefox, Safari, Edge); audio requires HTTPS + getUserMedia permission
 
 ## Backend Stack
 
 **API (apps/api)**
-- **Runtime**: Node.js 18+
-- **Framework**: Fastify 4+
-- **Language**: TypeScript
+- **Runtime**: Node.js 20+ (LTS)
+- **Framework**: Fastify 5.x
+- **Language**: TypeScript 5.7+
 - **Database**:
-  - PostgreSQL 14+ (primary data store: tenants, users, agents, transcripts, api_keys)
-  - Redis 7+ (sessions, rate limiting, caching, real-time flags)
-- **ORM**: Prisma 5+ (or Drizzle ORM for lighter footprint)
+  - PostgreSQL 15+ (primary data store)
+  - Redis 7+ (Rate limiting, caching)
+- **ORM**: Prisma 6.x
 - **Validation**: Zod
-- **Authentication**: JWT tokens (signed with RS256 or HS256)
+- **Authentication**: JWT tokens + Google Auth verification
 - **Rate Limiting**: `@fastify/rate-limit` (Redis-backed)
 - **Security Headers**: `@fastify/helmet`
-- **Logging**: Pino (structured JSON logs)
-- **Testing**: Vitest + Supertest (API integration tests)
+- **Logging**: Pino 10.x
+- **Testing**: Vitest 4.x
 
 **API Architecture**:
 - REST endpoints (JSON request/response)
@@ -99,17 +99,18 @@
 - Frontend dev server (Next.js, port 3001 with HMR)
 - Optional: Referrals service (port 5000)
 
-**Production Deployment Path** (in order):
-1. Cloudflare: DNS, edge caching, DDoS protection, Workers if needed
-2. Insforge: Container orchestration, managed Kubernetes or serverless platform
-3. Render: Alternative managed hosting (Render.com or similar)
-4. On-Premises (Lumadock): Self-hosted Docker Compose or Kubernetes
+**Production Deployment (Live)**
+- **Hosting**: Contabo VPS (Linux Ubuntu)
+- **IP**: `147.93.183.4`
+- **Orchestration**: Docker Compose (`docker-compose.prod.yml`)
+- **CI/CD**: GitHub Actions (Triggered on push to `master`)
+- **SSL**: Cloudflare (Full Encryption) + Nginx Proxy
 
-**Container Images**:
-- api: `node:18-alpine` + Fastify
-- voice-gateway: `node:18-alpine` + ws
-- web: Multi-stage build to static Next.js export or Node.js server
-- referrals: Container image per RefRef deployment choice
+**Deployment Workflow (Legacy/Preferred)**:
+1. `git push origin master`
+2. GitHub Action builds images -> Pushes to GHCR
+3. GitHub Action SSHs to VPS -> Runs `/opt/orbisvoice/deploy-vps.sh`
+4. Containers are updated and restarted.
 
 ## Observability & Monitoring
 
