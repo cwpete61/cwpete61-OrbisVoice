@@ -10,11 +10,13 @@ RUN apt-get update && apt-get install -y openssl libssl-dev python3 make g++ && 
 COPY package*.json ./
 COPY tsconfig.base.json ./
 
-# Copy all KNOWN workspace package.json files
+# Copy all workspace package.json files
 COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
 COPY apps/referrals/package.json ./apps/referrals/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/config/package.json ./packages/config/
 
 # Install dependencies from root
 RUN npm install --legacy-peer-deps

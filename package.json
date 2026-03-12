@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/api",
+    "apps/web",
+    "apps/voice-gateway",
+    "apps/referrals",
+    "packages/shared",
+    "packages/config"
   ],
   "scripts": {
     "lint": "npm run lint --workspace=apps/api -- --quiet && npm run lint --workspace=apps/web -- --quiet && npm run lint --workspace=apps/voice-gateway -- --quiet",
