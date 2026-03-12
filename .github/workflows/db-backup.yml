@@ -1,0 +1,50 @@
+name: Database Backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Backup
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /opt/orbisvoice/backups
+            BACKUP_NAME="db_backup_$(date +%Y%m%d_%H%M%S).sql"
+            docker exec orbisvoice-postgres-prod pg_dump -U postgres orbisvoice > "/opt/orbisvoice/backups/$BACKUP_NAME"
+            echo "Backup created: /opt/orbisvoice/backups/$BACKUP_NAME"
+            
+            # Keep only last 7 backups on server
+            cd /opt/orbisvoice/backups && ls -t | tail -n +8 | xargs -I {} rm -- {} || true
+      
+      - name: Download Backup for Archival
+        run: |
+          mkdir -p backups
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > id_rsa
+          chmod 600 id_rsa
+          # Find the latest backup file on the server
+          BACKUP_FILE=$(ssh -i id_rsa -o StrictHostKeyChecking=no root@${{ secrets.VPS_IP }} "ls -t /opt/orbisvoice/backups/*.sql | head -n 1")
+          scp -i id_rsa -o StrictHostKeyChecking=no root@${{ secrets.VPS_IP }}:$BACKUP_FILE ./backups/latest_backup.sql
+          rm id_rsa
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ github.run_id }}
+          path: ./backups/latest_backup.sql
+          retention-days: 5
+
+      - name: Fetch Backup List
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: ls -lh /opt/orbisvoice/backups
