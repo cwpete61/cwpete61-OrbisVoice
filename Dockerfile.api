@@ -34,8 +34,8 @@ FROM node:20-slim AS runner
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma runtime
-RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL for Prisma runtime and curl for healthchecks
+RUN apt-get update && apt-get install -y openssl libssl-dev curl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 

@@ -69,6 +69,11 @@ services:
       - orbisvoice-prod-network
     ports:
       - "4001:4001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     image: ghcr.io/cwpete61/orbisvoice-web:latest
@@ -128,9 +133,12 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
-      - web
-      - api
-      - voice-gateway
+      web:
+        condition: service_started
+      api:
+        condition: service_healthy
+      voice-gateway:
+        condition: service_started
     networks:
       - orbisvoice-prod-network
 
