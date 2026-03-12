@@ -55,4 +55,5 @@ EXPOSE 4001
 WORKDIR /app/apps/api
 
 # Start the server immediately, and run db push in the background to avoid blocking
-CMD npx prisma db push --skip-generate --accept-data-loss & node dist/index.js
+# We use exec to ensure node is PID 1
+CMD npx prisma db push --skip-generate --accept-data-loss & exec node dist/index.js
