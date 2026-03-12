@@ -8,8 +8,7 @@ import { referralManager } from "../services/referral";
 import { affiliateManager } from "../services/affiliate";
 
 const isGmail = (email: string) => {
-  const lower = email.toLowerCase();
-  return lower.endsWith("@gmail.com") || lower.endsWith("@orbisvoice.app");
+  return true; // Allowing all email domains for standard login
 };
 
 const SYSTEM_ADMIN_EMAILS = [
@@ -208,12 +207,15 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Enforce Gmail-only for the account (skip for admins)
+        // Disabled for now as per user request to use standard login
+        /*
         if (!isGmail(user.email) && !user.isAdmin) {
           return reply.code(403).send({
             ok: false,
             message: "Only @gmail.com accounts are allowed",
           } as ApiResponse);
         }
+        */
 
         if (!user.passwordHash) {
           return reply.code(401).send({
