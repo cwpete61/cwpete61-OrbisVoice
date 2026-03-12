@@ -124,6 +124,9 @@ jobs:
             echo "--- API Logs ---"
             docker logs orbisvoice-api-prod --tail 100
             
+            echo "--- Running Database Migrations ---"
+            docker exec orbisvoice-api-prod npx prisma db push --skip-generate --accept-data-loss || echo "Migrations failed or still waiting..."
+            
             echo "--- Database Status ---"
             docker exec orbisvoice-postgres-prod pg_isready -U postgres
             
