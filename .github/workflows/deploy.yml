@@ -83,7 +83,7 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis@8214@@' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'Orbis8214Boss' }}
           POSTGRES_PASSWORD_ENCODED: ${{ secrets.POSTGRES_PASSWORD_ENCODED || 'Orbis%408214%40%40' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}

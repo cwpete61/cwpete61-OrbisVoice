@@ -51,4 +51,4 @@ EXPOSE 4001
 
 # Run Prisma db push to ensure schema is synced, then start the server
 WORKDIR /app/apps/api
-CMD sh -c "npx prisma db push --skip-generate && node dist/index.js"
+CMD sh -c "npx prisma db push --skip-generate || echo 'Prisma db push failed, check your database connection. Starting server anyway...'; node dist/index.js"
