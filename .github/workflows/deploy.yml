@@ -103,6 +103,13 @@ jobs:
             cd /opt/orbisvoice
             mkdir -p nginx/certs
             
+            # Ensure firewall is open
+            if command -v ufw > /dev/null; then
+              ufw allow 80/tcp || true
+              ufw allow 443/tcp || true
+              ufw allow 4001/tcp || true
+            fi
+            
             echo "Environment variables passed. Constructing fresh deployment..."
             export JWT_SECRET="${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}"
             
@@ -120,16 +127,32 @@ jobs:
             echo "Starting fresh containers..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml up -d
             
-            echo "Waiting for stabilization..."
-            sleep 30
+            echo "Wait for Database to be ready..."
+            for i in {1..10}; do
+              if docker exec -T orbisvoice-postgres-prod pg_isready -h localhost -U postgres; then
+                echo "Postgres is READY"
+                break
+              fi
+              echo "Waiting for Postgres... ($i/10)"
+              sleep 5
+            done
             
-            echo "Syncing database schema..."
-            docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
+            echo "Performing Out-of-Band Database Migration..."
+            docker run --rm --network orbisvoice-prod-network \
+              -e DATABASE_URL=$DATABASE_URL \
+              ghcr.io/cwpete61/orbisvoice-api:latest \
+              npx prisma db push --accept-data-loss > prisma_push.log 2>&1
+            cat prisma_push.log
             
-            echo "Testing Database Connection..."
+            echo "Testing Database Connection (via API)..."
             docker exec -T orbisvoice-api-prod node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.\$queryRaw\`SELECT 1\`.then(() => console.log('DB_CONNECTION_SUCCESS')).catch(err => { console.error('DB_CONNECTION_FAILED:', err.message); process.exit(1); })" || echo "Database test failed"
             
             echo "### deployment Diagnostics" > deployment_report.md
+            echo "#### Prisma Push Log (Out-of-Band)" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            cat prisma_push.log >> deployment_report.md
+            echo '```' >> deployment_report.md
+            
             echo "#### API Logs (Last 50 lines)" >> deployment_report.md
             echo '```' >> deployment_report.md
             docker logs orbisvoice-api-prod --tail 50 >> deployment_report.md 2>&1 || echo "No api logs" >> deployment_report.md
