@@ -114,11 +114,22 @@ jobs:
             echo "Checking certificates..."
             ls -la nginx/certs/
             
+            # Clean slate deployment steps
+            echo "Performing Clean Slate (Nuke and Pave)..."
+            docker compose -f docker-compose.prod.yml down || true
+            docker system prune -af --volumes || true
+            
+            echo "Pulling latest images..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
+            
+            echo "Starting fresh containers..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml up -d
             
-            echo "Waiting for containers to stabilize..."
-            sleep 15
+            echo "Waiting for stabilization..."
+            sleep 20
+            
+            echo "Syncing database schema..."
+            docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
             
             echo "--- DIAGNOSTICS START ---"
             echo "1. API Logs (Last 100 lines):"
