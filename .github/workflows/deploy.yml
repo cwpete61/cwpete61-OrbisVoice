@@ -131,22 +131,27 @@ jobs:
             echo "Syncing database schema..."
             docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
             
-            echo "--- DIAGNOSTICS START ---"
-            echo "1. API Logs (Last 100 lines):"
-            docker compose -f docker-compose.prod.yml logs --tail 100 api
+            echo "--- VERBOSE DIAGNOSTICS START ---"
+            echo "1. File Layout:"
+            ls -R /opt/orbisvoice
             
-            echo "2. Database Reachability:"
-            docker compose -f docker-compose.prod.yml exec -T postgres pg_isready
+            echo "2. Port Usage (Host):"
+            ss -tulpn | grep -E ":80|:443|:4001|:5440" || echo "No ports found"
             
-            echo "3. API Container Health:"
-            docker inspect orbisvoice-api-prod | grep -A 10 "Health" || echo "No health status yet"
+            echo "3. Container Status & Logs:"
+            docker ps -a
+            echo "Nginx Logs:"
+            docker logs orbisvoice-nginx-prod || echo "No nginx logs"
+            echo "API Logs:"
+            docker logs orbisvoice-api-prod || echo "No api logs"
             
-            echo "4. Environment Variable Check (Grep):"
-            [ -f .env.prod ] && grep -E "DATABASE_URL|REDIS_URL|JWT_SECRET|POSTGRES_PASSWORD" .env.prod | sed 's/:.*/:****/' || echo ".env.prod not found"
+            echo "4. Database Health Check:"
+            docker exec orbisvoice-postgres-prod pg_isready -U postgres || echo "Postgres not ready"
             
-            echo "--- DIAGNOSTICS END ---"
+            echo "5. Network Check:"
+            docker network ls
+            docker network inspect orbisvoice-prod-network || echo "Network missing"
             
-            echo "--- Nginx Config Test ---"
-            docker exec orbisvoice-nginx-prod nginx -t || true
+            echo "--- VERBOSE DIAGNOSTICS END ---"
             
             docker system prune -f
