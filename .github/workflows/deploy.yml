@@ -135,29 +135,31 @@ jobs:
             docker exec -T orbisvoice-api-prod npx prisma db push --accept-data-loss || echo "Prisma push failed"
             
             echo "### deployment Diagnostics" > deployment_report.md
-            echo "#### File Layout" >> deployment_report.md
+            echo "#### File Health Check" >> deployment_report.md
             echo '```' >> deployment_report.md
-            ls -R /opt/orbisvoice >> deployment_report.md
+            ls -l /opt/orbisvoice/nginx/nginx.conf >> deployment_report.md || echo "Nginx config missing" >> deployment_report.md
+            ls -l /opt/orbisvoice/nginx/certs/fullchain.pem >> deployment_report.md || echo "Certs missing" >> deployment_report.md
+            find /opt/orbisvoice -maxdepth 2 -not -path '*/node_modules*' >> deployment_report.md
             echo '```' >> deployment_report.md
             
             echo "#### Port Usage (Host)" >> deployment_report.md
             echo '```' >> deployment_report.md
-            ss -tulpn | grep -E ":80|:443|:4001|:5440" >> deployment_report.md || echo "No ports found" >> deployment_report.md
+            ss -tulpn | grep -E "80|443|4001|5440" >> deployment_report.md || echo "No tracked ports in use" >> deployment_report.md
             echo '```' >> deployment_report.md
             
             echo "#### Container Status" >> deployment_report.md
             echo '```' >> deployment_report.md
-            docker ps -a >> deployment_report.md
+            docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" >> deployment_report.md
             echo '```' >> deployment_report.md
 
-            echo "#### Nginx Logs (First 50 lines)" >> deployment_report.md
+            echo "#### Nginx Logs (Tail 30)" >> deployment_report.md
             echo '```' >> deployment_report.md
-            docker logs orbisvoice-nginx-prod | head -n 50 >> deployment_report.md || echo "No nginx logs" >> deployment_report.md
+            docker logs orbisvoice-nginx-prod --tail 30 >> deployment_report.md 2>&1 || echo "No nginx logs" >> deployment_report.md
             echo '```' >> deployment_report.md
 
-            echo "#### API Logs (Last 100 lines)" >> deployment_report.md
+            echo "#### API Logs (Tail 50)" >> deployment_report.md
             echo '```' >> deployment_report.md
-            docker logs orbisvoice-api-prod | tail -n 100 >> deployment_report.md || echo "No api logs" >> deployment_report.md
+            docker logs orbisvoice-api-prod --tail 50 >> deployment_report.md 2>&1 || echo "No api logs" >> deployment_report.md
             echo '```' >> deployment_report.md
             
             cp deployment_report.md $GITHUB_STEP_SUMMARY || true
