@@ -1,8 +1,8 @@
 ### deployment Diagnostics
 #### File Health Check
 ```
--rw-r--r-- 1 1001 1001 3707 Mar 12 17:19 /opt/orbisvoice/nginx/nginx.conf
--rw-r--r-- 1 1001 1001 1131 Mar 12 17:19 /opt/orbisvoice/nginx/certs/fullchain.pem
+-rw-r--r-- 1 1001 1001 3707 Mar 12 17:35 /opt/orbisvoice/nginx/nginx.conf
+-rw-r--r-- 1 1001 1001 1131 Mar 12 17:35 /opt/orbisvoice/nginx/certs/fullchain.pem
 /opt/orbisvoice
 /opt/orbisvoice/nginx
 /opt/orbisvoice/nginx/nginx.conf
@@ -20,18 +20,17 @@ tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-
 ```
 #### Container Status
 ```
-NAMES                           STATUS                          PORTS
-orbisvoice-nginx-prod           Up 25 seconds                   0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
-orbisvoice-web-prod             Up 6 hours                      3000/tcp
-orbisvoice-api-prod             Restarting (1) 48 seconds ago   
-orbisvoice-voice-gateway-prod   Restarting (1) 40 seconds ago   
-orbisvoice-postgres-prod        Up 6 hours (healthy)            0.0.0.0:5440->5432/tcp, [::]:5440->5432/tcp
-orbisvoice-redis-prod           Up 6 hours (healthy)            0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
-orbis-local-app                 Up 35 hours                     0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+NAMES                           STATUS                         PORTS
+orbisvoice-nginx-prod           Up 15 minutes                  0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+orbisvoice-web-prod             Up 6 hours                     3000/tcp
+orbisvoice-api-prod             Restarting (1) 2 seconds ago   
+orbisvoice-voice-gateway-prod   Up Less than a second          4001/tcp
+orbisvoice-postgres-prod        Up 6 hours (healthy)           0.0.0.0:5440->5432/tcp, [::]:5440->5432/tcp
+orbisvoice-redis-prod           Up 6 hours (healthy)           0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+orbis-local-app                 Up 35 hours                    0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
 ```
 #### Nginx Logs (Tail 30)
 ```
-/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
 /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
 10-listen-on-ipv6-by-default.sh: info: IPv6 listen already enabled
@@ -61,6 +60,7 @@ nginx: [emerg] host not found in upstream "api" in /etc/nginx/nginx.conf:82
 2026/03/12 16:20:13 [notice] 1#1: start worker process 25
 2026/03/12 16:20:13 [notice] 1#1: start worker process 26
 2026/03/12 16:20:13 [notice] 1#1: start worker process 27
+2026/03/12 16:35:54 [error] 23#23: *66 api could not be resolved (2: Server failure), client: 64.121.33.94, server: myorbisvoice.com, request: "POST /api/auth/login HTTP/1.1", host: "myorbisvoice.com", referrer: "https://myorbisvoice.com/login"
 ```
 #### API Logs (Tail 50)
 ```
