@@ -31,26 +31,6 @@ Host orbisvoice-prod
 **Once saved, Opencode can connect simply by using:**
 `ssh orbisvoice-prod`
 
-## Deploy Commands
-
-```bash
-# Navigate to project directory
-cd /opt/orbisvoice
-
-# Pull latest code
-git pull origin master
-
-# Deploy with Docker Compose
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml up -d --force-recreate
-
-# Check status
-docker compose -f docker-compose.prod.yml ps
-
-# View logs
-docker compose -f docker-compose.prod.yml logs --tail 50 api
-```
-
 ## SSH Key Fix (If Authentication Fails)
 
 If you get "Permission denied" when connecting:
@@ -64,7 +44,7 @@ From a working SSH session on the server:
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
 
 # Add the public key
-echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDknSeVjgyHLZjuroCCg1EJflnl/q4AwGLpfqtJ97Md5UG8n8NF4PISnK/7FUfsFIWkr3yEAjaVHuLFn9zVyICezDjkUSo5wBdsJb48v5Hz4e51XJC/MCxCcABLdjXP6JeXtrsoZZ7VFkmqVUendHWpZI0epGBf42ZOAi3mtSQgfA2DYDH6+4KWBRDdzICZ8jEBKkg10q7PpqdX2KPRYRYYHmoIkisSFSO+US00MYAXdu8RJN6hYaHY7mpM4KNk7F/371RFIpM8HFeMlEn5eIPeG0Heq09xyit0afW3jybsgVmIKyrS7p/Rw0ng04pmFt9j56JrM7yfOcPUtz9RaNi4g3Q1BvMk0Or0BsqwBLQzFBP/9+SptbASx2CUSzCT780RP8eqSytpN8usyjYHUi6CIktwBTr6D7YsOEPTwgcHFwyBOiVQ9T9DiUqpECp5WW670PYclSBapHh9MU7LMUowT+KIBkbR+TT3AxFcKoeaJowKGVAHfDYlC9d/ibaO3ie9AWot3b9uQkAFFU/mL6qAlhfimwRhucnWiCVBguI7yKUm+iWfojLkxSx3b0fwKvMyHlYvbCSXwa5C119UMixqg1mi1mSfIT753zKQK6ukjK7DOcTWmlZBk3VK0TXG10NyOVMCcmU+KiVCh/cO0zAx/VzzeW9HWgQyO7UyyKRHOw== crawf@Zeus" >> ~/.ssh/authorized_keys
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDknSeVjgyHLZjuroCCg1EJflnl/q4AwGLpfqtJ97Md5UG8n8NF4PISnK/7FUfsFIWkr3yEAjaVHuLFn9zVyICezDjkUSo5wBdsJb48v5Hz4e51XJC/MCxCcABLdjXP6JeXtrsoZZ7VFkmqVUendHWpZI0epGBf42ZOAi3mtSQgfA2DYDH6+4KWBRDdzICZ8jEBKkg10q7PpqdX2KPRYRYYHmoIkisSFSO+US00MYAXdu2RJN6hYaHY7mpM4KNk7F/371RFIpM8HFeMlEn5eIPeG0Heq09xyit0afW3jybsgVmIKyrS7p/Rw0ng04pmFt9j56JrM7yfOcPUtz9RaNi4g3Q1BvMk0Or0BsqwBLQzFBP/9+SptbASx2CUSzCT780RP8eqSytpN8usyjYHUi6CIktwBTr6D7YsOEPTwgcHFwyBOiVQ9T9DiUqpECp5WW670PYclSBapHh9MU7LMUowT+KIBkbR+TT3AxFcKoeaJowKGVAHfDYlC9d/ibaO3ie9AWot3b9uQkAFFU/mL6qAlhfimwRhucnWiCVBguI7yKUm+iWfojLkxSx3b0fwKvMyHlYvbCSXwa5C119UMixqg1mi1mSfIT753zKQK6ukjK7DOcTWmlZBk3VK0TXG10NyOVMCcmU+KiVCh/cO0zAx/VzzeW9HWgQyO7UyyKRHOw== crawf@Zeus" >> ~/.ssh/authorized_keys
 
 # Set correct permissions
 chmod 600 ~/.ssh/authorized_keys
