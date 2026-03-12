@@ -14,6 +14,8 @@ COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
 COPY apps/referrals/package.json ./apps/referrals/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/config/package.json ./packages/config/
 
 # Install dependencies from root
 RUN npm install --legacy-peer-deps
