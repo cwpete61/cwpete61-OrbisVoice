@@ -64,7 +64,7 @@ const parsed = result.success ? result.data : (process.env as any);
 // Log warnings for missing critical keys in production
 if (parsed.NODE_ENV === "production") {
   const missingKeys = [];
-  if (!parsed.STRIPE_API_KEY) missingKeys.push("STRIPE_API_KEY");
+  if (!parsed.STRIPE_API_KEY) missingKeys.push(`STRIPE_API_KEY (${typeof parsed.STRIPE_API_KEY === 'string' ? 'empty string' : 'undefined/null'})`);
   if (!parsed.STRIPE_WEBHOOK_SECRET) missingKeys.push("STRIPE_WEBHOOK_SECRET");
   if (!parsed.GOOGLE_CLIENT_ID) missingKeys.push("GOOGLE_CLIENT_ID");
   if (!parsed.GOOGLE_CLIENT_SECRET) missingKeys.push("GOOGLE_CLIENT_SECRET");
