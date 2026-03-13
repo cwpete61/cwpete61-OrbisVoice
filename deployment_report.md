@@ -7,12 +7,12 @@ For more information, see: https://pris.ly/prisma-config
 Prisma schema loaded from prisma/schema.prisma
 Datasource "db": PostgreSQL database "orbisvoice", schema "public" at "postgres:5432"
 
-🚀  Your database is now in sync with your Prisma schema. Done in 897ms
+The database is already in sync with the Prisma schema.
 
 Running generate... (Use --skip-generate to skip the generators)
 [2K[1A[2K[GRunning generate... - Prisma Client
 [2K[1A[2K[G✔ Generated Prisma Client (v6.19.2) to ./../../node_modules/@prisma/client in 6
-01ms
+40ms
 ┌─────────────────────────────────────────────────────────┐
 │  Update available 6.19.2 -> 7.5.0                       │
 │                                                         │
@@ -33,42 +33,58 @@ Running generate... (Use --skip-generate to skip the generators)
    - OPENAI_API_KEY
 Some features (Payment, Login, AI) may not work correctly.
 
-{"level":30,"time":1773395216985,"pid":1,"hostname":"5167213aa326","msg":"Session manager initialized with Redis"}
-{"level":30,"time":1773395216986,"pid":1,"hostname":"5167213aa326","msg":"Session manager initialized"}
-{"level":30,"time":1773395216986,"pid":1,"hostname":"5167213aa326","msg":"Tool handlers registered"}
-{"level":50,"time":1773395217169,"pid":1,"hostname":"5167213aa326","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.\n    at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)\n    at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)\n    at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)\n    at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)\n    at async start (/app/apps/api/dist/index.js:137:32)","code":"P2021","meta":{"modelName":"User","table":"public.User"},"clientVersion":"6.19.2","name":"PrismaClientKnownRequestError"},"msg":"Bootstrap failed"}
-{"level":30,"time":1773395217405,"pid":1,"hostname":"5167213aa326","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
-{"level":30,"time":1773395217405,"pid":1,"hostname":"5167213aa326","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
-{"level":30,"time":1773395217406,"pid":1,"hostname":"5167213aa326","msg":"Server running at http://0.0.0.0:4001"}
-{"level":30,"time":1773395225789,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":55646},"msg":"incoming request"}
-{"level":30,"time":1773395225814,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":24.215840995311737,"msg":"request completed"}
-{"level":30,"time":1773395235905,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":50908},"msg":"incoming request"}
-{"level":30,"time":1773395235907,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.98130601644516,"msg":"request completed"}
-{"level":30,"time":1773395246008,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":38396},"msg":"incoming request"}
-{"level":30,"time":1773395246010,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.608845978975296,"msg":"request completed"}
-{"level":30,"time":1773395256117,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":43722},"msg":"incoming request"}
-{"level":30,"time":1773395256119,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.5928849875926971,"msg":"request completed"}
-{"level":30,"time":1773395266220,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":58562},"msg":"incoming request"}
-{"level":30,"time":1773395266222,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.595641016960144,"msg":"request completed"}
+{"level":30,"time":1773395984031,"pid":1,"hostname":"ac551f2b061e","msg":"Session manager initialized with Redis"}
+{"level":30,"time":1773395984032,"pid":1,"hostname":"ac551f2b061e","msg":"Session manager initialized"}
+{"level":30,"time":1773395984032,"pid":1,"hostname":"ac551f2b061e","msg":"Tool handlers registered"}
+{"level":30,"time":1773395984337,"pid":1,"hostname":"ac551f2b061e","msg":"Admin user created"}
+{"level":30,"time":1773395984351,"pid":1,"hostname":"ac551f2b061e","msg":"Platform settings bootstrapped"}
+{"level":30,"time":1773395984593,"pid":1,"hostname":"ac551f2b061e","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
+{"level":30,"time":1773395984594,"pid":1,"hostname":"ac551f2b061e","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
+{"level":30,"time":1773395984594,"pid":1,"hostname":"ac551f2b061e","msg":"Server running at http://0.0.0.0:4001"}
+{"level":30,"time":1773395992868,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":33896},"msg":"incoming request"}
+{"level":30,"time":1773395992876,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":7.351976990699768,"msg":"request completed"}
+{"level":30,"time":1773396003073,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":38852},"msg":"incoming request"}
+{"level":30,"time":1773396003077,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":2.948834002017975,"msg":"request completed"}
+{"level":30,"time":1773396013192,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":43488},"msg":"incoming request"}
+{"level":30,"time":1773396013194,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.6659919917583466,"msg":"request completed"}
+{"level":30,"time":1773396023312,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":53386},"msg":"incoming request"}
+{"level":30,"time":1773396023314,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.794750988483429,"msg":"request completed"}
+{"level":30,"time":1773396028627,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-5","req":{"method":"POST","url":"/auth/signup","host":"myorbisvoice.com","remoteAddress":"172.18.0.7","remotePort":38910},"msg":"incoming request"}
+{"level":30,"time":1773396028865,"pid":1,"hostname":"ac551f2b061e","to":"talk@myorbisvoice.com","subject":"Verify your email address","body":"Welcome to OrbisVoice, Admin! Please verify your email address by clicking the link below:\n\nhttp://localhost:3000/verify-email?token=064298828cd37f9732a3e7f407929acf45302d1ef00513ebe91cead6e07d0583&email=talk%40myorbisvoice.com\n\nIf you did not create an account, please ignore this email.","msg":"📧 [EMAIL CONSOLE FALLBACK]"}
+
+--- EMAIL EMULATION ---
+To: talk@myorbisvoice.com
+Subject: Verify your email address
+Body: Welcome to OrbisVoice, Admin! Please verify your email address by clicking the link below:
+
+http://localhost:3000/verify-email?token=064298828cd37f9732a3e7f407929acf45302d1ef00513ebe91cead6e07d0583&email=talk%40myorbisvoice.com
+
+If you did not create an account, please ignore this email.
+-----------------------
+
+{"level":30,"time":1773396028879,"pid":1,"hostname":"ac551f2b061e","userId":"cmmoq7hc80004p101jnvl5g37","email":"talk@myorbisvoice.com","msg":"Verification email sent on signup"}
+{"level":30,"time":1773396028880,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-5","res":{"statusCode":201},"responseTime":250.76166999340057,"msg":"request completed"}
+{"level":30,"time":1773396033448,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-6","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":47552},"msg":"incoming request"}
+{"level":30,"time":1773396033450,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-6","res":{"statusCode":200},"responseTime":1.2386490106582642,"msg":"request completed"}
 ```
 #### Port Usage (Host)
 ```
-tcp   LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1473951,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1473975,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:4001      0.0.0.0:*    users:(("docker-proxy",pid=1473784,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:5440      0.0.0.0:*    users:(("docker-proxy",pid=1473524,fd=8))              
-tcp   LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1473958,fd=8))              
-tcp   LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1473981,fd=8))              
-tcp   LISTEN 0      4096            [::]:4001         [::]:*    users:(("docker-proxy",pid=1473796,fd=8))              
-tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-proxy",pid=1473535,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1480142,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1480166,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:4001      0.0.0.0:*    users:(("docker-proxy",pid=1479971,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:5440      0.0.0.0:*    users:(("docker-proxy",pid=1479734,fd=8))              
+tcp   LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1480148,fd=8))              
+tcp   LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1480174,fd=8))              
+tcp   LISTEN 0      4096            [::]:4001         [::]:*    users:(("docker-proxy",pid=1479977,fd=8))              
+tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-proxy",pid=1479745,fd=8))              
 ```
 #### Container Status
 ```
 NAMES                           STATUS                        PORTS
-orbisvoice-nginx-prod           Up 56 seconds                 0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+orbisvoice-nginx-prod           Up 57 seconds                 0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
 orbisvoice-web-prod             Up 57 seconds                 3000/tcp
-orbisvoice-voice-gateway-prod   Up 57 seconds                 4001/tcp
-orbisvoice-api-prod             Up 57 seconds (healthy)       0.0.0.0:4001->4001/tcp, [::]:4001->4001/tcp
+orbisvoice-voice-gateway-prod   Up 58 seconds                 4001/tcp
+orbisvoice-api-prod             Up 58 seconds (healthy)       0.0.0.0:4001->4001/tcp, [::]:4001->4001/tcp
 orbisvoice-postgres-prod        Up About a minute (healthy)   0.0.0.0:5440->5432/tcp, [::]:5440->5432/tcp
 orbisvoice-redis-prod           Up About a minute (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
 orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
@@ -84,18 +100,18 @@ orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
 /docker-entrypoint.sh: Configuration complete; ready for start up
-2026/03/13 09:46:56 [notice] 1#1: using the "epoll" event method
-2026/03/13 09:46:56 [notice] 1#1: nginx/1.29.6
-2026/03/13 09:46:56 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
-2026/03/13 09:46:56 [notice] 1#1: OS: Linux 6.8.0-101-generic
-2026/03/13 09:46:56 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
-2026/03/13 09:46:56 [notice] 1#1: start worker processes
-2026/03/13 09:46:56 [notice] 1#1: start worker process 30
-2026/03/13 09:46:56 [notice] 1#1: start worker process 31
-2026/03/13 09:46:56 [notice] 1#1: start worker process 32
-2026/03/13 09:46:56 [notice] 1#1: start worker process 33
-2026/03/13 09:46:56 [notice] 1#1: start worker process 34
-2026/03/13 09:46:56 [notice] 1#1: start worker process 35
+2026/03/13 09:59:43 [notice] 1#1: using the "epoll" event method
+2026/03/13 09:59:43 [notice] 1#1: nginx/1.29.6
+2026/03/13 09:59:43 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+2026/03/13 09:59:43 [notice] 1#1: OS: Linux 6.8.0-101-generic
+2026/03/13 09:59:43 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+2026/03/13 09:59:43 [notice] 1#1: start worker processes
+2026/03/13 09:59:43 [notice] 1#1: start worker process 30
+2026/03/13 09:59:43 [notice] 1#1: start worker process 31
+2026/03/13 09:59:43 [notice] 1#1: start worker process 32
+2026/03/13 09:59:43 [notice] 1#1: start worker process 33
+2026/03/13 09:59:43 [notice] 1#1: start worker process 34
+2026/03/13 09:59:43 [notice] 1#1: start worker process 35
 ```
 #### API Logs (Tail 50)
 ```
@@ -105,21 +121,37 @@ orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000
    - OPENAI_API_KEY
 Some features (Payment, Login, AI) may not work correctly.
 
-{"level":30,"time":1773395216985,"pid":1,"hostname":"5167213aa326","msg":"Session manager initialized with Redis"}
-{"level":30,"time":1773395216986,"pid":1,"hostname":"5167213aa326","msg":"Session manager initialized"}
-{"level":30,"time":1773395216986,"pid":1,"hostname":"5167213aa326","msg":"Tool handlers registered"}
-{"level":50,"time":1773395217169,"pid":1,"hostname":"5167213aa326","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.\n    at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)\n    at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)\n    at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)\n    at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)\n    at async start (/app/apps/api/dist/index.js:137:32)","code":"P2021","meta":{"modelName":"User","table":"public.User"},"clientVersion":"6.19.2","name":"PrismaClientKnownRequestError"},"msg":"Bootstrap failed"}
-{"level":30,"time":1773395217405,"pid":1,"hostname":"5167213aa326","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
-{"level":30,"time":1773395217405,"pid":1,"hostname":"5167213aa326","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
-{"level":30,"time":1773395217406,"pid":1,"hostname":"5167213aa326","msg":"Server running at http://0.0.0.0:4001"}
-{"level":30,"time":1773395225789,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":55646},"msg":"incoming request"}
-{"level":30,"time":1773395225814,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":24.215840995311737,"msg":"request completed"}
-{"level":30,"time":1773395235905,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":50908},"msg":"incoming request"}
-{"level":30,"time":1773395235907,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.98130601644516,"msg":"request completed"}
-{"level":30,"time":1773395246008,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":38396},"msg":"incoming request"}
-{"level":30,"time":1773395246010,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.608845978975296,"msg":"request completed"}
-{"level":30,"time":1773395256117,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":43722},"msg":"incoming request"}
-{"level":30,"time":1773395256119,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.5928849875926971,"msg":"request completed"}
-{"level":30,"time":1773395266220,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":58562},"msg":"incoming request"}
-{"level":30,"time":1773395266222,"pid":1,"hostname":"5167213aa326","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.595641016960144,"msg":"request completed"}
+{"level":30,"time":1773395984031,"pid":1,"hostname":"ac551f2b061e","msg":"Session manager initialized with Redis"}
+{"level":30,"time":1773395984032,"pid":1,"hostname":"ac551f2b061e","msg":"Session manager initialized"}
+{"level":30,"time":1773395984032,"pid":1,"hostname":"ac551f2b061e","msg":"Tool handlers registered"}
+{"level":30,"time":1773395984337,"pid":1,"hostname":"ac551f2b061e","msg":"Admin user created"}
+{"level":30,"time":1773395984351,"pid":1,"hostname":"ac551f2b061e","msg":"Platform settings bootstrapped"}
+{"level":30,"time":1773395984593,"pid":1,"hostname":"ac551f2b061e","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
+{"level":30,"time":1773395984594,"pid":1,"hostname":"ac551f2b061e","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
+{"level":30,"time":1773395984594,"pid":1,"hostname":"ac551f2b061e","msg":"Server running at http://0.0.0.0:4001"}
+{"level":30,"time":1773395992868,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":33896},"msg":"incoming request"}
+{"level":30,"time":1773395992876,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":7.351976990699768,"msg":"request completed"}
+{"level":30,"time":1773396003073,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":38852},"msg":"incoming request"}
+{"level":30,"time":1773396003077,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":2.948834002017975,"msg":"request completed"}
+{"level":30,"time":1773396013192,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":43488},"msg":"incoming request"}
+{"level":30,"time":1773396013194,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.6659919917583466,"msg":"request completed"}
+{"level":30,"time":1773396023312,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":53386},"msg":"incoming request"}
+{"level":30,"time":1773396023314,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.794750988483429,"msg":"request completed"}
+{"level":30,"time":1773396028627,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-5","req":{"method":"POST","url":"/auth/signup","host":"myorbisvoice.com","remoteAddress":"172.18.0.7","remotePort":38910},"msg":"incoming request"}
+{"level":30,"time":1773396028865,"pid":1,"hostname":"ac551f2b061e","to":"talk@myorbisvoice.com","subject":"Verify your email address","body":"Welcome to OrbisVoice, Admin! Please verify your email address by clicking the link below:\n\nhttp://localhost:3000/verify-email?token=064298828cd37f9732a3e7f407929acf45302d1ef00513ebe91cead6e07d0583&email=talk%40myorbisvoice.com\n\nIf you did not create an account, please ignore this email.","msg":"📧 [EMAIL CONSOLE FALLBACK]"}
+
+--- EMAIL EMULATION ---
+To: talk@myorbisvoice.com
+Subject: Verify your email address
+Body: Welcome to OrbisVoice, Admin! Please verify your email address by clicking the link below:
+
+http://localhost:3000/verify-email?token=064298828cd37f9732a3e7f407929acf45302d1ef00513ebe91cead6e07d0583&email=talk%40myorbisvoice.com
+
+If you did not create an account, please ignore this email.
+-----------------------
+
+{"level":30,"time":1773396028879,"pid":1,"hostname":"ac551f2b061e","userId":"cmmoq7hc80004p101jnvl5g37","email":"talk@myorbisvoice.com","msg":"Verification email sent on signup"}
+{"level":30,"time":1773396028880,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-5","res":{"statusCode":201},"responseTime":250.76166999340057,"msg":"request completed"}
+{"level":30,"time":1773396033448,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-6","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":47552},"msg":"incoming request"}
+{"level":30,"time":1773396033450,"pid":1,"hostname":"ac551f2b061e","context":"fastify","reqId":"req-6","res":{"statusCode":200},"responseTime":1.2386490106582642,"msg":"request completed"}
 ```
