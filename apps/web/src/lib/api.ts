@@ -48,6 +48,13 @@ export async function apiFetch<T = unknown>(
         );
     }
 
+    if (res.status === 401 || res.status === 404) {
+        if (typeof window !== "undefined") {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+        }
+    }
+
     let data: ApiResponse<T>;
     try {
         data = await res.json();

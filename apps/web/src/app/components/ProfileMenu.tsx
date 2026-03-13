@@ -32,6 +32,12 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
       const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401 || res.status === 404) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         setProfile(data.data);

@@ -59,7 +59,7 @@ export async function generateAnswer(question: string): Promise<{
 }> {
     const sources = await searchFaq(question);
 
-    let answer = "";
+    let answer: string;
     try {
         const client = getClient();
 

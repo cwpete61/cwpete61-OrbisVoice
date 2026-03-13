@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
+import { env } from "../env";
 import nodemailer from "nodemailer";
 
 // ─── Event type constants ─────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ export const NotifType = {
     SUBSCRIPTION_EXPIRING: "SUBSCRIPTION_EXPIRING",
     SYSTEM_ANNOUNCEMENT: "SYSTEM_ANNOUNCEMENT",
     ADMIN_MANUAL: "ADMIN_MANUAL",
+    EMAIL_VERIFICATION: "EMAIL_VERIFICATION",
 } as const;
 
 export type NotifTypeKey = (typeof NotifType)[keyof typeof NotifType];
@@ -112,8 +114,7 @@ async function sendEmailNotification({
 }: { to: string; name: string; type: string; title: string; body: string }) {
     try {
         const transport = await getTransporter();
-        if (!transport) return false;
-
+        
         // Look up custom template if exists
         const template = await prisma.notificationTemplate.findUnique({ where: { type } });
         const subject = template?.subject ?? title;
@@ -129,6 +130,19 @@ async function sendEmailNotification({
            <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
            <p style="color:#999;font-size:12px;">OrbisVoice · You can manage email notifications in Settings.</p>
          </div>`;
+
+        if (!transport) {
+            if (env.EMAIL_PROVIDER === "console" || process.env.NODE_ENV !== "production") {
+                logger.info({ to, subject, body }, "📧 [EMAIL CONSOLE FALLBACK]");
+                console.log("\n--- EMAIL EMULATION ---");
+                console.log(`To: ${to}`);
+                console.log(`Subject: ${subject}`);
+                console.log(`Body: ${body}`);
+                console.log("-----------------------\n");
+                return true;
+            }
+            return false;
+        }
 
         const config = await prisma.systemEmailConfig.findUnique({ where: { id: "global" } });
         await transport.sendMail({

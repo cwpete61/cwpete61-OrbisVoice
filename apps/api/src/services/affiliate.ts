@@ -328,7 +328,7 @@ export class AffiliateManager {
                         transferId = transfer.id;
                     } catch (stripeErr: any) {
                         logger.error({ stripeErr, affiliateId }, "Stripe transfer failed during payout");
-                        throw new Error(`Stripe transfer failed: ${stripeErr.message}`);
+                        throw new Error(`Stripe transfer failed: ${stripeErr.message}`, { cause: stripeErr });
                     }
                 }
 

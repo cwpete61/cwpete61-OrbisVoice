@@ -31,13 +31,15 @@ const TIER_CONFIG: Record<AllTierName, {
   popular?: boolean;
   limitText?: string;
   frequencyText?: string;
+  secondaryPrice?: string;
 }> = {
   ltd: {
     name: "LTD (Lifetime Deal)",
     accent: "#ef4444",
     description: "One-time payment for lifetime engine access + hosting costs.",
-    limitText: "Limited to first 100",
-    frequencyText: "One-Time Payment"
+    limitText: "Limited Time Offer",
+    frequencyText: "One-Time Payment",
+    secondaryPrice: "$20/month hosting fee"
   },
   starter: {
     name: "Starter",
@@ -407,9 +409,9 @@ function BillingContent() {
         {/* Available Plans */}
         <section>
           <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Available Plans</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {allTierNames.map((tier) => {
-              const info = availableTiers[tier];
+              const info = availableTiers[tier] || (tier === 'ltd' ? { price: 497, conversations: 1000 } : null);
               if (!info) return null;
               const isCurrent = tier === currentTier;
               const isUpgrade = info.price > currentTierInfo.price;
@@ -449,12 +451,19 @@ function BillingContent() {
                     <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">
                       {tier === 'ltd' ? "One-Time Payment" : (config.frequencyText || "per month")}
                     </p>
+                    {config.secondaryPrice && (
+                      <p className="text-xs text-[rgba(240,244,250,0.45)] mt-1 font-medium">
+                        + {config.secondaryPrice}
+                      </p>
+                    )}
                   </div>
                   <div className="mb-6 pb-6 border-b border-white/[0.05]">
                     <p className="text-sm font-medium" style={{ color: config.accent }}>
                       {info.conversations.toLocaleString()} conversations
                     </p>
-                    <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">per month</p>
+                    <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
+                      {tier === 'ltd' ? "lifetime access" : "per month"}
+                    </p>
                   </div>
                   {!isCurrent && (
                     <button

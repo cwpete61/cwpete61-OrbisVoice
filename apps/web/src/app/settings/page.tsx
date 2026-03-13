@@ -279,6 +279,7 @@ function SettingsContent() {
 
   const isSystemAdmin = profile?.role === "SYSTEM_ADMIN" || tokenEmail === "myorbislocal@gmail.com";
 
+  // Fetch non-admin data first
   useEffect(() => {
     fetchApiKeys();
     fetchProfile();
@@ -286,14 +287,7 @@ function SettingsContent() {
     checkGmailConnection();
     fetchGmailCredentials();
     fetchTenantGoogleConfig();
-    fetchTwilioConfig();
-    fetchSystemEmailConfig();
-    fetchStripeConnectConfig();
-    fetchGoogleConfig();
-    fetchPlatformSettings();
-    if (activeTab === "role-settings" || activeTab === "system-roles") {
-      fetchUsers();
-    }
+
     const token = localStorage.getItem("token");
     if (token) {
       try {
@@ -304,6 +298,20 @@ function SettingsContent() {
       }
     }
   }, [tokenLoaded]);
+
+  // Fetch admin-only data when profile is loaded and user is admin
+  useEffect(() => {
+    if (isAdmin || isSystemAdmin) {
+      fetchTwilioConfig();
+      fetchSystemEmailConfig();
+      fetchStripeConnectConfig();
+      fetchGoogleConfig();
+      fetchPlatformSettings();
+      if (activeTab === "role-settings" || activeTab === "system-roles") {
+        fetchUsers();
+      }
+    }
+  }, [profile, isAdmin, isSystemAdmin, activeTab]);
 
   const fetchGmailCredentials = async () => {
     try {
@@ -442,6 +450,12 @@ function SettingsContent() {
       const res = await fetch(`${API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401 || res.status === 404) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         setProfile(data.data);

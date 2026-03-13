@@ -3,7 +3,9 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import bcrypt from "bcryptjs";
 import { env } from "./env";
+
 import { logger } from "./logger";
 import { authRoutes } from "./routes/auth";
 import { agentRoutes } from "./routes/agents";
@@ -136,11 +138,55 @@ const start = async () => {
 
     // Bootstrap admin user
     try {
-      await (prisma as any).user.updateMany({
-        where: { email: "admin@orbisvoice.app" },
-        data: { isAdmin: true, role: "ADMIN" }
+      const adminEmail = "admin@orbisvoice.app";
+      const adminExist = await prisma.user.findFirst({
+        where: { email: adminEmail }
       });
-      logger.info("Admin bootstrap completed");
+
+      if (!adminExist) {
+        // Create a default tenant for the admin if none exists
+        let defaultTenant = await prisma.tenant.findFirst();
+        if (!defaultTenant) {
+          defaultTenant = await prisma.tenant.create({
+            data: { name: "System Workspace" }
+          });
+          logger.info("Default system tenant created");
+        }
+
+        // Create the admin user
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash("admin123", salt);
+        
+        await prisma.user.create({
+          data: {
+            email: adminEmail,
+            name: "System Admin",
+            isAdmin: true,
+            role: "SYSTEM_ADMIN",
+            tenantId: defaultTenant.id,
+            emailVerified: new Date(),
+            passwordHash: passwordHash
+          }
+        });
+        logger.info("Admin user created");
+      } else {
+        // Ensure existing admin has correct roles and a password if missing
+        const updateData: any = { isAdmin: true, role: "SYSTEM_ADMIN" };
+        
+        if (!adminExist.passwordHash) {
+          const salt = await bcrypt.genSalt(10);
+          updateData.passwordHash = await bcrypt.hash("admin123", salt);
+          logger.info("Admin password reset to 'admin123'");
+        }
+
+        await prisma.user.update({
+          where: { id: adminExist.id },
+          data: updateData
+        });
+        logger.info("Admin roles synchronized");
+      }
+
+
 
       // Bootstrap global platform settings
       const settingsCount = await prisma.platformSettings.count();

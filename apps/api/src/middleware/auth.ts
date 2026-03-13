@@ -12,7 +12,7 @@ declare module "fastify" {
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
-  } catch (err) {
+  } catch {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
   }
 }
@@ -21,7 +21,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
-  } catch (err) {
+  } catch {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
   }
@@ -42,7 +42,7 @@ export async function requireAdmin(request: FastifyRequest, reply: FastifyReply)
       reply.code(403).send({ ok: false, message: "Forbidden" });
       return;
     }
-  } catch (err) {
+  } catch {
     reply.code(500).send({ ok: false, message: "Internal server error" });
     return;
   }
@@ -51,7 +51,7 @@ export async function requireAdmin(request: FastifyRequest, reply: FastifyReply)
 export async function requireSystemAdmin(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
-  } catch (err) {
+  } catch {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
   }
@@ -72,7 +72,7 @@ export async function requireSystemAdmin(request: FastifyRequest, reply: Fastify
       reply.code(403).send({ ok: false, message: "Forbidden: System Admin only" });
       return;
     }
-  } catch (err) {
+  } catch {
     reply.code(500).send({ ok: false, message: "Internal server error" });
     return;
   }
@@ -81,7 +81,7 @@ export async function requireSystemAdmin(request: FastifyRequest, reply: Fastify
 export async function requireNotBlocked(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify();
-  } catch (err) {
+  } catch {
     reply.code(401).send({ ok: false, message: "Unauthorized" });
     return;
   }
@@ -109,7 +109,7 @@ export async function requireNotBlocked(request: FastifyRequest, reply: FastifyR
       reply.code(403).send({ ok: false, message: "Account is blocked from accessing agents" });
       return;
     }
-  } catch (err) {
+  } catch {
     reply.code(500).send({ ok: false, message: "Internal server error" });
     return;
   }

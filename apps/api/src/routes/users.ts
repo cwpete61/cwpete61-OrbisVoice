@@ -32,8 +32,10 @@ const AdminUpdateUserSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
   role: z.enum(["SYSTEM_ADMIN", "ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
+  isBlocked: z.boolean().optional(),
   tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),
+  emailVerifiedByAdmin: z.boolean().optional(),
 });
 
 const AdminCreateUserSchema = z.object({
@@ -116,6 +118,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 id: true,
                 name: true,
                 creditBalance: true,
+                subscriptionStatus: true,
+                subscriptionTier: true,
                 createdAt: true,
                 updatedAt: true,
               },
@@ -408,7 +412,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: create user
   fastify.post<{ Body: z.infer<typeof AdminCreateUserSchema> }>(
     "/admin/users",
-    { onRequest: [requireSystemAdmin] },
+    { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
         const body = AdminCreateUserSchema.parse(request.body);
@@ -473,9 +477,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         if (body.isAffiliate) {
           try {
-            const { affiliateManager } = require("../services/affiliate.js");
+            const { affiliateManager } = await import("../services/affiliate.js");
             await affiliateManager.applyForAffiliate(user.id, "ACTIVE");
-          } catch (e) {
+          } catch {
             fastify.log.error("Failed to automatically grant affiliate status to newly created user.");
           }
         }
@@ -564,10 +568,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: update user
-  fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>(
-    "/admin/users/:id",
-    { onRequest: [requireAdmin] },
-    async (request, reply) => {
+  const adminUpdateHandler = async (request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>, reply: any) => {
       try {
         const targetId = request.params.id;
         const body = AdminUpdateUserSchema.parse(request.body);
@@ -607,18 +608,29 @@ export default async function userRoutes(fastify: FastifyInstance) {
           }
         }
 
-        // Check if role or isAdmin is being changed, and if so, require SYSTEM_ADMIN
+        // Check if role or isAdmin is being changed
         if (body.role !== undefined || body.isAdmin !== undefined) {
           const requestingUser = (request as any).user as AuthPayload;
           const dbRequestingUser = await prisma.user.findUnique({
             where: { id: requestingUser.userId },
             select: { role: true }
           });
+          
           if (dbRequestingUser?.role !== "SYSTEM_ADMIN") {
-            return reply.code(403).send({
-              ok: false,
-              message: "Only System Admins can change user roles",
-            } as ApiResponse);
+            // Non-system admins cannot promote to SYSTEM_ADMIN
+            if (body.role === "SYSTEM_ADMIN" || (body.isAdmin && targetUser.role !== "SYSTEM_ADMIN" && body.role === undefined && targetUser.role === "USER")) {
+                return reply.code(403).send({
+                    ok: false,
+                    message: "Only System Admins can grant System Admin privileges",
+                } as ApiResponse);
+            }
+            // Non-system admins cannot demote SYSTEM_ADMINs
+            if (targetUser.role === "SYSTEM_ADMIN") {
+                return reply.code(403).send({
+                    ok: false,
+                    message: "Only System Admins can modify other System Admins",
+                } as ApiResponse);
+            }
           }
         }
 
@@ -646,7 +658,25 @@ export default async function userRoutes(fastify: FastifyInstance) {
           }
         }
 
-        const { tier, ...userData } = body;
+        const { tier, emailVerifiedByAdmin, ...inputData } = body;
+        const userData: any = { ...inputData };
+
+        if (emailVerifiedByAdmin !== undefined) {
+          const requestingUser = (request as any).user as AuthPayload;
+          const dbRequestingUser = await prisma.user.findUnique({
+            where: { id: requestingUser.userId },
+            select: { role: true }
+          });
+
+          if (dbRequestingUser?.role === "SYSTEM_ADMIN") {
+            userData.emailVerified = emailVerifiedByAdmin ? new Date() : null;
+          } else {
+            return reply.code(403).send({
+              ok: false,
+              message: "Only System Admins can modify email verification status",
+            } as ApiResponse);
+          }
+        }
         const userSelect = {
           id: true,
           email: true,
@@ -716,13 +746,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
           message: "Internal server error",
         } as ApiResponse);
       }
-    }
-  );
+  };
+
+  fastify.patch<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>("/admin/users/:id", { onRequest: [requireAdmin] }, adminUpdateHandler as any);
+  fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>("/admin/users/:id", { onRequest: [requireAdmin] }, adminUpdateHandler as any);
 
   // Admin: block or unblock user
-  fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminBlockUserSchema> }>(
+  fastify.patch<{ Params: { id: string }; Body: z.infer<typeof AdminBlockUserSchema> }>(
     "/admin/users/:id/block",
-    { onRequest: [requireSystemAdmin] },
+    { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;
@@ -786,9 +818,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: reset user password
-  fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminPasswordSchema> }>(
+  fastify.patch<{ Params: { id: string }; Body: z.infer<typeof AdminPasswordSchema> }>(
     "/admin/users/:id/password",
-    { onRequest: [requireSystemAdmin] },
+    { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;
@@ -883,7 +915,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Admin: delete user
   fastify.delete<{ Params: { id: string } }>(
     "/admin/users/:id",
-    { onRequest: [requireSystemAdmin] },
+    { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
         const targetId = request.params.id;

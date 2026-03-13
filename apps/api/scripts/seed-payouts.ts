@@ -31,7 +31,7 @@ async function main() {
     let affiliate = await prisma.affiliate.findUnique({ where: { userId: user.id } });
 
     if (!affiliate) {
-        affiliate = await prisma.affiliate.create({
+        await prisma.affiliate.create({
             data: {
                 userId: user.id,
                 status: "ACTIVE",
@@ -46,7 +46,7 @@ async function main() {
             }
         });
     } else {
-        affiliate = await prisma.affiliate.update({
+        await prisma.affiliate.update({
             where: { id: affiliate.id },
             data: {
                 status: "ACTIVE",

@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const router = useRouter();
 
 
@@ -31,6 +33,9 @@ export default function LoginPage() {
         router.push("/dashboard");
       } else {
         setError(data.message || "Login failed");
+        if ((data as any).data?.unverified) {
+          setUnverifiedEmail((data as any).data.email);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed. Please try again.");
@@ -55,10 +60,31 @@ export default function LoginPage() {
     }
   };
 
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    setResendStatus("loading");
+    try {
+      const { res, data } = await apiFetch("/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+      if (res.ok) {
+        setResendStatus("success");
+      } else {
+        setResendStatus("error");
+        setError(data.message || "Failed to resend verification email");
+      }
+    } catch (err) {
+      setResendStatus("error");
+      setError("Failed to resend verification email. Please try again.");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#05080f]">
+    <div className="flex min-h-screen flex-col bg-[#05080f]">
       <PublicNav />
-      <div className="flex items-center justify-center px-4 py-12">
+      <div className="flex flex-grow items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#14b8a6]">
@@ -73,13 +99,29 @@ export default function LoginPage() {
               {error && (
                 <div className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 p-3 text-sm text-[#f97316]">
                   {error}
+                  {unverifiedEmail && (
+                    <div className="mt-2 pt-2 border-t border-[#f97316]/20">
+                      {resendStatus === "success" ? (
+                        <p className="text-xs text-[#14b8a6]">Verification link resent! Please check your inbox.</p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendVerification}
+                          disabled={resendStatus === "loading"}
+                          className="text-xs font-bold underline hover:text-[#f0f4fa] transition disabled:opacity-50"
+                        >
+                          {resendStatus === "loading" ? "Sending..." : "Resend verification email"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Gmail or Username</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Email or Username</label>
                 <input
                   type="text"
-                  placeholder="Gmail address or username"
+                  placeholder="Email address or username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
@@ -95,6 +137,11 @@ export default function LoginPage() {
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
                   required
                 />
+                <div className="mt-2 text-right">
+                  <Link href="/forgot-password" className="text-xs font-medium text-[#14b8a6] hover:underline transition">
+                    Forgot email or password?
+                  </Link>
+                </div>
               </div>
               <button
                 type="submit"

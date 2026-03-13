@@ -31,6 +31,7 @@ function UsersContent() {
         tier: "starter",
         commissionLevel: "LOW",
         role: "USER",
+        emailVerifiedByAdmin: false,
     });
 
     const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -269,12 +270,13 @@ function UsersContent() {
             tier: (user?.tenant?.subscriptionTier as string) || "starter",
             commissionLevel: user.commissionLevel || "LOW",
             role: user.role || "USER",
+            emailVerifiedByAdmin: !!user.emailVerified,
         });
     };
 
     const cancelEditUser = () => {
         setEditingUserId(null);
-        setEditForm({ name: "", email: "", tier: "starter", commissionLevel: "LOW", role: "USER" });
+        setEditForm({ name: "", email: "", tier: "starter", commissionLevel: "LOW", role: "USER", emailVerifiedByAdmin: false });
     };
 
     const saveEditUser = async (userId: string) => {
@@ -294,6 +296,7 @@ function UsersContent() {
                     tier: editForm.tier,
                     commissionLevel: editForm.commissionLevel,
                     role: editForm.role,
+                    ...(isSystemAdmin ? { emailVerifiedByAdmin: editForm.emailVerifiedByAdmin } : {}),
                 }),
             });
 
@@ -625,7 +628,7 @@ function UsersContent() {
                                                 </button>
                                             )}
                                         </div>
-                                        {isSystemAdmin && (
+                                        {isAdmin && (
                                             <button
                                                 onClick={() => setCreateOpen((prev) => !prev)}
                                                 className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
@@ -739,7 +742,7 @@ function UsersContent() {
                                                 >
                                                     <option value="USER">User Role</option>
                                                     <option value="ADMIN">Admin Role</option>
-                                                    <option value="SYSTEM_ADMIN">System Admin</option>
+                                                    {isSystemAdmin && <option value="SYSTEM_ADMIN">System Admin</option>}
                                                 </select>
                                                 <button
                                                     onClick={handleCreateUser}
@@ -846,30 +849,54 @@ function UsersContent() {
                                                     <div className="flex flex-col items-start sm:items-end gap-1.5">
                                                         {editingUserId === user.id ? (
                                                             <div className="flex flex-col sm:flex-row items-center gap-2">
-                                                                <select
-                                                                    value={editForm.tier}
-                                                                    onChange={(event) =>
-                                                                        setEditForm((prev) => ({ ...prev, tier: event.target.value }))
-                                                                    }
-                                                                    className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
-                                                                >
-                                                                    <option value="starter">starter</option>
-                                                                    <option value="professional">professional</option>
-                                                                    <option value="enterprise">enterprise</option>
-                                                                    <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
-                                                                </select>
-                                                                <select
-                                                                    value={editForm.commissionLevel}
-                                                                    onChange={(event) =>
-                                                                        setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
-                                                                    }
-                                                                    className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
-                                                                >
-                                                                    <option value="LOW">Low Comm</option>
-                                                                    <option value="MED">Med Comm</option>
-                                                                    <option value="HIGH">High Comm</option>
-                                                                </select>
-                                                            </div>
+                                                                    <select
+                                                                        value={editForm.tier}
+                                                                        onChange={(event) =>
+                                                                            setEditForm((prev) => ({ ...prev, tier: event.target.value }))
+                                                                        }
+                                                                        className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
+                                                                    >
+                                                                        <option value="starter">starter</option>
+                                                                        <option value="professional">professional</option>
+                                                                        <option value="enterprise">enterprise</option>
+                                                                        <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                                                                    </select>
+                                                                    <select
+                                                                        value={editForm.commissionLevel}
+                                                                        onChange={(event) =>
+                                                                            setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                                                                        }
+                                                                        className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
+                                                                    >
+                                                                        <option value="LOW">Low Comm</option>
+                                                                        <option value="MED">Med Comm</option>
+                                                                        <option value="HIGH">High Comm</option>
+                                                                    </select>
+                                                                    <select
+                                                                        value={editForm.role}
+                                                                        onChange={(event) =>
+                                                                            setEditForm((prev) => ({ ...prev, role: event.target.value }))
+                                                                        }
+                                                                        className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
+                                                                    >
+                                                                        <option value="USER">User Role</option>
+                                                                        <option value="ADMIN">Admin Role</option>
+                                                                        {(isSystemAdmin || editForm.role === "SYSTEM_ADMIN") && (
+                                                                            <option value="SYSTEM_ADMIN">System Admin</option>
+                                                                        )}
+                                                                    </select>
+                                                                    {isSystemAdmin && (
+                                                                        <label className="flex items-center gap-2 cursor-pointer ml-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={editForm.emailVerifiedByAdmin}
+                                                                                onChange={(e) => setEditForm(prev => ({ ...prev, emailVerifiedByAdmin: e.target.checked }))}
+                                                                                className="w-4 h-4 rounded border-white/[0.1] bg-[#0c111d] text-[#14b8a6] focus:ring-offset-0 focus:ring-0"
+                                                                            />
+                                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#14b8a6]">Verified</span>
+                                                                        </label>
+                                                                    )}
+                                                                </div>
                                                         ) : (
                                                             <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[11px] text-[rgba(240,244,250,0.45)]">
                                                                 <span
@@ -894,7 +921,6 @@ function UsersContent() {
                                                                 <span>Tier: <span className="text-[#f0f4fa]">{(user?.tenant?.subscriptionTier as string) || "starter"}</span></span>
                                                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
                                                                 <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
-                                                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
                                                                 <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${user.role === "SYSTEM_ADMIN"
                                                                     ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
                                                                     : user.role === "ADMIN" || user.isAdmin
@@ -903,6 +929,18 @@ function UsersContent() {
                                                                     }`}>
                                                                     {user.role === "SYSTEM_ADMIN" ? "System Admin" : (user.role === "ADMIN" || user.isAdmin ? "Admin" : "User")}
                                                                 </span>
+                                                                <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                                                {user.emailVerified ? (
+                                                                    <span className="flex items-center gap-1 text-[10px] font-bold text-[#14b8a6] uppercase tracking-wider">
+                                                                        <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6]" />
+                                                                        Verified
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="flex items-center gap-1 text-[10px] font-bold text-yellow-500/80 uppercase tracking-wider">
+                                                                        <span className="h-1.5 w-1.5 rounded-full bg-yellow-500/60" />
+                                                                        Pending
+                                                                    </span>
+                                                                )}
                                                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
                                                                 <span className="text-[rgba(240,244,250,0.35)]">{new Date(user.createdAt).toLocaleDateString()}</span>
                                                             </div>
@@ -927,7 +965,7 @@ function UsersContent() {
                                                             </div>
                                                         ) : (
                                                             <>
-                                                                {isSystemAdmin && (
+                                                                {isAdmin && (
                                                                     <>
                                                                         <button
                                                                             onClick={() => startEditUser(user)}
@@ -942,7 +980,7 @@ function UsersContent() {
                                                                         >
                                                                             {user.isBlocked ? "Unblock" : "Block"}
                                                                         </button>
-                                                                        {!user.affiliate && !user.isAdmin && (
+                                                                        {!user.affiliate && !user.isAdmin && user.role !== "SYSTEM_ADMIN" && (
                                                                             <button
                                                                                 onClick={() => promoteToAffiliate(user.id)}
                                                                                 disabled={actionLoading === `promote-${user.id}`}
@@ -957,13 +995,15 @@ function UsersContent() {
                                                                                 Partner
                                                                             </div>
                                                                         )}
-                                                                        <button
-                                                                            onClick={() => deleteUser(user)}
-                                                                            disabled={actionLoading === `delete-${user.id}`}
-                                                                            className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                                                                        >
-                                                                            Delete
-                                                                        </button>
+                                                                        {(isSystemAdmin || (user.role !== "SYSTEM_ADMIN" && user.username !== "Oadmin")) && (
+                                                                            <button
+                                                                                onClick={() => deleteUser(user)}
+                                                                                disabled={actionLoading === `delete-${user.id}`}
+                                                                                className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                                                            >
+                                                                                Delete
+                                                                            </button>
+                                                                        )}
                                                                     </>
                                                                 )}
                                                             </>

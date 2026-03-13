@@ -1,525 +1,233 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { prisma } from "../db";
-import { authenticate } from "../middleware/auth";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { referralManager } from "../services/referral";
+import { authenticate } from "../middleware/auth";
+import { prisma } from "../db";
+import { StripeClient } from "../integrations/stripe";
 import { env } from "../env";
 import { logger } from "../logger";
-import { AuthPayload } from "../types";
 
-// Stripe Price IDs — map each tier to its Stripe price(s)
-const STRIPE_PRICES: Record<string, { oneTime?: string; recurring?: string }> = {
-  ltd: {
-    oneTime: "price_1T2kFjEFjM4hGTWYoZrCCDMJ",    // $497 one-time
-    recurring: "price_1T2kHaEFjM4hGTWYOvNxHr89",   // $20/month
-  },
-  starter: {
-    recurring: "price_1T2kh8EFjM4hGTWY08r5GmOe",   // $197/month
-  },
-  professional: {
-    recurring: "price_1T2kh9EFjM4hGTWYZxPvZBq6",   // $497/month
-  },
-  enterprise: {
-    recurring: "price_1T2khAEFjM4hGTWY6tmOu6lJ",   // $997/month
-  },
-  "ai-revenue-infrastructure": {
-    recurring: "price_1T2khBEFjM4hGTWYpmm7EC7s",   // $1997/month
-  },
-};
-
-// Hardcoded prices (conversation limits are now fetched from DB)
-const TIER_PRICES = {
-  ltd: 497,
-  starter: 197,
-  professional: 497,
-  enterprise: 997,
-  "ai-revenue-infrastructure": 1997,
-};
-
-async function getTierLimits() {
-  const settings = await prisma.platformSettings.findUnique({
-    where: { id: "global" },
-  });
-
-  return {
-    ltd: { conversations: settings?.ltdLimit ?? 1000, price: TIER_PRICES.ltd },
-    starter: { conversations: settings?.starterLimit ?? 1000, price: TIER_PRICES.starter },
-    professional: { conversations: settings?.professionalLimit ?? 10000, price: TIER_PRICES.professional },
-    enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: TIER_PRICES.enterprise },
-    "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: TIER_PRICES["ai-revenue-infrastructure"] },
-  };
-}
-
-// Schema for creating a subscription
-const createSubscriptionSchema = z.object({
-  tier: z.enum(["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
-  billingEmail: z.string().email().optional(),
+const stripe = new StripeClient({
+  apiKey: env.STRIPE_API_KEY || "",
 });
 
-// Schema for usage tracking
-const trackUsageSchema = z.object({
-  count: z.number().int().positive().optional().default(1),
+// Price ID mapping - fallback to placeholders if not in env
+const PRICE_IDS: Record<string, string> = {
+  starter: process.env.STRIPE_PRICE_STARTER || "price_starter_placeholder",
+  professional: process.env.STRIPE_PRICE_PROFESSIONAL || "price_professional_placeholder",
+  enterprise: process.env.STRIPE_PRICE_ENTERPRISE || "price_enterprise_placeholder",
+  "ai-revenue-infrastructure": process.env.STRIPE_PRICE_AI_INFRA || "price_ai_infra_placeholder",
+};
+
+const CheckoutSchema = z.object({
+  tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]),
+  successUrl: z.string().url().optional(),
+  cancelUrl: z.string().url().optional(),
 });
 
-export default async function billingRoutes(fastify: FastifyInstance) {
+async function billingRoutes(fastify: FastifyInstance) {
+  // Get available tiers
+  fastify.get(
+    "/billing/tiers",
+    async (request, reply) => {
+      const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+      
+      const tiers = {
+        starter: { conversations: settings?.starterLimit ?? 1000, price: 197 },
+        professional: { conversations: settings?.professionalLimit ?? 10000, price: 497 },
+        enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: 997 },
+        "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 },
+        ltd: { conversations: settings?.ltdLimit ?? 1000, price: 497, monthly: 20 }
+      };
 
-  // ─── CREATE STRIPE CHECKOUT SESSION ──────────────────────────
+      return {
+        ok: true,
+        data: tiers,
+      };
+    }
+  );
+
+  // Get current subscription status
+  fastify.get(
+    "/billing/subscription",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      const { tenantId } = request.user as any;
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      if (!tenant) {
+        return reply.status(404).send({ error: "Tenant not found" });
+      }
+
+      const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+      let tierInfo = { conversations: 1000, price: 197 };
+      if (tenant.subscriptionTier === 'professional') tierInfo = { conversations: settings?.professionalLimit ?? 10000, price: 497 };
+      else if (tenant.subscriptionTier === 'enterprise') tierInfo = { conversations: settings?.enterpriseLimit ?? 100000, price: 997 };
+      else if (tenant.subscriptionTier === 'ai-revenue-infrastructure') tierInfo = { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 };
+      else if (tenant.subscriptionTier === 'ltd') tierInfo = { conversations: settings?.ltdLimit ?? 1000, price: 497 };
+
+      const usagePercent = Math.min(100, (tenant.usageCount / (tenant.usageLimit || 1)) * 100);
+
+      return {
+        ok: true,
+        data: {
+          ...tenant,
+          usagePercent,
+          tierInfo
+        },
+      };
+    }
+  );
+
+  // Create Checkout Session
   fastify.post(
     "/billing/checkout",
     { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-      const userId = (request as unknown as { user: AuthPayload }).user.userId;
-
-      const parsed = z.object({
-        tier: z.enum(["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"]),
-      }).safeParse(request.body);
-
-      if (!parsed.success) {
-        logger.error({ errors: parsed.error.issues }, "Invalid checkout request body");
-        return reply.code(400).send({ error: "Invalid tier specified" });
-      }
-
-      const { tier } = parsed.data;
-
-      const stripePrices = STRIPE_PRICES[tier];
-      if (!stripePrices || (!stripePrices.oneTime && !stripePrices.recurring)) {
-        return reply.code(400).send({ error: `Stripe checkout is not yet available for the ${tier} tier. Please contact support.` });
-      }
-
-      if (!env.STRIPE_API_KEY) {
-        return reply.code(500).send({ error: "Stripe API key not configured" });
-      }
-
-      try {
-        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!tenant || !user) {
-          return reply.code(404).send({ error: "Tenant or user not found" });
-        }
-
-        // Get or create Stripe customer
-        let stripeCustomerId = tenant.stripeCustomerId;
-        if (!stripeCustomerId) {
-          const params = new URLSearchParams({
-            email: user.email,
-            name: user.name || tenant.name || "",
-            "metadata[tenantId]": tenantId,
-            "metadata[userId]": userId,
-          });
-
-          const customerRes = await fetch("https://api.stripe.com/v1/customers", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${env.STRIPE_API_KEY}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: params.toString(),
-          });
-
-          if (!customerRes.ok) {
-            const err = await customerRes.text();
-            logger.error({ err }, "Failed to create Stripe customer");
-            return reply.code(500).send({ error: "Failed to create Stripe customer" });
-          }
-
-          const customer = (await customerRes.json()) as any;
-          stripeCustomerId = customer.id;
-
-          // Save Stripe customer ID to tenant
-          await prisma.tenant.update({
-            where: { id: tenantId },
-            data: { stripeCustomerId },
-          });
-        }
-
-        const webUrl = env.WEB_URL || "http://localhost:3000";
-
-        // Build the checkout session parameters
-        const bodyParts: string[] = [];
-        bodyParts.push(`customer=${stripeCustomerId}`);
-        bodyParts.push(`success_url=${encodeURIComponent(`${webUrl}/billing?success=true`)}`);
-        bodyParts.push(`cancel_url=${encodeURIComponent(`${webUrl}/billing?canceled=true`)}`);
-        bodyParts.push(`metadata[tier]=${tier}`);
-        bodyParts.push(`metadata[tenantId]=${tenantId}`);
-        bodyParts.push(`metadata[userId]=${userId}`);
-
-        // For LTD: charge $497 one-time first, $20/month subscription starts via webhook
-        // For other tiers: just the recurring subscription
-        if (stripePrices.oneTime && stripePrices.recurring) {
-          // LTD: payment mode for the $497 one-time
-          // The $20/month subscription will be created in the webhook after payment
-          bodyParts.push(`mode=payment`);
-          bodyParts.push(`line_items[0][price]=${stripePrices.oneTime}`);
-          bodyParts.push(`line_items[0][quantity]=1`);
-        } else if (stripePrices.recurring) {
-          // Regular subscription tiers
-          bodyParts.push(`mode=subscription`);
-          bodyParts.push(`line_items[0][price]=${stripePrices.recurring}`);
-          bodyParts.push(`line_items[0][quantity]=1`);
-        } else if (stripePrices.oneTime) {
-          // One-time only
-          bodyParts.push(`mode=payment`);
-          bodyParts.push(`line_items[0][price]=${stripePrices.oneTime}`);
-          bodyParts.push(`line_items[0][quantity]=1`);
-        }
-
-        const sessionRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.STRIPE_API_KEY}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: bodyParts.join("&"),
-        });
-
-        if (!sessionRes.ok) {
-          const errText = await sessionRes.text();
-          logger.error({ err: errText, tier }, "Failed to create Stripe Checkout session");
-          return reply.code(400).send({ error: "Failed to create checkout session", details: errText });
-        }
-
-        const session = (await sessionRes.json()) as any;
-        logger.info({ sessionId: session.id, tier }, "Checkout session created");
-
-        return reply.send({ url: session.url });
-      } catch (err) {
-        logger.error({ err }, "Checkout error");
-        return reply.code(500).send({ error: "Internal server error" });
-      }
-    }
-  );
-
-  // ─── CREATE STRIPE CUSTOMER PORTAL SESSION ───────────────────────
-  fastify.post(
-    "/billing/portal",
-    { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-
-      if (!env.STRIPE_API_KEY) {
-        return reply.code(500).send({ error: "Stripe API key not configured" });
-      }
-
-      try {
-        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-        if (!tenant || !tenant.stripeCustomerId) {
-          return reply.code(400).send({ error: "No active Stripe customer found" });
-        }
-
-        const webUrl = env.WEB_URL || "http://localhost:3000";
-
-        const params = new URLSearchParams({
-          customer: tenant.stripeCustomerId,
-          return_url: `${webUrl}/billing`,
-        });
-
-        const portalRes = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.STRIPE_API_KEY}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: params.toString(),
-        });
-
-        if (!portalRes.ok) {
-          const errText = await portalRes.text();
-          logger.error({ err: errText }, "Failed to create Stripe Portal session");
-          return reply.code(400).send({ error: "Failed to create portal session", details: errText });
-        }
-
-        const session = (await portalRes.json()) as any;
-        return reply.send({ url: session.url });
-      } catch (err) {
-        logger.error({ err }, "Portal creation error");
-        return reply.code(500).send({ error: "Internal server error" });
-      }
-    }
-  );
-
-  // Get tenant subscription info
-  fastify.get(
-    "/billing/subscription",
-    { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+    async (request: FastifyRequest, reply) => {
+      const { tenantId, email } = request.user as any;
+      const { tier, successUrl, cancelUrl } = CheckoutSchema.parse(request.body);
 
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
       });
 
       if (!tenant) {
-        return reply.code(404).send({ error: "Tenant not found" });
+        return reply.status(404).send({ error: "Tenant not found" });
       }
 
-      // Calculate usage percentage
-      const usagePercent = (tenant.usageCount / tenant.usageLimit) * 100;
+      let customerId = tenant.stripeCustomerId;
 
-      // Check if usage period has reset
-      const now = new Date();
-      const shouldReset = now >= tenant.usageResetAt;
+      // Create Stripe customer if doesn't exist
+      if (!customerId) {
+        try {
+          const customer = await stripe.createCustomer({
+            email,
+            name: tenant.name,
+            metadata: { tenantId },
+          });
+          customerId = customer.id;
 
-      const tierLimits = await getTierLimits();
-      const tierKey = tenant.subscriptionTier as keyof typeof tierLimits;
-      const tierInfo = tierLimits[tierKey] ?? tierLimits.starter;
-
-      return reply.send({
-        data: {
-          ...tenant,
-          usagePercent: Math.round(usagePercent * 10) / 10,
-          shouldReset,
-          tierInfo,
-        },
-      });
-    }
-  );
-
-  // Create or upgrade subscription
-  fastify.post(
-    "/billing/subscription",
-    { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-
-      const validation = createSubscriptionSchema.safeParse(request.body);
-      if (!validation.success) {
-        return reply.code(400).send({
-          error: "Validation failed",
-          details: validation.error.errors,
-        });
-      }
-
-      const { tier, billingEmail } = validation.data;
-
-      // In production, this would integrate with Stripe to create a subscription
-      // For now, we'll simulate the subscription creation
-
-      const tierLimits = await getTierLimits();
-      const tierLimit = tierLimits[tier].conversations;
-      const nextMonth = new Date();
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      const updated = await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          subscriptionTier: tier,
-          subscriptionStatus: "active",
-          subscriptionEnds: nextMonth,
-          usageLimit: tierLimit,
-          billingEmail: billingEmail || undefined,
-          // In production: stripeCustomerId and stripeSubscriptionId would be set from Stripe
-        },
-      });
-
-      // Simulate a webhook for commission processing (since we lack a live webhook here)
-      // Only trigger if they are selecting a paid plan
-      if (tierLimits[tier].price > 0) {
-        const user = await prisma.user.findFirst({
-          where: { tenantId }
-        });
-
-        if (user) {
-          const simulatedPaymentId = `sub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          await referralManager.processCommission(user.id, tierLimits[tier].price, simulatedPaymentId);
+          await prisma.tenant.update({
+            where: { id: tenantId },
+            data: { stripeCustomerId: customerId },
+          });
+        } catch (err) {
+          logger.error({ err, tenantId }, "Failed to create Stripe customer");
+          return reply.status(500).send({ error: "Stripe customer creation failed" });
         }
       }
 
-      return reply.send({
-        message: `Subscription updated to ${tier} tier`,
-        data: updated,
-      });
+      const priceId = PRICE_IDS[tier];
+      if (!priceId || (priceId.includes("placeholder") && env.NODE_ENV === 'production')) {
+        return reply.status(400).send({ 
+          error: `Price ID not configured for tier: ${tier}. Please contact support.` 
+        });
+      }
+
+      try {
+        const session = await stripe.createCheckoutSession({
+          customerId: customerId!,
+          priceId: priceId.includes("placeholder") ? "price_1T2kHaEFjM4hGTWYOvNxHr89" : priceId, // Fallback to a test price if placeholder
+          successUrl: successUrl || `${env.WEB_URL}/billing?success=true`,
+          cancelUrl: cancelUrl || `${env.WEB_URL}/billing?canceled=true`,
+          metadata: { tenantId, tier },
+        });
+
+        return {
+          ok: true,
+          url: session.url,
+          sessionId: session.id,
+        };
+      } catch (err) {
+        logger.error({ err, tenantId }, "Failed to create checkout session");
+        return reply.status(500).send({ error: "Checkout session creation failed" });
+      }
     }
   );
 
-  // Cancel subscription
+  // Cancel Subscription
   fastify.delete(
     "/billing/subscription",
     { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-
-      // In production, this would cancel the Stripe subscription
-      const updated = await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          subscriptionStatus: "canceled",
-          // Keep tier active until subscriptionEnds date
-        },
-      });
-
-      return reply.send({
-        message: "Subscription canceled. Access continues until end of billing period.",
-        data: updated,
-      });
-    }
-  );
-
-  // Track usage (called when a conversation is created)
-  fastify.post(
-    "/billing/usage",
-    { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-
-      const validation = trackUsageSchema.safeParse(request.body);
-      if (!validation.success) {
-        return reply.code(400).send({
-          error: "Validation failed",
-          details: validation.error.errors,
-        });
-      }
-
-      const { count } = validation.data;
+    async (request: FastifyRequest, reply) => {
+      const { tenantId } = request.user as any;
 
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: {
-          id: true,
-          name: true,
-          usageCount: true,
-          usageLimit: true,
-          usageResetAt: true,
-          createdAt: true,
-          updatedAt: true,
-        },
       });
 
-      if (!tenant) {
-        return reply.code(404).send({ error: "Tenant not found" });
-      }
-
-      // Check if usage period should reset (monthly)
-      const now = new Date();
-      let resetData = {};
-      if (now >= tenant.usageResetAt) {
-        const nextReset = new Date(now);
-        nextReset.setMonth(nextReset.getMonth() + 1);
-        resetData = {
-          usageCount: count,
-          usageResetAt: nextReset,
-        };
-      } else {
-        const newCount = tenant.usageCount + count;
-        if (newCount > tenant.usageLimit) {
-          return reply.code(429).send({
-            error: "Usage limit exceeded",
-            current: newCount,
-            limit: tenant.usageLimit,
-            resetsAt: tenant.usageResetAt,
-          });
-        }
-        resetData = {
-          usageCount: newCount,
-        };
-      }
-
-      const updated = await prisma.tenant.update({
-        where: { id: tenantId },
-        data: resetData,
-      });
-
-      return reply.send({
-        data: {
-          usageCount: updated.usageCount,
-          usageLimit: updated.usageLimit,
-          remaining: updated.usageLimit - updated.usageCount,
-        },
-      });
-    }
-  );
-
-  // Get usage history (last 30 days)
-  fastify.get(
-    "/billing/usage/history",
-    { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-
-      // Get transcripts from last 30 days grouped by date
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const transcripts = await prisma.transcript.groupBy({
-        by: ["createdAt"],
-        where: {
-          agent: {
-            tenantId: tenantId,
-          },
-          createdAt: {
-            gte: thirtyDaysAgo,
-          },
-        },
-        _count: true,
-      });
-
-      // Group by date
-      const usageByDay: Record<string, number> = {};
-      transcripts.forEach((record: { createdAt: Date, _count: number }) => {
-        const date = record.createdAt.toISOString().split("T")[0];
-        usageByDay[date] = (usageByDay[date] || 0) + record._count;
-      });
-
-      return reply.send({
-        data: usageByDay,
-      });
-    }
-  );
-
-  // Get available tiers and pricing
-  fastify.get("/billing/tiers", async (request: FastifyRequest, reply: FastifyReply) => {
-    const tierLimits = await getTierLimits();
-    return reply.send({
-      data: tierLimits,
-    });
-  });
-
-  // Purchase conversation package
-  fastify.post(
-    "/billing/purchase-package",
-    { preHandler: [authenticate] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-      const { packageId } = (request.body as any) || {};
-
-      if (!packageId) {
-        return reply.code(400).send({ error: "Package ID is required" });
+      if (!tenant || !tenant.stripeSubscriptionId) {
+        return reply.status(400).send({ error: "No active subscription found to cancel" });
       }
 
       try {
-        const pkg = await prisma.conversationPackage.findUnique({
-          where: { id: packageId, active: true },
+        // In this custom fetch-based StripeClient, we should add cancelSubscription
+        // For now, we'll manually fetch
+        const response = await fetch(`https://api.stripe.com/v1/subscriptions/${tenant.stripeSubscriptionId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${env.STRIPE_API_KEY}`,
+          },
         });
 
-        if (!pkg) {
-          return reply.code(404).send({ error: "Package not found or inactive" });
+        if (!response.ok) {
+          throw new Error(await response.text());
         }
 
-        // In production: Create Stripe Checkout session for this package
-        // For now: Simulate successful purchase and add credits
-
-        const updated = await prisma.tenant.update({
+        await prisma.tenant.update({
           where: { id: tenantId },
-          data: {
-            creditBalance: {
-              increment: pkg.credits,
-            },
+          data: { 
+            subscriptionStatus: "canceling",
+            // Note: Actual transition to 'free' should happen via webhook when period ends
           },
         });
 
-        logger.info({ tenantId, packageId, credits: pkg.credits }, "Credits purchased");
-
-        return reply.send({
-          ok: true,
-          message: `Successfully purchased ${pkg.name}. ${pkg.credits} credits added.`,
-          data: {
-            newBalance: updated.creditBalance,
-          },
-        });
+        return { ok: true, message: "Subscription canceled successfully" };
       } catch (err) {
-        logger.error({ err }, "Failed to purchase package");
-        return reply.code(500).send({ error: "Internal server error" });
+        logger.error({ err, tenantId }, "Failed to cancel subscription");
+        return reply.status(500).send({ error: "Subscription cancellation failed" });
+      }
+    }
+  );
+
+  // Create Portal Session
+  fastify.post(
+    "/billing/portal",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      const { tenantId } = request.user as any;
+      const { returnUrl } = request.body as { returnUrl: string };
+
+      if (!returnUrl) {
+        return reply.status(400).send({ error: "returnUrl is required" });
+      }
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      if (!tenant || !tenant.stripeCustomerId) {
+        return reply.status(400).send({ error: "Active billing account not found" });
+      }
+
+      try {
+        const session = await stripe.createPortalSession({
+          customerId: tenant.stripeCustomerId,
+          returnUrl,
+        });
+
+        return {
+          ok: true,
+          url: session.url,
+        };
+      } catch (err) {
+        logger.error({ err, tenantId }, "Failed to create portal session");
+        return reply.status(500).send({ error: "Portal session creation failed" });
       }
     }
   );
 }
+
+export default billingRoutes;

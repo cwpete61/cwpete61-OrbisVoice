@@ -12,8 +12,10 @@ const isGmail = (email: string) => {
 };
 
 const SYSTEM_ADMIN_EMAILS = [
-  "myorbislocal@gmail.com"
+  "myorbislocal@gmail.com",
+  "admin@orbisvoice.app"
 ];
+
 
 const ADMIN_EMAILS = [
   "myorbisvoice@gmail.com",
@@ -81,6 +83,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         const tenant = await prisma.tenant.create({
           data: {
             name: `${body.name}'s Workspace`,
+            subscriptionTier: "free",
+            subscriptionStatus: "none",
+            usageLimit: 100, // Default free limit
           },
         });
 
@@ -88,6 +93,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         const settings = await prisma.platformSettings.findUnique({
           where: { id: "global" }
         });
+
+        // Generate verification token
+        const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
         // Create user
         const user = await prisma.user.create({
@@ -100,8 +108,27 @@ export async function authRoutes(fastify: FastifyInstance) {
             role: "USER",
             isAdmin: false,
             commissionLevel: settings?.defaultCommissionLevel || "LOW",
+            emailVerificationToken: verificationToken,
           } as any,
         });
+
+        // Send verification email
+        try {
+          const webUrl = process.env.WEB_URL || "http://localhost:3000";
+          const verifyUrl = `${webUrl}/verify-email?token=${verificationToken}`;
+          const { createNotification, NotifType } = await import("../services/notification");
+          
+          await createNotification({
+            userId: user.id,
+            type: NotifType.EMAIL_VERIFICATION,
+            title: "Verify your email address",
+            body: `Welcome to OrbisVoice, ${body.name}! Please verify your email address by clicking the link below:\n\n${verifyUrl}\n\nIf you did not create an account, please ignore this email.`,
+            sendEmail: true
+          });
+          logger.info({ userId: user.id, email: body.email }, "Verification email sent on signup");
+        } catch (emailErr) {
+          logger.error({ emailErr, userId: user.id }, "Failed to send verification email on signup");
+        }
 
         if ((body as any).affiliateSlug) {
           try {
@@ -122,17 +149,14 @@ export async function authRoutes(fastify: FastifyInstance) {
           }
         }
 
-        // Generate JWT
-        const token = fastify.jwt.sign(
-          { userId: user.id, tenantId: tenant.id, email: user.email },
-          { expiresIn: "7d" }
-        );
-
-        logger.info({ userId: user.id, tenantId: tenant.id, referralCode: body.referralCode, affiliateSlug: (body as any).affiliateSlug }, "User signed up successfully");
+        // We DO NOT sign them in immediately now. They must verify email first.
+        // Or we decide to let them in but with a "limited" state. 
+        // Given the request "get email confirmation," it usually implies it's required.
+        
         return reply.code(201).send({
           ok: true,
-          message: "Signup successful",
-          data: { token, user: { id: user.id, email: user.email, name: user.name, username: (user as any).username } },
+          message: "Signup successful! Please check your email to verify your account.",
+          data: { user: { id: user.id, email: user.email, name: user.name, username: (user as any).username } },
         } as ApiResponse);
       } catch (err) {
         if (err instanceof z.ZodError) {
@@ -176,7 +200,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             isBlocked: true,
             tenantId: true,
             role: true,
-            isAdmin: true
+            isAdmin: true,
+            emailVerified: true
           }
         }) as any;
 
@@ -233,6 +258,16 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
+        // Check if email verified
+        if (!user.emailVerified && !user.isAdmin) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Please verify your email address before logging in.",
+            data: { unverified: true, email: user.email }
+          } as ApiResponse);
+        }
+
+        // Check if blocked
         // Check if blocked
         if (user.isBlocked) {
           return reply.code(403).send({
@@ -270,6 +305,224 @@ export async function authRoutes(fastify: FastifyInstance) {
           ok: false,
           message: "Internal server error",
         } as ApiResponse);
+      }
+    }
+  );
+
+  // Verify Email
+  fastify.post<{ Body: { token: string } }>(
+    "/auth/verify-email",
+    async (request, reply) => {
+      try {
+        const { token } = request.body;
+        if (!token) {
+          return reply.code(400).send({ ok: false, message: "Token is required" });
+        }
+
+        const user = await prisma.user.findFirst({
+          where: {
+            emailVerificationToken: token,
+          },
+        });
+
+        if (!user) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Invalid or expired verification token",
+          });
+        }
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            emailVerified: new Date(),
+            emailVerificationToken: null,
+          },
+        });
+
+        return reply.code(200).send({
+          ok: true,
+          message: "Email verified successfully! You can now log in.",
+        });
+      } catch (err) {
+        logger.error(err, "Verify email error");
+        return reply.code(500).send({ ok: false, message: "Internal server error" });
+      }
+    }
+  );
+
+  // Resend Verification
+  fastify.post<{ Body: { email: string } }>(
+    "/auth/resend-verification",
+    async (request, reply) => {
+      try {
+        const { email } = request.body;
+        if (!email) {
+          return reply.code(400).send({ ok: false, message: "Email is required" });
+        }
+
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: email },
+              { username: email }
+            ]
+          }
+        });
+
+        if (!user) {
+          // Success message for security
+          return reply.code(200).send({
+            ok: true,
+            message: "If an account exists, a new verification link has been sent.",
+          });
+        }
+
+        if (user.emailVerified) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Email is already verified.",
+          });
+        }
+
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            emailVerificationToken: token,
+          },
+        });
+
+        const webUrl = process.env.WEB_URL || "http://localhost:3000";
+        const verifyUrl = `${webUrl}/verify-email?token=${token}`;
+        const { createNotification, NotifType } = await import("../services/notification");
+
+        await createNotification({
+          userId: user.id,
+          type: NotifType.EMAIL_VERIFICATION,
+          title: "Verify your email address",
+          body: `Please verify your email address by clicking the link below:\n\n${verifyUrl}\n\nIf you did not request this, please ignore this email.`,
+          sendEmail: true
+        });
+
+        return reply.code(200).send({
+          ok: true,
+          message: "Verification link sent successfully",
+        });
+      } catch (err) {
+        logger.error(err, "Resend verification error");
+        return reply.code(500).send({ ok: false, message: "Internal server error" });
+      }
+    }
+  );
+
+  // Forgot Password
+  fastify.post<{ Body: { email: string } }>(
+    "/auth/forgot-password",
+    async (request, reply) => {
+      try {
+        const { email } = request.body;
+        if (!email) {
+          return reply.code(400).send({ ok: false, message: "Email is required" });
+        }
+
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: email },
+              { username: email }
+            ]
+          }
+        });
+
+        if (!user) {
+          // For security, always return success message
+          return reply.code(200).send({
+            ok: true,
+            message: "If an account exists with that email, a reset link has been sent.",
+          });
+        }
+
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            resetPasswordToken: token,
+            resetPasswordExpires: expires,
+          },
+        });
+
+        // Use the notification service to send email
+        const webUrl = process.env.WEB_URL || "http://localhost:3000";
+        const resetUrl = `${webUrl}/reset-password?token=${token}`;
+        
+        // We'll use createNotification which handles email sending
+        // Note: We might need to import createNotification if it's not already
+        const { createNotification } = await import("../services/notification");
+        await createNotification({
+          userId: user.id,
+          type: "ADMIN_MANUAL",
+          title: "Password Reset Request",
+          body: `We received a request to reset your password. Click the link below to set a new one:\n\n${resetUrl}\n\nThis link will expire in 1 hour. If you did not request this, please ignore this email.`,
+          sendEmail: true
+        });
+
+        return reply.code(200).send({
+          ok: true,
+          message: "Reset link sent successfully",
+        });
+      } catch (err) {
+        logger.error(err, "Forgot password error");
+        return reply.code(500).send({ ok: false, message: "Internal server error" });
+      }
+    }
+  );
+
+  // Reset Password
+  fastify.post<{ Body: { token: string; password: z.infer<typeof LoginSchema>["password"] } }>(
+    "/auth/reset-password",
+    async (request, reply) => {
+      try {
+        const { token, password } = request.body;
+        if (!token || !password) {
+          return reply.code(400).send({ ok: false, message: "Token and password are required" });
+        }
+
+        const user = await prisma.user.findFirst({
+          where: {
+            resetPasswordToken: token,
+            resetPasswordExpires: { gte: new Date() },
+          },
+        });
+
+        if (!user) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Invalid or expired reset token",
+          });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            passwordHash: hashedPassword,
+            resetPasswordToken: null,
+            resetPasswordExpires: null,
+          },
+        });
+
+        return reply.code(200).send({
+          ok: true,
+          message: "Password has been reset successfully. You can now log in.",
+        });
+      } catch (err) {
+        logger.error(err, "Reset password error");
+        return reply.code(500).send({ ok: false, message: "Internal server error" });
       }
     }
   );

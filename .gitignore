@@ -26,6 +26,10 @@ backups/
 *.backup
 secrets/
 apps/api/reset_admin.ts
+.gsd/
+gsd/
+nul
+%USERPROFILE%.configopencodesuperpowers/
 
 # Prevent compiled JS from being committed in TS source folders
 **/src/**/*.js

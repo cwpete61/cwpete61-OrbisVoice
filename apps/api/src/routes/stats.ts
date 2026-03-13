@@ -285,4 +285,85 @@ export async function statsRoutes(fastify: FastifyInstance) {
       } as ApiResponse);
     }
   });
+
+  // GET /stats/usage-trend - Get day-by-day conversation volume for the tenant
+  fastify.get("/stats/usage-trend", { onRequest: [requireNotBlocked] }, async (request, reply) => {
+    try {
+      const tenantId = (request as any).user.tenantId;
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const agents = await prisma.agent.findMany({
+        where: { tenantId },
+        select: { id: true }
+      });
+      const agentIds = agents.map(a => a.id);
+
+      const transcripts = await prisma.transcript.findMany({
+        where: {
+          agentId: { in: agentIds },
+          createdAt: { gte: thirtyDaysAgo }
+        },
+        select: { createdAt: true }
+      });
+
+      // Group by date
+      const dataByDate: Record<string, number> = {};
+      
+      // Initialize last 30 days
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        dataByDate[key] = 0;
+      }
+
+      transcripts.forEach(t => {
+        const key = t.createdAt.toISOString().split('T')[0];
+        if (dataByDate[key] !== undefined) {
+          dataByDate[key]++;
+        }
+      });
+
+      const formattedData = Object.keys(dataByDate).sort().map(date => ({
+        date,
+        count: dataByDate[date]
+      }));
+
+      return reply.send({
+        ok: true,
+        data: formattedData
+      } as ApiResponse);
+    } catch (err) {
+      logger.error(err, "Failed to fetch usage trend");
+      return reply.code(500).send({ ok: false, message: "Internal server error" });
+    }
+  });
+
+  // GET /stats/export - Export transcripts as CSV
+  fastify.get("/stats/export", { onRequest: [requireNotBlocked] }, async (request, reply) => {
+    try {
+      const tenantId = (request as any).user.tenantId;
+
+      const transcripts = await prisma.transcript.findMany({
+        where: { agent: { tenantId } },
+        include: { agent: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 1000 // Limit for safety
+      });
+
+      let csv = "ID,Agent,Duration,Tokens,Date\n";
+      transcripts.forEach(t => {
+        const date = t.createdAt.toISOString();
+        const agentName = t.agent.name.replace(/,/g, "");
+        csv += `${t.id},${agentName},${t.duration || 0},${(t as any).tokens || 0},${date}\n`;
+      });
+
+      reply.header("Content-Type", "text/csv");
+      reply.header("Content-Disposition", 'attachment; filename="conversations.csv"');
+      return reply.send(csv);
+    } catch (err) {
+      logger.error(err, "Failed to export CSV");
+      return reply.code(500).send({ ok: false, message: "Internal server error" });
+    }
+  });
 }

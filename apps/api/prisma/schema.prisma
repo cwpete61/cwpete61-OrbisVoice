@@ -76,6 +76,10 @@ model User {
   unit                      String?
   zip                       String?
   emailNotifications        Boolean                 @default(true)
+  emailVerified             DateTime?
+  emailVerificationToken    String?                 @unique
+  resetPasswordToken        String?                 @unique
+  resetPasswordExpires      DateTime?
   affiliate                 Affiliate?
   notifications             Notification[]
   notificationPref          NotificationPreference?

@@ -291,6 +291,93 @@ class StripeClient {
       throw err;
     }
   }
+  /**
+   * Create a checkout session
+   */
+  async createCheckoutSession(params: {
+    customerId: string;
+    priceId: string;
+    successUrl: string;
+    cancelUrl: string;
+    metadata?: Record<string, any>;
+    mode?: "subscription" | "payment";
+  }): Promise<any> {
+    try {
+      const body = new URLSearchParams({
+        customer: params.customerId,
+        mode: params.mode || "subscription",
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        "line_items[0][price]": params.priceId,
+        "line_items[0][quantity]": "1",
+      });
+
+      if (params.metadata) {
+        Object.entries(params.metadata).forEach(([key, value]) => {
+          body.append(`metadata[${key}]`, String(value));
+        });
+      }
+
+      const response = await fetch(`${this.baseUrl}/checkout/sessions`, {
+        method: "POST",
+        headers: {
+          Authorization: this.getAuthHeader(),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        logger.error({ status: response.status, error }, "Stripe checkout session creation failed");
+        throw new Error(`Stripe error: ${response.status} - ${error}`);
+      }
+
+      const data = (await response.json()) as any;
+      logger.info({ sessionId: data.id }, "Checkout session created");
+      return data;
+    } catch (err) {
+      logger.error({ err }, "Failed to create Stripe checkout session");
+      throw err;
+    }
+  }
+
+  /**
+   * Create a billing portal session
+   */
+  async createPortalSession(params: {
+    customerId: string;
+    returnUrl: string;
+  }): Promise<any> {
+    try {
+      const body = new URLSearchParams({
+        customer: params.customerId,
+        return_url: params.returnUrl,
+      });
+
+      const response = await fetch(`${this.baseUrl}/billing_portal/sessions`, {
+        method: "POST",
+        headers: {
+          Authorization: this.getAuthHeader(),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        logger.error({ status: response.status, error }, "Stripe portal session creation failed");
+        throw new Error(`Stripe error: ${response.status} - ${error}`);
+      }
+
+      const data = (await response.json()) as any;
+      logger.info({ portalId: data.id }, "Portal session created");
+      return data;
+    } catch (err) {
+      logger.error({ err }, "Failed to create Stripe portal session");
+      throw err;
+    }
+  }
 }
 
 export { StripeClient };

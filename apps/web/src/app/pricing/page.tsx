@@ -7,6 +7,27 @@ import { apiFetch } from "@/lib/api";
 
 const PRICING_TIERS = [
   {
+    name: "LTD (Lifetime Deal)",
+    tier: "ltd",
+    price: "$497",
+    period: "one-time",
+    conversations: "Limited Time Offer",
+    tagline: "One-time payment for lifetime engine access + hosting costs.",
+    cta: "Grab Lifetime Access",
+    accent: "#ef4444",
+    features: [
+      "Lifetime access to core conversion engine",
+      "All Starter, Professional, and Enterprise features",
+      "Unlimited locations + concurrent calls",
+      "Reseller/partner program access",
+      "Dedicated account management",
+      "Priority feature requests",
+      "Custom AI model training included",
+      "White-label options enabled",
+      "$20/month secondary hosting fee applies",
+    ],
+  },
+  {
     name: "Starter",
     tier: "starter",
     price: "$197",
@@ -110,6 +131,7 @@ export default function PricingPage() {
       professional: limits.professionalLimit,
       enterprise: limits.enterpriseLimit,
       "ai-revenue-infrastructure": limits.aiInfraLimit,
+      ltd: limits.ltdLimit,
     }[tier];
 
     if (limit === undefined || limit === null) return fallback;
@@ -132,7 +154,7 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {PRICING_TIERS.map((tier) => (
             <div
               key={tier.name}

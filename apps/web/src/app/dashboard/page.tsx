@@ -5,6 +5,7 @@ import { Suspense, useState, useEffect } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
+import OnboardingChecklist from "../components/OnboardingChecklist";
 
 function DashboardContent() {
   const [agents, setAgents] = useState<any[]>([]);
@@ -145,6 +146,12 @@ function DashboardContent() {
             New Agent
           </Link>
         </div>
+
+        {/* Onboarding Checklist */}
+        <OnboardingChecklist 
+          agentsCount={agents.length} 
+          conversationsCount={stats.totalConversations} 
+        />
 
         {/* Current Plan */}
         {subscription && (
