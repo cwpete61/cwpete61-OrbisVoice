@@ -317,7 +317,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         dataByDate[key] = 0;
       }
 
-      transcripts.forEach(t => {
+      transcripts.forEach((t: any) => {
         const key = t.createdAt.toISOString().split('T')[0];
         if (dataByDate[key] !== undefined) {
           dataByDate[key]++;
@@ -352,7 +352,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       });
 
       let csv = "ID,Agent,Duration,Tokens,Date\n";
-      transcripts.forEach(t => {
+      transcripts.forEach((t: any) => {
         const date = t.createdAt.toISOString();
         const agentName = t.agent.name.replace(/,/g, "");
         csv += `${t.id},${agentName},${t.duration || 0},${(t as any).tokens || 0},${date}\n`;

@@ -142,7 +142,7 @@ export class ReferralManager {
         });
       });
 
-      txs.forEach(t => {
+      txs.forEach((t: any) => {
         if (t.refereeId && !allUniqueUsers.has(t.refereeId)) {
           const referee = (t as any).referee;
           allUniqueUsers.set(t.refereeId, {

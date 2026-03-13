@@ -188,6 +188,8 @@ class StripeClient {
     allowPromotionCodes?: boolean;
     clientReferenceId?: string;
     metadata?: Record<string, string>;
+    description?: string;
+    customText?: string;
   }): Promise<Stripe.Checkout.Session> {
     if (!this.stripe) throw new Error("Stripe is not configured");
     try {
@@ -207,6 +209,11 @@ class StripeClient {
         metadata: params.metadata,
         subscription_data: params.mode === "subscription" ? {
           metadata: params.metadata,
+        } : undefined,
+        custom_text: params.customText ? {
+          submit: {
+            message: params.customText
+          }
         } : undefined,
       });
 
