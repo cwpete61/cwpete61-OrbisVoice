@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 
-interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-    // Allow passing additional className
-}
+type PasswordInputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
 export default function PasswordInput({ className = "", ...props }: PasswordInputProps) {
     const [showPassword, setShowPassword] = useState(false);

@@ -1,75 +1,83 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import DashboardShell from "../../../components/DashboardShell";
 import PasswordInput from "../../../components/PasswordInput";
 import { useTokenFromUrl } from "../../../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, SubscriberDetail, TwilioConfig, TenantGoogleConfig, authHeader } from "@/lib/api";
 
 function SubscriberDetailContent({ id }: { id: string }) {
     const tokenLoaded = useTokenFromUrl();
-    const [sub, setSub] = useState<any>(null);
+    const [sub, setSub] = useState<SubscriberDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [liftingHold, setLiftingHold] = useState<string | null>(null);
     const [tab, setTab] = useState<"overview" | "users" | "agents" | "settings" | "api-keys">("overview");
 
     // Settings State
-    const [twilioConfig, setTwilioConfig] = useState<any>({ accountSid: "", authToken: "", phoneNumber: "", hasConfig: false });
-    const [tenantGoogleConfig, setTenantGoogleConfig] = useState<any>({ clientId: "", clientSecret: "", geminiApiKey: "", hasConfig: false });
+    const [twilioConfig, setTwilioConfig] = useState<TwilioConfig>({ accountSid: "", authToken: "", phoneNumber: "", hasConfig: false });
+    const [tenantGoogleConfig, setTenantGoogleConfig] = useState<TenantGoogleConfig>({ clientId: "", clientSecret: "", geminiApiKey: "", hasConfig: false });
     const [settingsLoading, setSettingsLoading] = useState(false);
     const [settingsSaving, setSettingsSaving] = useState(false);
-    const [settingsMessage, setSettingsMessage] = useState<any>(null);
+    const [settingsMessage, setSettingsMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
     // API Keys State
-    const [apiKeys, setApiKeys] = useState<any[]>([]);
+    const [apiKeys, setApiKeys] = useState<{ id: string; name: string; key: string; createdAt: string }[]>([]);
     const [keysLoading, setKeysLoading] = useState(false);
     const [newKeyName, setNewKeyName] = useState("");
     const [creatingKey, setCreatingKey] = useState(false);
 
-    useEffect(() => {
-        if (!tokenLoaded) return;
-        const token = localStorage.getItem("token");
-        fetch(`${API_BASE}/admin/subscribers/${id}/overview`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((r) => r.json())
-            .then((d) => { setSub(d.data); setLoading(false); });
-    }, [tokenLoaded, id]);
+    const fetchOverview = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/admin/subscribers/${id}/overview`, { headers: authHeader() });
+            const data = await res.json();
+            if (data.ok) setSub(data.data);
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
 
-    // Fetch Settings
+    const fetchSettings = useCallback(async () => {
+        setSettingsLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/admin/subscribers/${id}/settings`, { headers: authHeader() });
+            const data = await res.json();
+            if (data.ok) {
+                setTwilioConfig(data.data.twilio || { accountSid: "", authToken: "", phoneNumber: "", hasConfig: false });
+                setTenantGoogleConfig(data.data.google || { clientId: "", clientSecret: "", geminiApiKey: "", hasConfig: false });
+            }
+        } finally {
+            setSettingsLoading(false);
+        }
+    }, [id]);
+
+    const fetchApiKeys = useCallback(async () => {
+        setKeysLoading(true);
+        try {
+            const res = await fetch(`${API_BASE}/admin/subscribers/${id}/api-keys`, { headers: authHeader() });
+            const data = await res.json();
+            if (data.ok) setApiKeys(data.data);
+        } finally {
+            setKeysLoading(false);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        if (tokenLoaded) {
+            fetchOverview();
+        }
+    }, [tokenLoaded, fetchOverview]);
+
     useEffect(() => {
         if (tab === "settings" && tokenLoaded) {
-            setSettingsLoading(true);
-            const token = localStorage.getItem("token");
-            fetch(`${API_BASE}/admin/subscribers/${id}/settings`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-                .then((r) => r.json())
-                .then((d) => {
-                    if (d.ok) {
-                        setTwilioConfig(d.data.twilio || { accountSid: "", authToken: "", phoneNumber: "", hasConfig: false });
-                        setTenantGoogleConfig(d.data.google || { clientId: "", clientSecret: "", geminiApiKey: "", hasConfig: false });
-                    }
-                    setSettingsLoading(false);
-                });
+            fetchSettings();
         }
-    }, [tab, tokenLoaded, id]);
+    }, [tab, tokenLoaded, fetchSettings]);
 
-    // Fetch API Keys
     useEffect(() => {
         if (tab === "api-keys" && tokenLoaded) {
-            setKeysLoading(true);
-            const token = localStorage.getItem("token");
-            fetch(`${API_BASE}/admin/subscribers/${id}/api-keys`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-                .then((r) => r.json())
-                .then((d) => {
-                    if (d.ok) setApiKeys(d.data);
-                    setKeysLoading(false);
-                });
+            fetchApiKeys();
         }
-    }, [tab, tokenLoaded, id]);
+    }, [tab, tokenLoaded, fetchApiKeys]);
 
     const saveTenantSettings = async (type: "twilio" | "google") => {
         setSettingsSaving(true);
@@ -92,7 +100,7 @@ function SubscriberDetailContent({ id }: { id: string }) {
             } else {
                 setSettingsMessage({ type: "error", text: d.message || "Failed to save settings." });
             }
-        } catch (err) {
+        } catch {
             setSettingsMessage({ type: "error", text: "Network error." });
         } finally {
             setSettingsSaving(false);
@@ -101,10 +109,9 @@ function SubscriberDetailContent({ id }: { id: string }) {
 
     const deleteTenantSettings = async (type: "twilio" | "google") => {
         if (!confirm(`Are you sure you want to remove the ${type} configuration for this tenant?`)) return;
-        const token = localStorage.getItem("token");
         await fetch(`${API_BASE}/admin/subscribers/${id}/settings/${type}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` }
+            headers: authHeader()
         });
         // Refresh
         if (type === "twilio") setTwilioConfig({ accountSid: "", authToken: "", phoneNumber: "", hasConfig: false });
@@ -114,11 +121,10 @@ function SubscriberDetailContent({ id }: { id: string }) {
     const createApiKey = async () => {
         if (!newKeyName.trim()) return;
         setCreatingKey(true);
-        const token = localStorage.getItem("token");
         const r = await fetch(`${API_BASE}/admin/subscribers/${id}/api-keys`, {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${token}`,
+                ...authHeader(),
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ name: newKeyName })
@@ -133,26 +139,21 @@ function SubscriberDetailContent({ id }: { id: string }) {
 
     const revokeApiKey = async (keyId: string) => {
         if (!confirm("Are you sure you want to revoke this API key?")) return;
-        const token = localStorage.getItem("token");
         await fetch(`${API_BASE}/admin/subscribers/${id}/api-keys/${keyId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` }
+            headers: authHeader()
         });
         setApiKeys(apiKeys.filter(k => k.id !== keyId));
     };
 
     const liftHold = async (affiliateId: string) => {
         setLiftingHold(affiliateId);
-        const token = localStorage.getItem("token");
         await fetch(`${API_BASE}/admin/affiliates/${affiliateId}/lift-hold`, {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            headers: authHeader(),
         });
         setLiftingHold(null);
-        // Refresh
-        const r = await fetch(`${API_BASE}/admin/subscribers/${id}/overview`, { headers: { Authorization: `Bearer ${token}` } });
-        const d = await r.json();
-        setSub(d.data);
+        fetchOverview();
     };
 
     if (loading) {
@@ -179,7 +180,7 @@ function SubscriberDetailContent({ id }: { id: string }) {
             <div className="flex items-center gap-2 bg-blue-500/10 border-b border-blue-500/20 px-6 py-2">
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-blue-400"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                 <p className="text-xs text-blue-300">
-                    <span className="font-bold">Admin Management View</span> — You are managing {sub.name}'s account settings.
+                    <span className="font-bold">Admin Management View</span> — You are managing {sub.name}&apos;s account settings.
                 </p>
             </div>
 
@@ -267,7 +268,7 @@ function SubscriberDetailContent({ id }: { id: string }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/[0.03]">
-                                {(sub.users ?? []).map((u: any) => (
+                                {sub.users.map((u) => (
                                     <tr key={u.id} className="hover:bg-white/[0.01]">
                                         <td className="px-5 py-3">
                                             <div className="font-medium text-[#f0f4fa]">{u.name}</div>
@@ -300,12 +301,12 @@ function SubscriberDetailContent({ id }: { id: string }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/[0.03]">
-                                {(sub.agents ?? []).map((a: any) => (
+                                {sub.agents.map((a) => (
                                     <tr key={a.id} className="hover:bg-white/[0.01]">
                                         <td className="px-5 py-3 font-medium text-[#f0f4fa]">{a.name}</td>
                                         <td className="px-5 py-3 text-[rgba(240,244,250,0.6)] font-mono text-xs">{a.voiceId ?? "—"}</td>
-                                        <td className="px-5 py-3 text-[#f0f4fa]">{a._count?.transcripts ?? 0}</td>
-                                        <td className="px-5 py-3 text-[#f0f4fa]">{a._count?.leads ?? 0}</td>
+                                        <td className="px-5 py-3 text-[#f0f4fa]">{a._count.transcripts}</td>
+                                        <td className="px-5 py-3 text-[#f0f4fa]">{a._count.leads}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -423,7 +424,7 @@ function SubscriberDetailContent({ id }: { id: string }) {
                                         <tr><td colSpan={4} className="px-5 py-12 text-center text-[rgba(240,244,250,0.4)]">Loading keys...</td></tr>
                                     ) : apiKeys.length === 0 ? (
                                         <tr><td colSpan={4} className="px-5 py-12 text-center text-[rgba(240,244,250,0.4)]">No API keys found for this tenant.</td></tr>
-                                    ) : apiKeys.map((k: any) => (
+                                    ) : apiKeys.map((k) => (
                                         <tr key={k.id} className="hover:bg-white/[0.01]">
                                             <td className="px-5 py-4 font-medium text-[#f0f4fa]">{k.name}</td>
                                             <td className="px-5 py-4 font-mono text-xs text-[#14b8a6]">
@@ -449,8 +450,8 @@ function SubscriberDetailContent({ id }: { id: string }) {
                             className="rounded-lg border border-white/[0.08] px-4 py-2 text-xs text-[rgba(240,244,250,0.6)] hover:text-white transition">
                             ← Back to Subscribers
                         </a>
-                        {sub.users?.some((u: any) => u.affiliate?.payoutHeld) && (
-                            <button onClick={() => sub.users.forEach((u: any) => u.affiliate?.payoutHeld && liftHold(u.affiliate.id))}
+                        {sub.users.some((u) => u.affiliate?.payoutHeld) && (
+                            <button onClick={() => sub.users.forEach((u) => u.affiliate?.payoutHeld && liftHold(u.affiliate.id))}
                                 disabled={!!liftingHold}
                                 className="rounded-lg bg-orange-500/20 border border-orange-500/30 px-4 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition">
                                 {liftingHold ? "Lifting hold…" : "🔓 Lift Payout Hold"}

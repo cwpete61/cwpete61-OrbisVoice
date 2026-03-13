@@ -18,6 +18,167 @@ export const API_BASE = (() => {
     return DEV_SSR_URL;
 })();
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  username: string;
+  role: "USER" | "ADMIN" | "SYSTEM_ADMIN";
+  avatar?: string;
+  isAffiliate?: boolean;
+  isAdmin?: boolean;
+  isBlocked?: boolean;
+  commissionLevel?: string;
+  isEmailVerifiedByAdmin?: boolean;
+  emailVerified?: string | boolean;
+  createdAt: string;
+  affiliate?: any; // To be refined if needed
+  tenant?: {
+    id: string;
+    creditBalance: number;
+    name: string;
+    subscriptionStatus?: string;
+    subscriptionTier?: string;
+  };
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  message?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface PlatformSettings {
+  lowCommission: number;
+  medCommission: number;
+  highCommission: number;
+  commissionDurationMonths: number;
+  defaultCommissionLevel: string;
+  payoutMinimum: number;
+  refundHoldDays: number;
+  payoutCycleDelayMonths: number;
+  starterLimit: number;
+  professionalLimit: number;
+  enterpriseLimit: number;
+  ltdLimit: number;
+  aiInfraLimit: number;
+}
+
+export interface Affiliate {
+  id: string;
+  userId: string;
+  user?: User;
+  status: string;
+  slug: string;
+  customCommissionRate: number | null;
+  lockedCommissionRate: number | null;
+  totalEarnings: number;
+  unpaidEarnings: number;
+  balance: number;
+  createdAt: string;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  type: string;
+  subject: string;
+  bodyHtml: string;
+  enabled: boolean;
+}
+
+export interface HelpQuestion {
+  id: string;
+  question: string;
+  suggestedAnswer?: string;
+  status: "pending" | "dismissed" | "promoted";
+  createdAt: string;
+}
+
+export interface FaqEntry {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  published: boolean;
+  helpful: number;
+  notHelpful: number;
+}
+
+export interface TwilioConfig {
+  accountSid: string;
+  authToken: string;
+  phoneNumber: string;
+  hasConfig?: boolean;
+}
+
+export interface TenantGoogleConfig {
+  clientId: string;
+  clientSecret: string;
+  geminiApiKey: string;
+  hasConfig?: boolean;
+}
+
+export interface SubscriberDetail {
+  id: string;
+  name: string;
+  billingEmail: string | null;
+  subscriptionTier: string | null;
+  subscriptionStatus: string | null;
+  subscriptionEnds: string | null;
+  usageCount: number;
+  usageLimit: number | null;
+  usageResetAt: string | null;
+  creditBalance: number;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  createdAt: string;
+  users: Array<User & { affiliate?: Affiliate }>;
+  agents: Array<{
+    id: string;
+    name: string;
+    voiceId: string | null;
+    _count: {
+      transcripts: number;
+      leads: number;
+    };
+  }>;
+}
+
+export interface AdminStats {
+  totalTenants: number;
+  totalUsers: number;
+  totalAgents: number;
+  estimatedMRR: number;
+  subscriptionBreakdown: Array<{
+    subscriptionTier: string;
+    _count: number;
+  }>;
+  systemHealth: {
+    api: string;
+    database: string;
+    redis: string;
+  };
+  lastUpdated: string;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  billingEmail: string | null;
+  subscriptionTier: string | null;
+  subscriptionStatus: string | null;
+  createdAt: string;
+  _count?: {
+    users: number;
+    agents: number;
+  };
+  users?: Array<{ email: string }>;
+}
+
 export interface ApiResponse<T = unknown> {
     ok: boolean;
     message?: string;

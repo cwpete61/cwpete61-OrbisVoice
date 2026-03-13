@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { API_BASE } from "@/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { API_BASE, User } from "@/lib/api";
+import Image from "next/image";
 
 interface UserInfoCardProps {
   onProfileClick: () => void;
@@ -9,17 +10,27 @@ interface UserInfoCardProps {
 }
 
 export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: UserInfoCardProps) {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [avatar, setAvatar] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (tokenLoaded) {
-      fetchProfile();
-    }
-  }, [tokenLoaded]);
+  const generateAvatar = useCallback((name: string) => {
+    const initials = name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
 
-  const fetchProfile = async () => {
+    const colors = ["#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#ec4899"];
+    const colorIndex = name.charCodeAt(0) % colors.length;
+    const bgColor = colors[colorIndex];
+
+    const svg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='${bgColor.replace("#", "%23")}' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' font-size='16' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'%3E${initials}%3C/text%3E%3C/svg%3E`;
+    setAvatar(svg);
+  }, []);
+
+  const fetchProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/users/me`, {
@@ -45,23 +56,13 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
     } finally {
       setLoading(false);
     }
-  };
+  }, [generateAvatar]);
 
-  const generateAvatar = (name: string) => {
-    const initials = name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-
-    const colors = ["#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#ec4899"];
-    const colorIndex = name.charCodeAt(0) % colors.length;
-    const bgColor = colors[colorIndex];
-
-    const svg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='${bgColor.replace("#", "%23")}' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' font-size='16' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'%3E${initials}%3C/text%3E%3C/svg%3E`;
-    setAvatar(svg);
-  };
+  useEffect(() => {
+    if (tokenLoaded) {
+      fetchProfile();
+    }
+  }, [tokenLoaded, fetchProfile]);
 
   if (loading) return null;
 
@@ -73,10 +74,12 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
       >
         {/* Avatar */}
         {avatar && (
-          <img
+          <Image
             src={avatar}
             alt="Profile"
-            className="w-10 h-10 rounded-full flex-shrink-0 object-cover"
+            width={40}
+            height={40}
+            className="rounded-full flex-shrink-0 object-cover"
           />
         )}
 
@@ -91,7 +94,7 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
                 System Admin
               </span>
             )}
-            {profile?.role === "ADMIN" && profile?.role !== "SYSTEM_ADMIN" && (
+            {profile?.role === "ADMIN" && (
               <span className="px-1.5 py-0.5 rounded-md bg-[#14b8a6]/10 text-[#14b8a6] text-[9px] font-bold border border-[#14b8a6]/20 uppercase tracking-wider">
                 Admin
               </span>
@@ -104,7 +107,7 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
             <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">
               {profile?.email}
             </div>
-            {profile?.tenant?.creditBalance > 0 && (
+            {profile?.tenant && profile.tenant.creditBalance > 0 && (
               <div className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-[#14b8a6]/10 text-[#14b8a6] text-[10px] font-bold">
                 {profile.tenant.creditBalance} credits
               </div>

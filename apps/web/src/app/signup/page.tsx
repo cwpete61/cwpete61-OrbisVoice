@@ -7,7 +7,7 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { apiFetch } from "@/lib/api";
-import { Turnstile } from "@marsidev/react-turnstile";
+// import { Turnstile } from "@marsidev/react-turnstile";
 
 function SignupContent() {
   const [email, setEmail] = useState("");
@@ -17,8 +17,8 @@ function SignupContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState("");
-  const router = useRouter();
+  // const [captchaToken, setCaptchaToken] = useState("");
+  // const router = useRouter();
   const searchParams = useSearchParams();
   const referralCode = searchParams.get("ref") || "";
 
@@ -40,7 +40,7 @@ function SignupContent() {
           password,
           referralCode,
           affiliateSlug,
-          captchaToken
+          // captchaToken
         }),
       });
       if (res.ok) {
@@ -55,6 +55,7 @@ function SignupContent() {
     }
   };
 
+  /* 
   const handleGoogleSignup = async () => {
     try {
       setLoading(true);
@@ -70,6 +71,7 @@ function SignupContent() {
       setLoading(false);
     }
   };
+  */
 
   return (
     <div className="flex min-h-screen flex-col bg-[#05080f]">
@@ -169,7 +171,7 @@ function SignupContent() {
                   />
                 </div>
 
-                {/* Cloudflare Turnstile CAPTCHA */}
+                {/* Cloudflare Turnstile CAPTCHA - Disabled
                 <Turnstile
                   siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
                   onSuccess={(token) => setCaptchaToken(token)}
@@ -179,7 +181,7 @@ function SignupContent() {
                   }}
                   onExpire={() => setCaptchaToken("")}
                   className="mx-auto"
-                />
+                /> */}
 
                 <button
                   type="submit"
@@ -189,6 +191,7 @@ function SignupContent() {
                   {loading ? "Creating account…" : "Create Account — Free"}
                 </button>
 
+                {/* Google Signup - Disabled
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-white/[0.07]"></div>
@@ -223,7 +226,7 @@ function SignupContent() {
                     />
                   </svg>
                   Sign up with Google
-                </button>
+                </button> */}
               </form>
             )}
 

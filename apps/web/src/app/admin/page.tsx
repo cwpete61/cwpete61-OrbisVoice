@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { API_BASE } from "@/lib/api";
+import { API_BASE, AdminStats, authHeader } from "@/lib/api";
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<AdminStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -16,9 +16,8 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/stats`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: authHeader(),
             });
             const data = await res.json();
             if (res.ok) {
@@ -43,7 +42,7 @@ export default function AdminDashboard() {
         );
     }
 
-    const chartData = stats?.subscriptionBreakdown?.map((s: any) => ({
+    const chartData = stats?.subscriptionBreakdown?.map((s) => ({
         name: (s.subscriptionTier || 'free').charAt(0).toUpperCase() + (s.subscriptionTier || 'free').slice(1),
         count: s._count
     })) || [];
@@ -132,7 +131,7 @@ export default function AdminDashboard() {
                                         labelStyle={{ color: 'rgba(240,244,250,0.5)', marginBottom: '4px' }}
                                     />
                                     <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={40}>
-                                        {chartData.map((entry: any, index: number) => (
+                                        {chartData.map((_entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} />
                                         ))}
                                     </Bar>
@@ -198,7 +197,7 @@ export default function AdminDashboard() {
     );
 }
 
-function StatCard({ title, value, icon, isHighlight = false }: any) {
+function StatCard({ title, value, icon, isHighlight = false }: { title: string; value: string | number; icon: React.ReactNode; isHighlight?: boolean }) {
     return (
         <div className={`rounded-2xl border p-6 transition group relative overflow-hidden ${isHighlight
             ? 'border-[#14b8a6]/40 bg-[#14b8a6]/5 shadow-[0_0_20px_rgba(20,184,166,0.1)]'
@@ -220,7 +219,7 @@ function StatCard({ title, value, icon, isHighlight = false }: any) {
     );
 }
 
-function HealthItem({ label, status }: any) {
+function HealthItem({ label, status }: { label: string; status: string | undefined }) {
     const isOk = status === "operational";
     return (
         <div className="flex items-center justify-between py-2.5 group">
@@ -235,7 +234,7 @@ function HealthItem({ label, status }: any) {
     );
 }
 
-function QuickLinkCard({ title, subtitle, href, icon }: any) {
+function QuickLinkCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: string; icon: React.ReactNode }) {
     return (
         <a
             href={href}

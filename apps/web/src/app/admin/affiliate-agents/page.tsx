@@ -4,12 +4,13 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../../components/DashboardShell";
 import PasswordInput from "../../components/PasswordInput";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, User, PlatformSettings, Affiliate } from "@/lib/api";
+import { useCallback } from "react";
 
 function AffiliateAgentsContent() {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [tokenEmail, setTokenEmail] = useState<string | null>(null);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userFilter, setUserFilter] = useState<"all" | "paid" | "free">("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -30,25 +31,9 @@ function AffiliateAgentsContent() {
     tier: "starter",
     commissionLevel: "LOW",
   });
-  const [platformSettings, setPlatformSettings] = useState<any>(null);
-  const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({
-    lowCommission: 0,
-    medCommission: 0,
-    highCommission: 0,
-    commissionDurationMonths: 0,
-    defaultCommissionLevel: "LOW",
-    payoutMinimum: 100,
-    refundHoldDays: 14,
-    payoutCycleDelayMonths: 1,
-    starterLimit: 1000,
-    professionalLimit: 10000,
-    enterpriseLimit: 100000,
-    ltdLimit: 1000,
-    aiInfraLimit: 250000,
-  });
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [affiliates, setAffiliates] = useState<any[]>([]);
+  const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -64,41 +49,7 @@ function AffiliateAgentsContent() {
     profile?.email === "admin@orbisvoice.app" ||
     tokenEmail === "admin@orbisvoice.app";
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1] || ""));
-        setTokenEmail(payload?.email || null);
-      } catch {
-        setTokenEmail(null);
-      }
-    }
-    fetchProfile();
-  }, []);
-
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers("all", debouncedSearch);
-      fetchPlatformSettings();
-      fetchAffiliates();
-    }
-  }, [isAdmin]);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [search]);
-
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers(userFilter, debouncedSearch);
-    }
-  }, [debouncedSearch, userFilter]);
-
-  const fetchPlatformSettings = async () => {
+  const fetchPlatformSettings = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/admin/settings`, {
@@ -107,56 +58,17 @@ function AffiliateAgentsContent() {
       if (res.ok) {
         const data = await res.json();
         setPlatformSettings(data.data);
-        setSettingsForm({
-          lowCommission: data.data.lowCommission,
-          medCommission: data.data.medCommission,
-          highCommission: data.data.highCommission,
-          commissionDurationMonths: data.data.commissionDurationMonths || 0,
-          defaultCommissionLevel: data.data.defaultCommissionLevel || "LOW",
-          payoutMinimum: data.data.payoutMinimum || 100,
-          refundHoldDays: data.data.refundHoldDays || 14,
-          payoutCycleDelayMonths: data.data.payoutCycleDelayMonths !== undefined ? data.data.payoutCycleDelayMonths : 1,
-          starterLimit: data.data.starterLimit || 1000,
-          professionalLimit: data.data.professionalLimit || 10000,
-          enterpriseLimit: data.data.enterpriseLimit || 100000,
-          ltdLimit: data.data.ltdLimit || 1000,
-          aiInfraLimit: data.data.aiInfraLimit || 250000,
-        });
         setCreateForm(prev => ({
           ...prev,
           commissionLevel: data.data.defaultCommissionLevel || "LOW"
         }));
       }
-    } catch (err) {
-      console.error("Failed to fetch platform settings:", err);
+    } catch {
+      // console.error("Failed to fetch platform settings");
     }
-  };
+  }, []);
 
-  const handleSaveSettings = async () => {
-    setSaveSettingsLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/settings`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(settingsForm),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPlatformSettings(data.data);
-        await fetchUsers(userFilter, debouncedSearch);
-      }
-    } catch (err) {
-      console.error("Failed to save settings:", err);
-    } finally {
-      setSaveSettingsLoading(false);
-    }
-  };
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/users/me`, {
@@ -166,12 +78,12 @@ function AffiliateAgentsContent() {
         const data = await res.json();
         setProfile(data.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
+    } catch {
+      // console.error("Failed to fetch profile");
     }
-  };
+  }, []);
 
-  const fetchUsers = async (subFilter: "all" | "paid" | "free" = "all", searchTerm: string = "") => {
+  const fetchUsers = useCallback(async (subFilter: "all" | "paid" | "free" = "all", searchTerm: string = "") => {
     setUsersLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -192,15 +104,14 @@ function AffiliateAgentsContent() {
         const data = await res.json();
         setUsers(data.data || []);
       }
-    } catch (err) {
-      console.error("Failed to fetch users:", err);
+    } catch {
+      // console.error("Failed to fetch users");
     } finally {
       setUsersLoading(false);
     }
-  };
+  }, []);
 
-
-  const fetchAffiliates = async () => {
+  const fetchAffiliates = useCallback(async () => {
     setAffiliatesLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -211,12 +122,40 @@ function AffiliateAgentsContent() {
         const data = await res.json();
         setAffiliates(data.data || []);
       }
-    } catch (err) {
-      console.error("Failed to fetch affiliates:", err);
+    } catch {
+      // console.error("Failed to fetch affiliates");
     } finally {
       setAffiliatesLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1] || ""));
+        setTokenEmail(payload?.email || null);
+      } catch {
+        setTokenEmail(null);
+      }
+    }
+    fetchProfile();
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers("all", debouncedSearch);
+      fetchPlatformSettings();
+      fetchAffiliates();
+    }
+  }, [isAdmin, debouncedSearch, fetchUsers, fetchPlatformSettings, fetchAffiliates]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers(userFilter, debouncedSearch);
+    }
+  }, [isAdmin, debouncedSearch, userFilter, fetchUsers]);
+
 
   const handleUpdateAffiliateStatus = async (id: string, status: string) => {
     setActionLoading(id);
@@ -233,8 +172,8 @@ function AffiliateAgentsContent() {
       if (res.ok) {
         fetchAffiliates();
       }
-    } catch (err) {
-      console.error("Failed to update affiliate status:", err);
+    } catch {
+      // console.error("Failed to update affiliate status");
     } finally {
       setActionLoading(null);
     }
@@ -272,8 +211,8 @@ function AffiliateAgentsContent() {
       } else {
         alert("Failed to update rate: " + data.message);
       }
-    } catch (err) {
-      console.error("Failed to update custom commission rate:", err);
+    } catch {
+      // console.error("Failed to update custom commission rate");
       alert("Network error.");
     } finally {
       setActionLoading(null);
@@ -311,8 +250,8 @@ function AffiliateAgentsContent() {
       setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
       setCreateOpen(false);
       await fetchUsers(userFilter, debouncedSearch);
-    } catch (err) {
-      console.error("Failed to create user:", err);
+    } catch {
+      // console.error("Failed to create user");
       setCreateError("Failed to create user");
     } finally {
       setCreateLoading(false);
@@ -357,8 +296,8 @@ function AffiliateAgentsContent() {
         await fetchUsers(userFilter, debouncedSearch);
         cancelEditUser();
       }
-    } catch (err) {
-      console.error("Failed to update user:", err);
+    } catch {
+      // console.error("Failed to update user");
     } finally {
       setActionLoading(null);
     }
@@ -387,7 +326,7 @@ function AffiliateAgentsContent() {
       } else {
         alert(data.message || "Failed to promote user");
       }
-    } catch (err) {
+    } catch {
       alert("Error connecting to server");
     } finally {
       setActionLoading(null);
@@ -413,8 +352,8 @@ function AffiliateAgentsContent() {
       if (res.ok) {
         await fetchUsers(userFilter, debouncedSearch);
       }
-    } catch (err) {
-      console.error("Failed to update block status:", err);
+    } catch {
+      // console.error("Failed to update block status");
     } finally {
       setActionLoading(null);
     }
@@ -462,14 +401,37 @@ function AffiliateAgentsContent() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-[#f0f4fa]">Professional Partners</h2>
-                <div className="flex items-center gap-2">
+            {/* Admin Tabs */}
+            <div className="flex items-center gap-1 border-b border-white/[0.07] px-1">
+              {[
+                { id: "users", label: "All Users", icon: "👥" },
+                { id: "affiliates", label: "Professional Partners", icon: "🤝" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => router.push(`?tab=${tab.id}`)}
+                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all ${adminTab === tab.id
+                    ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                    }`}
+                >
+                  <span>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {adminTab === "affiliates" && (
+              <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-[#f0f4fa]">Professional Partners</h2>
+                    <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">Review and manage professional partner accounts</p>
+                  </div>
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search name, email..."
+                      placeholder="Search name, email, slug..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="w-64 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-1.5 text-xs text-[#f0f4fa] placeholder:text-[rgba(240,244,250,0.3)] focus:border-[#14b8a6]/50 focus:outline-none transition"
@@ -483,289 +445,403 @@ function AffiliateAgentsContent() {
                       </button>
                     )}
                   </div>
-                  <button
-                    onClick={() => setCreateOpen((prev) => !prev)}
-                    className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
-                  >
-                    {createOpen ? "Close" : "Add user"}
-                  </button>
-                  <div className="flex items-center rounded-lg border border-white/[0.08] bg-[#05080f] p-1 text-xs">
-                    <button
-                      onClick={() => setUserFilter("paid")}
-                      className={`rounded-md px-2.5 py-1 transition ${userFilter === "paid"
-                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                        }`}
-                    >
-                      Paid only
-                    </button>
-                    <button
-                      onClick={() => setUserFilter("free")}
-                      className={`rounded-md px-2.5 py-1 transition ${userFilter === "free"
-                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                        }`}
-                    >
-                      Free only
-                    </button>
-                    <button
-                      onClick={() => setUserFilter("all")}
-                      className={`rounded-md px-2.5 py-1 transition ${userFilter === "all"
-                        ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                        : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                        }`}
-                    >
-                      All Professional
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => fetchUsers(userFilter, debouncedSearch)}
-                    className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
-                  >
-                    Refresh
-                  </button>
                 </div>
-              </div>
 
-              {createOpen && (
-                <div className="mb-5 rounded-xl border border-white/[0.06] bg-[#05080f] p-4">
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-                    <input
-                      value={createForm.name}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, name: event.target.value }))
-                      }
-                      placeholder="Name"
-                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                    />
-                    <input
-                      value={createForm.email}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, email: event.target.value }))
-                      }
-                      placeholder="Email"
-                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                    />
-                    <input
-                      value={createForm.username}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, username: event.target.value }))
-                      }
-                      placeholder="Username"
-                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                    />
-                    <PasswordInput
-                      value={createForm.password}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({ ...prev, password: event.target.value }))
-                      }
-                      placeholder="Temp password"
-                      className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                    />
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={createForm.tier}
-                        onChange={(event) =>
-                          setCreateForm((prev) => ({ ...prev, tier: event.target.value }))
-                        }
-                        className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                      >
-                        <option value="starter">starter</option>
-                        <option value="professional">professional</option>
-                        <option value="enterprise">enterprise</option>
-                        <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
-                      </select>
-                      <select
-                        value={createForm.commissionLevel}
-                        onChange={(event) =>
-                          setCreateForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
-                        }
-                        className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
-                      >
-                        <option value="LOW">Low Comm</option>
-                        <option value="MED">Med Comm</option>
-                        <option value="HIGH">High Comm</option>
-                      </select>
-                      <button
-                        onClick={handleCreateUser}
-                        disabled={createLoading}
-                        className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-2 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {createLoading ? "Adding..." : "Add"}
-                      </button>
-                    </div>
-                  </div>
-                  {createError && (
-                    <p className="mt-2 text-xs text-[#f97316]">{createError}</p>
-                  )}
-                </div>
-              )}
-
-              {usersLoading ? (
-                <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading users…</p>
-              ) : users.length === 0 ? (
-                <p className="text-sm text-[rgba(240,244,250,0.4)]">None.</p>
-              ) : (
-                <div className="space-y-3">
-                  {users.map((user: any) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
-                    >
-                      <div className="flex-1 min-w-0 pr-4">
-                        {editingUserId === user.id ? (
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <input
-                              value={editForm.name}
-                              onChange={(event) =>
-                                setEditForm((prev) => ({ ...prev, name: event.target.value }))
-                              }
-                              className="w-full sm:w-48 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
-                              placeholder="Name"
-                            />
-                            <input
-                              value={editForm.email}
-                              onChange={(event) =>
-                                setEditForm((prev) => ({ ...prev, email: event.target.value }))
-                              }
-                              className="w-full sm:w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
-                              placeholder="Email"
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-3">
-                            <p className="text-sm font-semibold text-[#f0f4fa] truncate">{user.name}</p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs truncate">
-                              <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                              <p className="text-[rgba(240,244,250,0.5)] truncate">{user.email}</p>
-                              <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                              <p className="text-[rgba(240,244,250,0.35)] truncate">@{user.username || "-"}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0">
-                        <div className="flex flex-col items-start sm:items-end gap-1.5">
-                          {editingUserId === user.id ? (
-                            <div className="flex flex-col sm:flex-row items-center gap-2">
-                              <select
-                                value={editForm.tier}
-                                onChange={(event) =>
-                                  setEditForm((prev) => ({ ...prev, tier: event.target.value }))
-                                }
-                                className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
-                              >
-                                <option value="starter">starter</option>
-                                <option value="professional">professional</option>
-                                <option value="enterprise">enterprise</option>
-                                <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
-                              </select>
-                              <select
-                                value={editForm.commissionLevel}
-                                onChange={(event) =>
-                                  setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
-                                }
-                                className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
-                              >
-                                <option value="LOW">Low Comm</option>
-                                <option value="MED">Med Comm</option>
-                                <option value="HIGH">High Comm</option>
-                              </select>
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[11px] text-[rgba(240,244,250,0.45)]">
-                              <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium border ${{
-                                  active: "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]",
-                                  trialing: "border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]",
-                                  canceled: "border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]",
-                                  past_due: "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]",
-                                  free: "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]",
-                                }[(user?.tenant?.subscriptionStatus as string) || "free"] ||
-                                  "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]"
-                                  }`}
-                              >
-                                {(user?.tenant?.subscriptionStatus as string) || "free"}
-                              </span>
-                              {user.isBlocked && (
-                                <span className="inline-flex items-center rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-0.5 font-medium text-[#ef4444]">
-                                  blocked
-                                </span>
-                              )}
-                              <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                              <span>Tier: <span className="text-[#f0f4fa]">{(user?.tenant?.subscriptionTier as string) || "starter"}</span></span>
-                              <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                              <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
-                              <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                              <span className="uppercase font-semibold text-[rgba(240,244,250,0.6)]">{user.role || (user.isAdmin ? "ADMIN" : "USER")}</span>
-                              <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                              <span className="text-[rgba(240,244,250,0.35)]">{new Date(user.createdAt).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {editingUserId === user.id ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => saveEditUser(user.id)}
-                                disabled={actionLoading === `save-${user.id}`}
-                                className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={cancelEditUser}
-                                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => startEditUser(user)}
-                                className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => toggleBlockUser(user)}
-                                disabled={actionLoading === `block-${user.id}`}
-                                className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1.5 text-xs text-[#f59e0b] hover:bg-[#f59e0b]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {user.isBlocked ? "Unblock" : "Block"}
-                              </button>
-                              {!user.affiliate && !user.isAdmin && (
-                                <button
-                                  onClick={() => promoteToAffiliate(user.id)}
-                                  disabled={actionLoading === `promote-${user.id}`}
-                                  className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/5 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/10 transition disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  Promote to Partner
-                                </button>
-                              )}
-                              {user.affiliate && (
-                                <div className="flex items-center gap-1 rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-[10px] font-bold text-[#14b8a6] uppercase tracking-wider">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
-                                  Partner
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-[#111827] text-xs font-medium uppercase tracking-wider text-[rgba(240,244,250,0.4)]">
+                      <tr>
+                        <th className="px-6 py-4">User</th>
+                        <th className="px-6 py-4">Slug & Rate</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Balance</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.03]">
+                      {affiliatesLoading ? (
+                        <tr><td colSpan={5} className="py-12 text-center text-xs text-white/30">Loading affiliates...</td></tr>
+                      ) : affiliates.length > 0 ? (
+                        affiliates.map((aff) => (
+                          <tr key={aff.id} className="hover:bg-white/[0.02]">
+                            <td className="px-6 py-4">
+                              <div className="font-medium text-[#f0f4fa]">{aff.user?.name}</div>
+                              <div className="text-xs text-[rgba(240,244,250,0.4)]">{aff.user?.email}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-mono text-xs text-[#14b8a6]">{aff.slug}</div>
+                              {(aff.customCommissionRate !== null || aff.lockedCommissionRate !== null) && (
+                                <div className="mt-1 flex flex-col gap-0.5 text-[10px] uppercase tracking-wide font-medium">
+                                  {aff.customCommissionRate !== null ? (
+                                    <span className="text-[#f59e0b]">Custom Override: {aff.customCommissionRate}%</span>
+                                  ) : null}
+                                  {aff.lockedCommissionRate !== null && aff.customCommissionRate === null ? (
+                                    <span className="text-[#14b8a6]/70">Locked Rate: {aff.lockedCommissionRate}%</span>
+                                  ) : null}
                                 </div>
                               )}
-                              <button
-                                onClick={() => deleteUser(user)}
-                                disabled={actionLoading === `delete-${user.id}`}
-                                className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
-                        </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${aff.status === "ACTIVE"
+                                ? "bg-green-500/10 text-green-400"
+                                : aff.status === "PENDING"
+                                  ? "bg-yellow-500/10 text-yellow-400"
+                                  : "bg-red-500/10 text-red-400"
+                                }`}>
+                                {aff.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-[#f0f4fa]">${typeof aff.balance === 'number' ? aff.balance.toFixed(2) : "0.00"}</td>
+                            <td className="px-6 py-4 text-right">
+                              {aff.status === "PENDING" && (
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleUpdateAffiliateStatus(aff.id, "ACTIVE")}
+                                    disabled={actionLoading === aff.id}
+                                    className="rounded-lg bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400 hover:bg-green-500/20"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateAffiliateStatus(aff.id, "REJECTED")}
+                                    disabled={actionLoading === aff.id}
+                                    className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              )}
+                              {aff.status === "ACTIVE" && (
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleSetCustomRate(aff)}
+                                    disabled={actionLoading === `rate-${aff.id}`}
+                                    className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/5 px-3 py-1 text-xs font-medium text-[#f59e0b] hover:bg-[#f59e0b]/10 transition disabled:opacity-50"
+                                  >
+                                    Set Rate
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr><td colSpan={5} className="py-12 text-center text-xs text-white/30">No affiliate applications found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {adminTab === "users" && (
+              <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+                <div className="mb-5 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-[#f0f4fa]">Subscribers</h2>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search name, email..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-64 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-1.5 text-xs text-[#f0f4fa] placeholder:text-[rgba(240,244,250,0.3)] focus:border-[#14b8a6]/50 focus:outline-none transition"
+                      />
+                      {search && (
+                        <button
+                          onClick={() => setSearch("")}
+                          className="absolute right-2 top-1.5 text-[rgba(240,244,250,0.4)] hover:text-[#f0f4fa]"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setCreateOpen((prev) => !prev)}
+                        className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
+                      >
+                        {createOpen ? "Close" : "Add user"}
+                      </button>
+                    )}
+                    <div className="flex items-center rounded-lg border border-white/[0.08] bg-[#05080f] p-1 text-xs">
+                      <button
+                        onClick={() => setUserFilter("paid")}
+                        className={`rounded-md px-2.5 py-1 transition ${userFilter === "paid"
+                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                          : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                          }`}
+                      >
+                        Paid only
+                      </button>
+                      <button
+                        onClick={() => setUserFilter("free")}
+                        className={`rounded-md px-2.5 py-1 transition ${userFilter === "free"
+                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                          : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                          }`}
+                      >
+                        Free only
+                      </button>
+                      <button
+                        onClick={() => setUserFilter("all")}
+                        className={`rounded-md px-2.5 py-1 transition ${userFilter === "all"
+                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                          : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                          }`}
+                      >
+                        All
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => fetchUsers(userFilter, debouncedSearch)}
+                      className="rounded-lg border border-white/[0.08] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.2] transition"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+
+                {createOpen && (
+                  <div className="mb-5 rounded-xl border border-white/[0.06] bg-[#05080f] p-4">
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                      <input
+                        value={createForm.name}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                        }
+                        placeholder="Name"
+                        className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                      />
+                      <input
+                        value={createForm.email}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, email: event.target.value }))
+                        }
+                        placeholder="Email"
+                        className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                      />
+                      <input
+                        value={createForm.username}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, username: event.target.value }))
+                        }
+                        placeholder="Username"
+                        className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                      />
+                      <PasswordInput
+                        value={createForm.password}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({ ...prev, password: event.target.value }))
+                        }
+                        placeholder="Temp password"
+                        className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                      />
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={createForm.tier}
+                          onChange={(event) =>
+                            setCreateForm((prev) => ({ ...prev, tier: event.target.value }))
+                          }
+                          className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                        >
+                          <option value="starter">starter</option>
+                          <option value="professional">professional</option>
+                          <option value="enterprise">enterprise</option>
+                          <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                        </select>
+                        <select
+                          value={createForm.commissionLevel}
+                          onChange={(event) =>
+                            setCreateForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                          }
+                          className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
+                        >
+                          <option value="LOW">Low Comm</option>
+                          <option value="MED">Med Comm</option>
+                          <option value="HIGH">High Comm</option>
+                        </select>
+                        <button
+                          onClick={handleCreateUser}
+                          disabled={createLoading}
+                          className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-2 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {createLoading ? "Adding..." : "Add"}
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    {createError && (
+                      <p className="mt-2 text-xs text-[#f97316]">{createError}</p>
+                    )}
+                  </div>
+                )}
+
+                {usersLoading ? (
+                  <p className="text-sm text-[rgba(240,244,250,0.4)]">Loading users…</p>
+                ) : users.length === 0 ? (
+                  <p className="text-sm text-[rgba(240,244,250,0.4)]">None.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {users.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#05080f] px-5 py-4"
+                      >
+                        <div className="flex-1 min-w-0 pr-4">
+                          {editingUserId === user.id ? (
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <input
+                                value={editForm.name}
+                                onChange={(event) =>
+                                  setEditForm((prev) => ({ ...prev, name: event.target.value }))
+                                }
+                                className="w-full sm:w-48 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                                placeholder="Name"
+                              />
+                              <input
+                                value={editForm.email}
+                                onChange={(event) =>
+                                  setEditForm((prev) => ({ ...prev, email: event.target.value }))
+                                }
+                                className="w-full sm:w-64 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-1.5 text-xs text-[#f0f4fa]"
+                                placeholder="Email"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-3">
+                              <p className="text-sm font-semibold text-[#f0f4fa] truncate">{user.name}</p>
+                              <div className="flex flex-wrap items-center gap-2 text-xs truncate">
+                                <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <p className="text-[rgba(240,244,250,0.5)] truncate">{user.email}</p>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <p className="text-[rgba(240,244,250,0.35)] truncate">@{user.username || "-"}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0">
+                          <div className="flex flex-col items-start sm:items-end gap-1.5">
+                            {editingUserId === user.id ? (
+                              <div className="flex flex-col sm:flex-row items-center gap-2">
+                                <select
+                                  value={editForm.tier}
+                                  onChange={(event) =>
+                                    setEditForm((prev) => ({ ...prev, tier: event.target.value }))
+                                  }
+                                  className="rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
+                                >
+                                  <option value="starter">starter</option>
+                                  <option value="professional">professional</option>
+                                  <option value="enterprise">enterprise</option>
+                                  <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                                </select>
+                                <select
+                                  value={editForm.commissionLevel}
+                                  onChange={(event) =>
+                                    setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                                  }
+                                  className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
+                                >
+                                  <option value="LOW">Low Comm</option>
+                                  <option value="MED">Med Comm</option>
+                                  <option value="HIGH">High Comm</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[11px] text-[rgba(240,244,250,0.45)]">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium border ${{
+                                    active: "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]",
+                                    trialing: "border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]",
+                                    canceled: "border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]",
+                                    past_due: "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]",
+                                    free: "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]",
+                                  }[(user?.tenant?.subscriptionStatus as string) || "free"] ||
+                                    "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]"
+                                    }`}
+                                >
+                                  {(user?.tenant?.subscriptionStatus as string) || "free"}
+                                </span>
+                                {user.isBlocked && (
+                                  <span className="inline-flex items-center rounded-full border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-0.5 font-medium text-[#ef4444]">
+                                    blocked
+                                  </span>
+                                )}
+                                <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span>Tier: <span className="text-[#f0f4fa]">{(user?.tenant?.subscriptionTier as string) || "starter"}</span></span>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span className="uppercase font-semibold text-[rgba(240,244,250,0.6)]">{user.role || (user.isAdmin ? "ADMIN" : "USER")}</span>
+                                <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
+                                <span className="text-[rgba(240,244,250,0.35)]">{new Date(user.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {editingUserId === user.id ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => saveEditUser(user.id)}
+                                  disabled={actionLoading === `save-${user.id}`}
+                                  className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={cancelEditUser}
+                                  className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => startEditUser(user)}
+                                  className="rounded-lg border border-white/[0.12] px-3 py-1.5 text-xs text-[rgba(240,244,250,0.7)] hover:border-white/[0.3] transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => toggleBlockUser(user)}
+                                  disabled={actionLoading === `block-${user.id}`}
+                                  className="rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1.5 text-xs text-[#f59e0b] hover:bg-[#f59e0b]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {user.isBlocked ? "Unblock" : "Block"}
+                                </button>
+                                {!user.affiliate && !user.isAdmin && (
+                                  <button
+                                    onClick={() => promoteToAffiliate(user.id)}
+                                    disabled={actionLoading === `promote-${user.id}`}
+                                    className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/5 px-3 py-1.5 text-xs text-[#14b8a6] hover:bg-[#14b8a6]/10 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    Promote to Partner
+                                  </button>
+                                )}
+                                {user.affiliate && (
+                                  <div className="flex items-center gap-1 rounded-lg bg-[#14b8a6]/10 px-3 py-1.5 text-[10px] font-bold text-[#14b8a6] uppercase tracking-wider">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
+                                    Partner
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => deleteUser(user)}
+                                  disabled={actionLoading === `delete-${user.id}`}
+                                  className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs text-[#ef4444] hover:bg-[#ef4444]/20 transition disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

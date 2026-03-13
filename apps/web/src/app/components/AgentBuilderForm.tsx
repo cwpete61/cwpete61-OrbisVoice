@@ -418,7 +418,7 @@ export default function AgentBuilderForm({
                                 {isEditing ? "Edit Voice Agent" : "Build Your Voice Agent"}
                             </h1>
                             <p className="text-[rgba(240,244,250,0.45)] text-sm flex items-center gap-3">
-                                Configure your AI agent's identity, persona, and voice in minutes
+                                Configure your AI agent&apos;s identity, persona, and voice in minutes
                                 {autoSaveStatus === "saving" && <span className="text-[#14b8a6] text-xs">Saving...</span>}
                                 {autoSaveStatus === "saved" && <span className="text-white/30 text-xs">Saved</span>}
                                 {autoSaveStatus === "error" && <span className="text-red-400 text-xs">Save failed</span>}

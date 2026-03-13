@@ -3,20 +3,20 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import DashboardShell from "../../components/DashboardShell";
 import { useTokenFromUrl } from "../../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, HelpQuestion, FaqEntry } from "@/lib/api";
 
 function AdminHelpContent() {
     const tokenLoaded = useTokenFromUrl();
     const [tab, setTab] = useState<"questions" | "faq">("questions");
 
     // Question queue
-    const [questions, setQuestions] = useState<any[]>([]);
+    const [questions, setQuestions] = useState<HelpQuestion[]>([]);
     const [promoting, setPromoting] = useState<string | null>(null);
     const [promoteForm, setPromoteForm] = useState<{ [id: string]: { answer: string; category: string } }>({});
 
     // FAQ management
-    const [faqs, setFaqs] = useState<any[]>([]);
-    const [editingFaq, setEditingFaq] = useState<any | null>(null);
+    const [faqs, setFaqs] = useState<FaqEntry[]>([]);
+    const [editingFaq, setEditingFaq] = useState<FaqEntry | null>(null);
     const [newFaq, setNewFaq] = useState({ question: "", answer: "", category: "general" });
     const [showNewForm, setShowNewForm] = useState(false);
     const [savingFaq, setSavingFaq] = useState(false);
@@ -34,7 +34,13 @@ function AdminHelpContent() {
     }, []);
 
     useEffect(() => {
-        if (tokenLoaded) { fetchQuestions(); fetchFaqs(); }
+        if (tokenLoaded) {
+            const timer = setTimeout(() => {
+                fetchQuestions();
+                fetchFaqs();
+            }, 0);
+            return () => clearTimeout(timer);
+        }
     }, [tokenLoaded, fetchQuestions, fetchFaqs]);
 
     const promoteQuestion = async (id: string) => {
@@ -208,15 +214,24 @@ function AdminHelpContent() {
                             </div>
                         ) : faqs.map((f) => (
                             <div key={f.id} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-5">
-                                {editingFaq?.id === f.id ? (
+                                {editingFaq && editingFaq.id === f.id ? (
                                     <div className="space-y-3">
-                                        <div><label className="label-sm">Question</label><input type="text" value={editingFaq.question} onChange={(e) => setEditingFaq((x: any) => ({ ...x, question: e.target.value }))} className="input-field mt-1" /></div>
-                                        <div><label className="label-sm">Answer</label><textarea rows={4} value={editingFaq.answer} onChange={(e) => setEditingFaq((x: any) => ({ ...x, answer: e.target.value }))} className="input-field mt-1 resize-none" /></div>
+                                        <div>
+                                            <label className="label-sm">Question</label>
+                                            <input type="text" value={editingFaq.question} onChange={(e) => setEditingFaq((x) => x ? ({ ...x, question: e.target.value }) : null)} className="input-field mt-1" />
+                                        </div>
+                                        <div>
+                                            <label className="label-sm">Answer</label>
+                                            <textarea rows={4} value={editingFaq.answer} onChange={(e) => setEditingFaq((x) => x ? ({ ...x, answer: e.target.value }) : null)} className="input-field mt-1 resize-none" />
+                                        </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div><label className="label-sm">Category</label><input type="text" value={editingFaq.category} onChange={(e) => setEditingFaq((x: any) => ({ ...x, category: e.target.value }))} className="input-field mt-1" /></div>
+                                            <div>
+                                                <label className="label-sm">Category</label>
+                                                <input type="text" value={editingFaq.category} onChange={(e) => setEditingFaq((x) => x ? ({ ...x, category: e.target.value }) : null)} className="input-field mt-1" />
+                                            </div>
                                             <div className="flex items-end pb-0.5">
                                                 <label className="flex items-center gap-2 cursor-pointer">
-                                                    <div onClick={() => setEditingFaq((x: any) => ({ ...x, published: !x.published }))}
+                                                    <div onClick={() => setEditingFaq((x) => x ? ({ ...x, published: !x.published }) : null)}
                                                         className={`relative h-5 w-9 rounded-full transition-colors ${editingFaq.published ? "bg-[#14b8a6]" : "bg-white/20"}`}>
                                                         <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${editingFaq.published ? "translate-x-4" : "translate-x-0.5"}`} />
                                                     </div>

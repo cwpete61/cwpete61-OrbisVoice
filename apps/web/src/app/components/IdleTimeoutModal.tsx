@@ -57,13 +57,13 @@ export default function IdleTimeoutModal({
         const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
         const handleEvent = () => {
             if (!showPrompt) {
-                resetTimer();
+                setTimeout(() => resetTimer(), 0);
             }
         };
 
         events.forEach((event) => window.addEventListener(event, handleEvent));
 
-        resetTimer();
+        setTimeout(() => resetTimer(), 0);
 
         return () => {
             events.forEach((event) => window.removeEventListener(event, handleEvent));

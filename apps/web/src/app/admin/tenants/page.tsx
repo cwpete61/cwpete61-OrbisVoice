@@ -3,10 +3,10 @@
 import React, { useEffect, useState } from "react";
 import DashboardShell from "../../components/DashboardShell";
 import TenantSettingsPanel from "../../components/TenantSettingsPanel";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, Tenant, authHeader } from "@/lib/api";
 
 export default function TenantManagement() {
-    const [tenants, setTenants] = useState<any[]>([]);
+    const [tenants, setTenants] = useState<Tenant[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [expandedTenantId, setExpandedTenantId] = useState<string | null>(null);
@@ -17,9 +17,8 @@ export default function TenantManagement() {
 
     const fetchTenants = async () => {
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/tenants`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: authHeader(),
             });
             const data = await res.json();
             if (res.ok) {
@@ -27,7 +26,7 @@ export default function TenantManagement() {
             } else {
                 setError(data.message || "Failed to load tenants");
             }
-        } catch (err) {
+        } catch {
             setError("Failed to connect to API");
         } finally {
             setLoading(false);
@@ -126,7 +125,7 @@ export default function TenantManagement() {
                                                             const res = await fetch(`${API_BASE}/admin/subscribers/${tenant.id}/billing-portal`, {
                                                                 method: 'POST',
                                                                 headers: { 
-                                                                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                                                    ...authHeader(),
                                                                     'Content-Type': 'application/json'
                                                                 },
                                                                 body: JSON.stringify({ returnUrl: window.location.href })
@@ -134,7 +133,7 @@ export default function TenantManagement() {
                                                             const data = await res.json();
                                                             if (data.url) window.open(data.url, '_blank');
                                                             else alert(data.message || data.error || 'Failed to open billing portal');
-                                                        } catch (err) {
+                                                        } catch {
                                                             alert('Connection error');
                                                         }
                                                     }}

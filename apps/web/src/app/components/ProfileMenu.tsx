@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import PasswordInput from "./PasswordInput";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, User } from "@/lib/api";
+import Image from "next/image";
 
 interface ProfileMenuProps {
   onClose?: () => void;
 }
 
 export default function ProfileMenu({ onClose }: ProfileMenuProps) {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(!!onClose); // If onClose provided, start open (controlled)
   const [profileForm, setProfileForm] = useState({ name: "", email: "" });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -22,11 +23,23 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
 
-  useEffect(() => {
-    fetchProfile();
+  const generateAvatar = useCallback((name: string) => {
+    const initials = name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+    const colors = ["#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#ec4899"];
+    const colorIndex = name.charCodeAt(0) % colors.length;
+    const bgColor = colors[colorIndex];
+
+    const svg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='${bgColor.replace("#", "%23")}' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' font-size='16' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'%3E${initials}%3C/text%3E%3C/svg%3E`;
+    setAvatar(svg);
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/users/me`, {
@@ -52,23 +65,11 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
     } catch (err) {
       console.error("Failed to fetch profile:", err);
     }
-  };
+  }, [generateAvatar]);
 
-  const generateAvatar = (name: string) => {
-    const initials = name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-
-    const colors = ["#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#ec4899"];
-    const colorIndex = name.charCodeAt(0) % colors.length;
-    const bgColor = colors[colorIndex];
-
-    const svg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='${bgColor.replace("#", "%23")}' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' font-size='16' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'%3E${initials}%3C/text%3E%3C/svg%3E`;
-    setAvatar(svg);
-  };
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +209,15 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
           onClick={() => setShowProfileModal(true)}
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[rgba(240,244,250,0.4)] hover:text-[rgba(240,244,250,0.7)] transition w-full"
         >
-          {avatar && <img src={avatar} alt="Profile" className="w-7 h-7 rounded-full" />}
+          {avatar && (
+            <Image
+              src={avatar}
+              alt="Profile"
+              width={28}
+              height={28}
+              className="rounded-full overflow-hidden"
+            />
+          )}
           <span>Profile</span>
         </button>
       )}
@@ -235,7 +244,15 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
             {/* Avatar Display */}
             <div className="mt-6 flex flex-col items-center gap-4">
-              {avatar && <img src={avatar} alt="Profile" className="w-20 h-20 rounded-full object-cover" />}
+              {avatar && (
+                <Image
+                  src={avatar}
+                  alt="Profile"
+                  width={80}
+                  height={80}
+                  className="rounded-full object-cover overflow-hidden"
+                />
+              )}
 
               <div className="w-full max-w-xs">
                 {avatarMessage && (

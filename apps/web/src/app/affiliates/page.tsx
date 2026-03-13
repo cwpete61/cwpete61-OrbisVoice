@@ -73,7 +73,7 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
         <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl">
           <h2 className="mb-1 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">Your Commission Rate</h2>
           <p className="text-4xl font-black text-[#14b8a6]">{commissionRate}%</p>
-          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.4)]">Per referred customer's first qualifying payment</p>
+          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.4)]">Per referred customer&apos;s first qualifying payment</p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl">
           <h2 className="mb-3 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">Your Partner Link</h2>
@@ -225,7 +225,7 @@ function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconne
           <div>
             <h2 className="text-xl font-bold text-[#f0f4fa] mb-1">Stripe Connect</h2>
             <p className="text-sm text-[rgba(240,244,250,0.5)] max-w-lg">
-              Your bank account is connected via Stripe Express. Payouts go from OrbisVoice's platform to your Stripe account, then to your bank on your configured schedule.
+              Your bank account is connected via Stripe Express. Payouts go from OrbisVoice&apos;s platform to your Stripe account, then to your bank on your configured schedule.
             </p>
           </div>
           <div className="flex gap-3 shrink-0">
@@ -384,7 +384,7 @@ function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, sa
             <span className="text-orange-400 text-lg">⚠️</span>
             <div>
               <p className="text-sm font-semibold text-orange-400">Action Required: Submit Tax Information</p>
-              <p className="mt-1 text-xs text-orange-300/70">You've exceeded the $600 IRS reporting threshold. Complete the tax form below to prevent payout holds.</p>
+              <p className="mt-1 text-xs text-orange-300/70">You&apos;ve exceeded the $600 IRS reporting threshold. Complete the tax form below to prevent payout holds.</p>
             </div>
           </div>
         )}

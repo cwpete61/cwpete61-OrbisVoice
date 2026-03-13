@@ -10,6 +10,9 @@ const compat = new FlatCompat({
 });
 
 export default [
+  {
+    ignores: [".next/**", "dist/**", "node_modules/**", "build/**"],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {

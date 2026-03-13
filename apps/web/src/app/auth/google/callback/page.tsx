@@ -16,13 +16,17 @@ function GoogleCallbackContent() {
     const code = searchParams.get("code");
 
     if (error) {
-      setStatus("Google sign-in failed. Please try again.");
-      return;
+      const timer = setTimeout(() => {
+        setStatus("Google sign-in failed. Please try again.");
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     if (!code) {
-      setStatus("Missing authorization code.");
-      return;
+      const timer = setTimeout(() => {
+        setStatus("Missing authorization code.");
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     processedRef.current = true;
@@ -30,7 +34,7 @@ function GoogleCallbackContent() {
     const completeLogin = async () => {
       try {
         let endpoint = "/auth/google/callback"; // Default to sign-in
-        let body: any = { code };
+        let body: { code: string; state?: string } = { code };
         const method = "POST";
 
         // Check for state to determine if this is Gmail or Calendar linking

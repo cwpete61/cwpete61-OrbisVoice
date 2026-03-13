@@ -4,12 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../../components/DashboardShell";
 import PasswordInput from "../../components/PasswordInput";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, User, authHeader } from "@/lib/api";
 
 function UsersContent() {
-    const [profile, setProfile] = useState<any>(null);
+    const [profile, setProfile] = useState<User | null>(null);
     const [tokenEmail, setTokenEmail] = useState<string | null>(null);
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [userFilter, setUserFilter] = useState<"all" | "paid" | "free">("all");
     const [createOpen, setCreateOpen] = useState(false);
@@ -35,7 +35,7 @@ function UsersContent() {
     });
 
     const [actionLoading, setActionLoading] = useState<string | null>(null);
-    const [affiliates, setAffiliates] = useState<any[]>([]);
+    const [affiliates, setAffiliates] = useState<any[]>([]); // Need an Affiliate interface if we want to be strict here too
     const [affiliatesLoading, setAffiliatesLoading] = useState(false);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [search, setSearch] = useState("");
@@ -98,23 +98,21 @@ function UsersContent() {
 
     const fetchProfile = async () => {
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/users/me`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: authHeader(),
             });
             if (res.ok) {
                 const data = await res.json();
                 setProfile(data.data);
             }
-        } catch (err) {
-            console.error("Failed to fetch profile:", err);
+        } catch {
+            // console.error("Failed to fetch profile");
         }
     };
 
     const fetchUsers = async (filter: "all" | "paid" | "free" = "all", searchTerm: string = "") => {
         setUsersLoading(true);
         try {
-            const token = localStorage.getItem("token");
             const params = new URLSearchParams();
             if (filter !== "all") {
                 params.set("filter", filter);
@@ -125,14 +123,14 @@ function UsersContent() {
             const url = `${API_BASE}/admin/users?${params.toString()}`;
 
             const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: authHeader(),
             });
             if (res.ok) {
                 const data = await res.json();
                 setUsers(data.data || []);
             }
-        } catch (err) {
-            console.error("Failed to fetch users:", err);
+        } catch {
+            // console.error("Failed to fetch users");
         } finally {
             setUsersLoading(false);
         }
@@ -141,21 +139,20 @@ function UsersContent() {
     const fetchAffiliates = async (searchTerm: string = "") => {
         setAffiliatesLoading(true);
         try {
-            const token = localStorage.getItem("token");
             const params = new URLSearchParams();
             params.set("filter", "affiliates");
             if (searchTerm) {
                 params.set("search", searchTerm);
             }
             const res = await fetch(`${API_BASE}/admin/affiliates?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: authHeader(),
             });
             if (res.ok) {
                 const data = await res.json();
                 setAffiliates(data.data || []);
             }
-        } catch (err) {
-            console.error("Failed to fetch affiliates:", err);
+        } catch {
+            // console.error("Failed to fetch affiliates");
         } finally {
             setAffiliatesLoading(false);
         }
@@ -164,20 +161,19 @@ function UsersContent() {
     const handleUpdateAffiliateStatus = async (id: string, status: string) => {
         setActionLoading(id);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/affiliates/${id}/status`, {
                 method: "POST",
                 headers: {
+                    ...authHeader(),
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ status }),
             });
             if (res.ok) {
                 fetchAffiliates();
             }
-        } catch (err) {
-            console.error("Failed to update affiliate status:", err);
+        } catch {
+            // console.error("Failed to update affiliate status");
         } finally {
             setActionLoading(null);
         }
@@ -200,12 +196,11 @@ function UsersContent() {
 
         setActionLoading(`rate-${aff.id}`);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/affiliates/${aff.id}/commission-rate`, {
                 method: "PATCH",
                 headers: {
+                    ...authHeader(),
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ customCommissionRate }),
             });
@@ -215,8 +210,8 @@ function UsersContent() {
             } else {
                 alert("Failed to update rate: " + data.message);
             }
-        } catch (err) {
-            console.error("Failed to update custom commission rate:", err);
+        } catch {
+            // console.error("Failed to update custom commission rate");
             alert("Network error.");
         } finally {
             setActionLoading(null);
@@ -227,12 +222,11 @@ function UsersContent() {
         setCreateError(null);
         setCreateLoading(true);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/users`, {
                 method: "POST",
                 headers: {
+                    ...authHeader(),
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     name: createForm.name.trim(),
@@ -254,15 +248,15 @@ function UsersContent() {
             setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: "LOW", role: "USER" });
             setCreateOpen(false);
             await fetchUsers(userFilter, debouncedSearch);
-        } catch (err) {
-            console.error("Failed to create user:", err);
+        } catch {
+            // console.error("Failed to create user");
             setCreateError("Failed to create user");
         } finally {
             setCreateLoading(false);
         }
     };
 
-    const startEditUser = (user: any) => {
+    const startEditUser = (user: User) => {
         setEditingUserId(user.id);
         setEditForm({
             name: user.name || "",
@@ -283,12 +277,11 @@ function UsersContent() {
         const key = `save-${userId}`;
         setActionLoading(key);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
                 method: "PATCH",
                 headers: {
+                    ...authHeader(),
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     name: editForm.name.trim(),
@@ -304,8 +297,8 @@ function UsersContent() {
                 await fetchUsers(userFilter, debouncedSearch);
                 cancelEditUser();
             }
-        } catch (err) {
-            console.error("Failed to update user:", err);
+        } catch {
+            // console.error("Failed to update user");
         } finally {
             setActionLoading(null);
         }
@@ -316,12 +309,11 @@ function UsersContent() {
 
         setActionLoading(`promote-${userId}`);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/affiliates/promote`, {
                 method: "POST",
                 headers: {
+                    ...authHeader(),
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ userId }),
             });
@@ -334,23 +326,22 @@ function UsersContent() {
             } else {
                 alert(data.message || "Failed to promote user");
             }
-        } catch (err) {
+        } catch {
             alert("Error connecting to server");
         } finally {
             setActionLoading(null);
         }
     };
 
-    const toggleBlockUser = async (user: any) => {
+    const toggleBlockUser = async (user: User) => {
         const key = `block-${user.id}`;
         setActionLoading(key);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/users/${user.id}`, {
                 method: "PATCH",
                 headers: {
+                    ...authHeader(),
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     isBlocked: !user.isBlocked,
@@ -360,14 +351,14 @@ function UsersContent() {
             if (res.ok) {
                 await fetchUsers(userFilter);
             }
-        } catch (err) {
-            console.error("Failed to update block status:", err);
+        } catch {
+            // console.error("Failed to update block status");
         } finally {
             setActionLoading(null);
         }
     };
 
-    const deleteUser = async (user: any) => {
+    const deleteUser = async (user: User) => {
         if (!window.confirm(`Delete ${user.email}? This cannot be undone.`)) {
             return;
         }
@@ -375,19 +366,16 @@ function UsersContent() {
         const key = `delete-${user.id}`;
         setActionLoading(key);
         try {
-            const token = localStorage.getItem("token");
             const res = await fetch(`${API_BASE}/admin/users/${user.id}`, {
                 method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: authHeader(),
             });
 
             if (res.ok) {
                 await fetchUsers(userFilter, debouncedSearch);
             }
-        } catch (err) {
-            console.error("Failed to delete user:", err);
+        } catch {
+            // console.error("Failed to delete user");
         } finally {
             setActionLoading(null);
         }
@@ -413,17 +401,16 @@ function UsersContent() {
 
         setActionLoading("bulk-delete");
         try {
-            const token = localStorage.getItem("token");
             for (const id of selectedUserIds) {
                 await fetch(`${API_BASE}/admin/users/${id}`, {
                     method: "DELETE",
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: authHeader(),
                 });
             }
             setSelectedUserIds([]);
             await fetchUsers(userFilter, debouncedSearch);
-        } catch (err) {
-            console.error("Bulk delete failed:", err);
+        } catch {
+            // console.error("Bulk delete failed");
         } finally {
             setActionLoading(null);
         }
@@ -435,21 +422,20 @@ function UsersContent() {
 
         setActionLoading("bulk-block");
         try {
-            const token = localStorage.getItem("token");
             for (const id of selectedUserIds) {
                 await fetch(`${API_BASE}/admin/users/${id}`, {
                     method: "PATCH",
                     headers: {
+                        ...authHeader(),
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify({ isBlocked }),
                 });
             }
             setSelectedUserIds([]);
             await fetchUsers(userFilter, debouncedSearch);
-        } catch (err) {
-            console.error("Bulk block/unblock failed:", err);
+        } catch {
+            // console.error("Bulk block/unblock failed");
         } finally {
             setActionLoading(null);
         }

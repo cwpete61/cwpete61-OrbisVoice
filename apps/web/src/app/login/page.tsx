@@ -7,7 +7,7 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { apiFetch } from "../../lib/api";
-import { Turnstile } from "@marsidev/react-turnstile";
+// import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
+  // const [captchaToken, setCaptchaToken] = useState("");
   const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const router = useRouter();
 
@@ -28,7 +28,7 @@ export default function LoginPage() {
       const { res, data } = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, captchaToken }),
+        body: JSON.stringify({ email, password }), // Removed captchaToken
       });
       if (res.ok) {
         localStorage.setItem("token", (data.data as any).token);
@@ -46,6 +46,7 @@ export default function LoginPage() {
     }
   };
 
+  /* 
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
@@ -61,6 +62,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+  */
 
   const handleResendVerification = async () => {
     if (!unverifiedEmail) return;
@@ -77,7 +79,7 @@ export default function LoginPage() {
         setResendStatus("error");
         setError(data.message || "Failed to resend verification email");
       }
-    } catch (err) {
+    } catch (_err) {
       setResendStatus("error");
       setError("Failed to resend verification email. Please try again.");
     }
@@ -146,7 +148,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Cloudflare Turnstile CAPTCHA */}
+              {/* Cloudflare Turnstile CAPTCHA - Disabled
               <Turnstile
                 siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
                 onSuccess={(token) => setCaptchaToken(token)}
@@ -156,7 +158,7 @@ export default function LoginPage() {
                 }}
                 onExpire={() => setCaptchaToken("")}
                 className="mx-auto"
-              />
+              /> */}
 
               <button
                 type="submit"
@@ -166,6 +168,7 @@ export default function LoginPage() {
                 {loading ? "Signing in…" : "Sign In"}
               </button>
 
+              {/* Google Login - Disabled
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-white/[0.07]"></div>
@@ -200,7 +203,7 @@ export default function LoginPage() {
                   />
                 </svg>
                 Sign in with Google
-              </button>
+              </button> */}
             </form>
 
           </div>

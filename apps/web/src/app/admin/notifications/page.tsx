@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import DashboardShell from "../../components/DashboardShell";
 import { useTokenFromUrl } from "../../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, NotificationTemplate } from "@/lib/api";
 
 const NOTIF_TYPES = [
     "COMMISSION_EARNED", "PAYOUT_PROCESSED", "PAYOUT_SCHEDULED",
@@ -23,8 +23,8 @@ function AdminNotificationsContent() {
     const [sendErr, setSendErr] = useState<string | null>(null);
 
     // Templates state
-    const [templates, setTemplates] = useState<any[]>([]);
-    const [editingTemplate, setEditingTemplate] = useState<any>(null);
+    const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+    const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
     const [savingTemplate, setSavingTemplate] = useState(false);
 
     const fetchTemplates = useCallback(async () => {
@@ -35,7 +35,14 @@ function AdminNotificationsContent() {
         if (res.ok) setTemplates((await res.json()).data ?? []);
     }, []);
 
-    useEffect(() => { if (tokenLoaded) fetchTemplates(); }, [tokenLoaded, fetchTemplates]);
+    useEffect(() => {
+        if (tokenLoaded) {
+            const timer = setTimeout(() => {
+                fetchTemplates();
+            }, 0);
+            return () => clearTimeout(timer);
+        }
+    }, [tokenLoaded, fetchTemplates]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,14 +145,14 @@ function AdminNotificationsContent() {
                             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] py-12 text-center text-sm text-[rgba(240,244,250,0.4)]">
                                 No templates yet. They are auto-created when notifications are first sent.
                             </div>
-                        ) : templates.map((tpl: any) => (
+                        ) : templates.map((tpl) => (
                             <div key={tpl.id} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-5">
                                 {editingTemplate?.id === tpl.id ? (
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between mb-3">
                                             <span className="text-xs font-bold uppercase tracking-widest text-[#14b8a6]">{tpl.type.replace(/_/g, " ")}</span>
                                             <label className="flex items-center gap-2 cursor-pointer">
-                                                <div onClick={() => setEditingTemplate((t: any) => ({ ...t, enabled: !t.enabled }))}
+                                                <div onClick={() => setEditingTemplate((t) => t ? ({ ...t, enabled: !t.enabled }) : null)}
                                                     className={`relative h-5 w-9 rounded-full transition-colors ${editingTemplate.enabled ? "bg-[#14b8a6]" : "bg-white/20"}`}>
                                                     <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${editingTemplate.enabled ? "translate-x-4" : "translate-x-0.5"}`} />
                                                 </div>
@@ -154,11 +161,11 @@ function AdminNotificationsContent() {
                                         </div>
                                         <div>
                                             <label className="label-sm">Email Subject</label>
-                                            <input type="text" value={editingTemplate.subject} onChange={(e) => setEditingTemplate((t: any) => ({ ...t, subject: e.target.value }))} className="input-field mt-1" />
+                                            <input type="text" value={editingTemplate.subject} onChange={(e) => setEditingTemplate((t) => t ? ({ ...t, subject: e.target.value }) : null)} className="input-field mt-1" />
                                         </div>
                                         <div>
                                             <label className="label-sm">Body HTML / Text <span className="text-[rgba(240,244,250,0.3)]">(supports {"{{name}}"}, {"{{title}}"}, {"{{body}}"})</span></label>
-                                            <textarea rows={6} value={editingTemplate.bodyHtml} onChange={(e) => setEditingTemplate((t: any) => ({ ...t, bodyHtml: e.target.value }))}
+                                            <textarea rows={6} value={editingTemplate.bodyHtml} onChange={(e) => setEditingTemplate((t) => t ? ({ ...t, bodyHtml: e.target.value }) : null)}
                                                 className="input-field mt-1 resize-none font-mono text-xs" />
                                         </div>
                                         <div className="flex gap-2">

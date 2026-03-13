@@ -41,7 +41,13 @@ function NotificationsContent() {
         setLoading(false);
     }, [filter]);
 
-    useEffect(() => { if (tokenLoaded) fetchNotifications(); }, [tokenLoaded, fetchNotifications]);
+    useEffect(() => {
+        if (tokenLoaded) {
+            setTimeout(() => {
+                fetchNotifications();
+            }, 0);
+        }
+    }, [tokenLoaded, fetchNotifications]);
 
     const markAllRead = async () => {
         const token = localStorage.getItem("token");
@@ -104,7 +110,7 @@ function NotificationsContent() {
                         <div className="py-16 text-center">
                             <div className="text-4xl mb-3">🔔</div>
                             <p className="text-sm font-medium text-[#f0f4fa]">No notifications yet</p>
-                            <p className="text-xs text-[rgba(240,244,250,0.4)] mt-1">You'll see activity here as it happens</p>
+                            <p className="text-xs text-[rgba(240,244,250,0.4)] mt-1">You&apos;ll see activity here as it happens</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-white/[0.04]">

@@ -14,21 +14,25 @@ function GmailCallbackContent() {
     const error = searchParams.get("error");
 
     if (error) {
-      setStatus(`Gmail authorization failed: ${error}`);
-      setTimeout(() => {
-        window.close();
-        router.push("/settings");
-      }, 2000);
-      return;
+      const timer = setTimeout(() => {
+        setStatus(`Gmail authorization failed: ${error}`);
+        setTimeout(() => {
+          window.close();
+          router.push("/settings");
+        }, 2000);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     if (!code) {
-      setStatus("Missing authorization code.");
-      setTimeout(() => {
-        window.close();
-        router.push("/settings");
-      }, 2000);
-      return;
+      const timer = setTimeout(() => {
+        setStatus("Missing authorization code.");
+        setTimeout(() => {
+          window.close();
+          router.push("/settings");
+        }, 2000);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const completeEmailConnect = async () => {
@@ -60,7 +64,7 @@ function GmailCallbackContent() {
             router.push("/settings");
           }, 2000);
         }
-      } catch (err) {
+      } catch {
         setStatus("Gmail connection failed. Please try again.");
         setTimeout(() => {
           window.close();

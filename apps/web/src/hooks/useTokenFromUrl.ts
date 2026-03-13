@@ -16,7 +16,7 @@ export function useTokenFromUrl() {
       window.history.replaceState({}, "", url);
     }
     // Mark that we've processed the token (whether found or not)
-    setTokenLoaded(true);
+    setTimeout(() => setTokenLoaded(true), 0);
   }, [searchParams]);
 
   return tokenLoaded;

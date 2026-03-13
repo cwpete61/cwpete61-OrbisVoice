@@ -1,11 +1,11 @@
 "use client";
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
 import UserInfoCard from "./UserInfoCard";
 import IdleTimeoutModal from "./IdleTimeoutModal";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, User, Notification } from "@/lib/api";
 
 const TYPE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
   COMMISSION_EARNED: { label: "Commission", color: "text-[#14b8a6]", emoji: "💰" },
@@ -28,7 +28,7 @@ const NotificationFlyout = ({
   onMarkAllRead,
   onMarkRead
 }: {
-  notifs: any[];
+  notifs: Notification[];
   unreadCount: number;
   onClose: () => void;
   onMarkAllRead: () => void;
@@ -46,7 +46,7 @@ const NotificationFlyout = ({
         {notifs.length === 0 ? (
           <p className="p-4 text-gray-400 text-center">No new notifications.</p>
         ) : (
-          notifs.map((notif: any) => {
+          notifs.map((notif: Notification) => {
             const typeInfo = TYPE_LABELS[notif.type] || { label: "Unknown", color: "text-gray-400", emoji: "❓" };
             return (
               <div
@@ -264,39 +264,13 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
   const path = usePathname();
   const router = useRouter();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
-  const [notifs, setNotifs] = useState<any[]>([]);
+  const [notifs, setNotifs] = useState<Notification[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (tokenLoaded) {
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          router.push("/login");
-          return;
-        }
-      }
-      fetchProfile();
-      fetchUnreadCount();
-    }
-  }, [tokenLoaded, router]);
-
-  // Close flyout when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-        setShowNotifs(false);
-      }
-    }
-    if (showNotifs) document.addEventListener("mousedown", handleClickOutside);
-    else document.removeEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showNotifs]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -317,13 +291,13 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
     } catch (err) {
       console.error("Failed to fetch profile:", err);
     }
-  };
+  }, []);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const res = await fetch(`${API_BASE}/notifications?limit=1&unreadOnly=true`, {
+      const res = await fetch(`${API_BASE}/notifications?unreadOnly=true&limit=1`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -331,9 +305,9 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         setUnreadNotifs(data.data?.unreadCount ?? 0);
       }
     } catch { }
-  };
+  }, []);
 
-  const fetchNotifsFlyout = async () => {
+  const fetchNotifsFlyout = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -345,7 +319,35 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         setNotifs(data.data?.notifications ?? []);
       }
     } catch { }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (tokenLoaded) {
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          router.push("/login");
+          return;
+        }
+      }
+      setTimeout(() => {
+        fetchProfile();
+        fetchUnreadCount();
+      }, 0);
+    }
+  }, [tokenLoaded, router, fetchProfile, fetchUnreadCount]);
+
+  // Close flyout when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifs(false);
+      }
+    }
+    if (showNotifs) document.addEventListener("mousedown", handleClickOutside);
+    else document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNotifs]);
 
   const toggleNotifs = () => {
     if (!showNotifs) {
@@ -390,7 +392,7 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
           {["Main", "Partnership", "Admin", "System"].map((cat) => {
-            const items = NAV.filter((item: any) => {
+            const items = (NAV as any[]).filter((item) => {
               if (item.category !== cat) return false;
 
               const isSystemAdmin = profile?.role === "SYSTEM_ADMIN";

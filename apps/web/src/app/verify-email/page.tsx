@@ -16,8 +16,10 @@ function VerifyEmailContent() {
 
   useEffect(() => {
     if (!token) {
-      setStatus("error");
-      setMessage("Invalid or missing verification token.");
+      setTimeout(() => {
+        setStatus("error");
+        setMessage("Invalid or missing verification token.");
+      }, 0);
       return;
     }
 
