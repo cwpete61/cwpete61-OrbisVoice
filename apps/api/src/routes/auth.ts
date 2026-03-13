@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import * as bcrypt from "bcryptjs";
+import * as crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
@@ -110,8 +111,8 @@ export async function authRoutes(fastify: FastifyInstance) {
           where: { id: "global" }
         });
 
-        // Generate verification token
-        const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        // Generate secure verification token
+        const verificationToken = crypto.randomBytes(32).toString("hex");
 
         // Create user
         const user = await prisma.user.create({
@@ -131,7 +132,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         // Send verification email
         try {
           const webUrl = process.env.WEB_URL || "http://localhost:3000";
-          const verifyUrl = `${webUrl}/verify-email?token=${verificationToken}`;
+          const verifyUrl = `${webUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(body.email)}`;
           const { createNotification, NotifType } = await import("../services/notification");
           
           await createNotification({
@@ -342,7 +343,7 @@ export async function authRoutes(fastify: FastifyInstance) {
     "/auth/verify-email",
     async (request, reply) => {
       try {
-        const { token } = request.body;
+        const { token, email } = request.body as any;
         if (!token) {
           return reply.code(400).send({ ok: false, message: "Token is required" });
         }
@@ -354,6 +355,23 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
 
         if (!user) {
+          // Robustness Check: If token not found, check if user is already verified
+          if (email) {
+            const alreadyVerified = await prisma.user.findFirst({
+              where: {
+                email: email,
+                emailVerified: { not: null }
+              }
+            });
+
+            if (alreadyVerified) {
+              return reply.code(200).send({
+                ok: true,
+                message: "Email is already verified! You can now log in.",
+              });
+            }
+          }
+
           return reply.code(400).send({
             ok: false,
             message: "Invalid or expired verification token",
@@ -412,8 +430,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             message: "Email is already verified.",
           });
         }
-
-        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const token = crypto.randomBytes(32).toString("hex");
 
         await prisma.user.update({
           where: { id: user.id },
@@ -423,7 +440,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
 
         const webUrl = process.env.WEB_URL || "http://localhost:3000";
-        const verifyUrl = `${webUrl}/verify-email?token=${token}`;
+        const verifyUrl = `${webUrl}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
         const { createNotification, NotifType } = await import("../services/notification");
 
         await createNotification({
@@ -471,8 +488,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             message: "If an account exists with that email, a reset link has been sent.",
           });
         }
-
-        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const token = crypto.randomBytes(32).toString("hex");
         const expires = new Date(Date.now() + 3600000); // 1 hour
 
         await prisma.user.update({

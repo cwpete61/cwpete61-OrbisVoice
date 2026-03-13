@@ -26,7 +26,7 @@ function VerifyEmailContent() {
         const { res, data } = await apiFetch("/auth/verify-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, email: searchParams.get("email") }),
         });
 
         if (res.ok) {
