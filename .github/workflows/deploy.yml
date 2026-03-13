@@ -126,8 +126,18 @@ jobs:
             chmod +x deploy-vps.sh
             ./deploy-vps.sh
             
-            # Capture diagnostics
             echo "### deployment Diagnostics" > deployment_report.md
+            
+            echo "#### Environment Check" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            if [ -f .env ]; then
+              echo ".env file exists"
+              grep "STRIPE_API_KEY" .env | sed 's/=.*$/=REDACTED/' >> deployment_report.md
+            else
+              echo ".env file MISSING" >> deployment_report.md
+            fi
+            echo '```' >> deployment_report.md
+
             echo "#### Container Status" >> deployment_report.md
             echo '```' >> deployment_report.md
             docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" >> deployment_report.md
