@@ -7,12 +7,12 @@ For more information, see: https://pris.ly/prisma-config
 Prisma schema loaded from prisma/schema.prisma
 Datasource "db": PostgreSQL database "orbisvoice", schema "public" at "postgres:5432"
 
-🚀  Your database is now in sync with your Prisma schema. Done in 1.08s
+🚀  Your database is now in sync with your Prisma schema. Done in 1.25s
 
 Running generate... (Use --skip-generate to skip the generators)
 [2K[1A[2K[GRunning generate... - Prisma Client
-[2K[1A[2K[G✔ Generated Prisma Client (v6.19.2) to ./../../node_modules/@prisma/client in 7
-47ms
+[2K[1A[2K[G✔ Generated Prisma Client (v6.19.2) to ./../../node_modules/@prisma/client in 9
+73ms
 ┌─────────────────────────────────────────────────────────┐
 │  Update available 6.19.2 -> 7.5.0                       │
 │                                                         │
@@ -27,48 +27,48 @@ Running generate... (Use --skip-generate to skip the generators)
 ```
 #### API Logs (Last 50 lines)
 ```
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
 
 ⚠️  WARNING: Missing production environment variables:
    - OPENAI_API_KEY
 Some features (Payment, Login, AI) may not work correctly.
 
-{"level":30,"time":1773383989171,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Session manager initialized with Redis"}
-{"level":30,"time":1773383989174,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Session manager initialized"}
-{"level":30,"time":1773383989174,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Tool handlers registered"}
-{"level":50,"time":1773383989367,"pid":1,"hostname":"d5a6dab9a8d5","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.\n    at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)\n    at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)\n    at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)\n    at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)\n    at async start (/app/apps/api/dist/index.js:137:32)","code":"P2021","meta":{"modelName":"User","table":"public.User"},"clientVersion":"6.19.2","name":"PrismaClientKnownRequestError"},"msg":"Bootstrap failed"}
-{"level":30,"time":1773383989601,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
-{"level":30,"time":1773383989601,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","msg":"Server listening at http://172.18.0.4:4001"}
-{"level":30,"time":1773383989602,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Server running at http://0.0.0.0:4001"}
-{"level":30,"time":1773383997784,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":56158},"msg":"incoming request"}
-{"level":30,"time":1773383997796,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":11.053357005119324,"msg":"request completed"}
-{"level":30,"time":1773384007934,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":34080},"msg":"incoming request"}
-{"level":30,"time":1773384007935,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.550031989812851,"msg":"request completed"}
-{"level":30,"time":1773384018026,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":36474},"msg":"incoming request"}
-{"level":30,"time":1773384018029,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.8165760040283203,"msg":"request completed"}
-{"level":30,"time":1773384028145,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":41560},"msg":"incoming request"}
-{"level":30,"time":1773384028151,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":5.375000983476639,"msg":"request completed"}
-{"level":30,"time":1773384038257,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":42450},"msg":"incoming request"}
-{"level":30,"time":1773384038259,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.4564169943332672,"msg":"request completed"}
+{"level":30,"time":1773390547324,"pid":1,"hostname":"9baddd1040e8","msg":"Session manager initialized with Redis"}
+{"level":30,"time":1773390547325,"pid":1,"hostname":"9baddd1040e8","msg":"Session manager initialized"}
+{"level":30,"time":1773390547325,"pid":1,"hostname":"9baddd1040e8","msg":"Tool handlers registered"}
+{"level":50,"time":1773390547493,"pid":1,"hostname":"9baddd1040e8","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.\n    at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)\n    at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)\n    at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)\n    at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)\n    at async start (/app/apps/api/dist/index.js:137:32)","code":"P2021","meta":{"modelName":"User","table":"public.User"},"clientVersion":"6.19.2","name":"PrismaClientKnownRequestError"},"msg":"Bootstrap failed"}
+{"level":30,"time":1773390547717,"pid":1,"hostname":"9baddd1040e8","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
+{"level":30,"time":1773390547717,"pid":1,"hostname":"9baddd1040e8","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
+{"level":30,"time":1773390547717,"pid":1,"hostname":"9baddd1040e8","msg":"Server running at http://0.0.0.0:4001"}
+{"level":30,"time":1773390556165,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":52300},"msg":"incoming request"}
+{"level":30,"time":1773390556175,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":8.789608001708984,"msg":"request completed"}
+{"level":30,"time":1773390566262,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":50164},"msg":"incoming request"}
+{"level":30,"time":1773390566265,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":2.1666919887065887,"msg":"request completed"}
+{"level":30,"time":1773390576381,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":49064},"msg":"incoming request"}
+{"level":30,"time":1773390576383,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.9511519968509674,"msg":"request completed"}
+{"level":30,"time":1773390586480,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":59492},"msg":"incoming request"}
+{"level":30,"time":1773390586482,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.7638940215110779,"msg":"request completed"}
+{"level":30,"time":1773390596584,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":54358},"msg":"incoming request"}
+{"level":30,"time":1773390596585,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.024060994386673,"msg":"request completed"}
 ```
 #### Port Usage (Host)
 ```
-tcp   LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1403867,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1403894,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:4001      0.0.0.0:*    users:(("docker-proxy",pid=1403685,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:5440      0.0.0.0:*    users:(("docker-proxy",pid=1403421,fd=8))              
-tcp   LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1403872,fd=8))              
-tcp   LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1403899,fd=8))              
-tcp   LISTEN 0      4096            [::]:4001         [::]:*    users:(("docker-proxy",pid=1403691,fd=8))              
-tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-proxy",pid=1403430,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1444966,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1444994,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:4001      0.0.0.0:*    users:(("docker-proxy",pid=1444798,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:5440      0.0.0.0:*    users:(("docker-proxy",pid=1444512,fd=8))              
+tcp   LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1444974,fd=8))              
+tcp   LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1445002,fd=8))              
+tcp   LISTEN 0      4096            [::]:4001         [::]:*    users:(("docker-proxy",pid=1444805,fd=8))              
+tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-proxy",pid=1444519,fd=8))              
 ```
 #### Container Status
 ```
 NAMES                           STATUS                        PORTS
-orbisvoice-nginx-prod           Up 58 seconds                 0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+orbisvoice-nginx-prod           Up 57 seconds                 0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
 orbisvoice-web-prod             Up 58 seconds                 3000/tcp
-orbisvoice-voice-gateway-prod   Up 59 seconds                 4001/tcp
-orbisvoice-api-prod             Up 59 seconds (healthy)       0.0.0.0:4001->4001/tcp, [::]:4001->4001/tcp
+orbisvoice-voice-gateway-prod   Up 58 seconds                 4001/tcp
+orbisvoice-api-prod             Up 58 seconds (healthy)       0.0.0.0:4001->4001/tcp, [::]:4001->4001/tcp
 orbisvoice-postgres-prod        Up About a minute (healthy)   0.0.0.0:5440->5432/tcp, [::]:5440->5432/tcp
 orbisvoice-redis-prod           Up About a minute (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
 orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
@@ -84,42 +84,42 @@ orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
 /docker-entrypoint.sh: Configuration complete; ready for start up
-2026/03/13 06:39:48 [notice] 1#1: using the "epoll" event method
-2026/03/13 06:39:48 [notice] 1#1: nginx/1.29.6
-2026/03/13 06:39:48 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
-2026/03/13 06:39:48 [notice] 1#1: OS: Linux 6.8.0-101-generic
-2026/03/13 06:39:48 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
-2026/03/13 06:39:48 [notice] 1#1: start worker processes
-2026/03/13 06:39:48 [notice] 1#1: start worker process 30
-2026/03/13 06:39:48 [notice] 1#1: start worker process 31
-2026/03/13 06:39:48 [notice] 1#1: start worker process 32
-2026/03/13 06:39:48 [notice] 1#1: start worker process 33
-2026/03/13 06:39:48 [notice] 1#1: start worker process 34
-2026/03/13 06:39:48 [notice] 1#1: start worker process 35
+2026/03/13 08:29:07 [notice] 1#1: using the "epoll" event method
+2026/03/13 08:29:07 [notice] 1#1: nginx/1.29.6
+2026/03/13 08:29:07 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+2026/03/13 08:29:07 [notice] 1#1: OS: Linux 6.8.0-101-generic
+2026/03/13 08:29:07 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+2026/03/13 08:29:07 [notice] 1#1: start worker processes
+2026/03/13 08:29:07 [notice] 1#1: start worker process 29
+2026/03/13 08:29:07 [notice] 1#1: start worker process 30
+2026/03/13 08:29:07 [notice] 1#1: start worker process 31
+2026/03/13 08:29:07 [notice] 1#1: start worker process 32
+2026/03/13 08:29:07 [notice] 1#1: start worker process 33
+2026/03/13 08:29:07 [notice] 1#1: start worker process 34
 ```
 #### API Logs (Tail 50)
 ```
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
 
 ⚠️  WARNING: Missing production environment variables:
    - OPENAI_API_KEY
 Some features (Payment, Login, AI) may not work correctly.
 
-{"level":30,"time":1773383989171,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Session manager initialized with Redis"}
-{"level":30,"time":1773383989174,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Session manager initialized"}
-{"level":30,"time":1773383989174,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Tool handlers registered"}
-{"level":50,"time":1773383989367,"pid":1,"hostname":"d5a6dab9a8d5","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.\n    at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)\n    at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)\n    at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)\n    at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)\n    at async start (/app/apps/api/dist/index.js:137:32)","code":"P2021","meta":{"modelName":"User","table":"public.User"},"clientVersion":"6.19.2","name":"PrismaClientKnownRequestError"},"msg":"Bootstrap failed"}
-{"level":30,"time":1773383989601,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
-{"level":30,"time":1773383989601,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","msg":"Server listening at http://172.18.0.4:4001"}
-{"level":30,"time":1773383989602,"pid":1,"hostname":"d5a6dab9a8d5","msg":"Server running at http://0.0.0.0:4001"}
-{"level":30,"time":1773383997784,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":56158},"msg":"incoming request"}
-{"level":30,"time":1773383997796,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":11.053357005119324,"msg":"request completed"}
-{"level":30,"time":1773384007934,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":34080},"msg":"incoming request"}
-{"level":30,"time":1773384007935,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.550031989812851,"msg":"request completed"}
-{"level":30,"time":1773384018026,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":36474},"msg":"incoming request"}
-{"level":30,"time":1773384018029,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.8165760040283203,"msg":"request completed"}
-{"level":30,"time":1773384028145,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":41560},"msg":"incoming request"}
-{"level":30,"time":1773384028151,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":5.375000983476639,"msg":"request completed"}
-{"level":30,"time":1773384038257,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":42450},"msg":"incoming request"}
-{"level":30,"time":1773384038259,"pid":1,"hostname":"d5a6dab9a8d5","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.4564169943332672,"msg":"request completed"}
+{"level":30,"time":1773390547324,"pid":1,"hostname":"9baddd1040e8","msg":"Session manager initialized with Redis"}
+{"level":30,"time":1773390547325,"pid":1,"hostname":"9baddd1040e8","msg":"Session manager initialized"}
+{"level":30,"time":1773390547325,"pid":1,"hostname":"9baddd1040e8","msg":"Tool handlers registered"}
+{"level":50,"time":1773390547493,"pid":1,"hostname":"9baddd1040e8","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.user.findFirst()` invocation:\n\n\nThe table `public.User` does not exist in the current database.\n    at ei.handleRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:7268)\n    at ei.handleAndLogRequestError (/app/node_modules/@prisma/client/runtime/library.js:121:6593)\n    at ei.request (/app/node_modules/@prisma/client/runtime/library.js:121:6300)\n    at async a (/app/node_modules/@prisma/client/runtime/library.js:130:9551)\n    at async start (/app/apps/api/dist/index.js:137:32)","code":"P2021","meta":{"modelName":"User","table":"public.User"},"clientVersion":"6.19.2","name":"PrismaClientKnownRequestError"},"msg":"Bootstrap failed"}
+{"level":30,"time":1773390547717,"pid":1,"hostname":"9baddd1040e8","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
+{"level":30,"time":1773390547717,"pid":1,"hostname":"9baddd1040e8","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
+{"level":30,"time":1773390547717,"pid":1,"hostname":"9baddd1040e8","msg":"Server running at http://0.0.0.0:4001"}
+{"level":30,"time":1773390556165,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":52300},"msg":"incoming request"}
+{"level":30,"time":1773390556175,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":8.789608001708984,"msg":"request completed"}
+{"level":30,"time":1773390566262,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":50164},"msg":"incoming request"}
+{"level":30,"time":1773390566265,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":2.1666919887065887,"msg":"request completed"}
+{"level":30,"time":1773390576381,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":49064},"msg":"incoming request"}
+{"level":30,"time":1773390576383,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":1.9511519968509674,"msg":"request completed"}
+{"level":30,"time":1773390586480,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":59492},"msg":"incoming request"}
+{"level":30,"time":1773390586482,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.7638940215110779,"msg":"request completed"}
+{"level":30,"time":1773390596584,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":54358},"msg":"incoming request"}
+{"level":30,"time":1773390596585,"pid":1,"hostname":"9baddd1040e8","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.024060994386673,"msg":"request completed"}
 ```
