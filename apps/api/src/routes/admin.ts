@@ -173,12 +173,13 @@ export async function adminRoutes(fastify: FastifyInstance) {
                 "lowCommission", "medCommission", "highCommission",
                 "payoutMinimum", "refundHoldDays", "payoutCycleDelayMonths",
                 "transactionFeePercent", "starterLimit", "professionalLimit",
-                "enterpriseLimit", "aiInfraLimit", "ltdLimit", "emailVerificationEnabled"
+                "enterpriseLimit", "aiInfraLimit", "ltdLimit", 
+                "emailVerificationEnabled", "globalEmailEnabled"
             ];
 
             allowedFields.forEach(field => {
                 if (body[field] !== undefined) {
-                    if (field === "emailVerificationEnabled") {
+                    if (field === "emailVerificationEnabled" || field === "globalEmailEnabled") {
                         updateData[field] = Boolean(body[field]);
                     } else {
                         updateData[field] = Number(body[field]);

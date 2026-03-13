@@ -202,6 +202,27 @@ export default function SystemSettings() {
                                         className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] focus:border-[#14b8a6] focus:outline-none focus:ring-1 focus:ring-[#14b8a6] transition"
                                     />
                                 </div>
+                                <div className="space-y-4 flex flex-col justify-center">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-[rgba(240,244,250,0.4)]">Email System</label>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSettings({ ...settings, globalEmailEnabled: !settings.globalEmailEnabled })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                                settings.globalEmailEnabled ? 'bg-[#14b8a6]' : 'bg-gray-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                                    settings.globalEmailEnabled ? 'translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                        </button>
+                                        <span className="text-sm font-medium text-[#f0f4fa]">
+                                            {settings.globalEmailEnabled ? 'System-wide Emails Enabled' : 'All Emails Paused'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="mt-8 flex items-center justify-between border-t border-white/[0.06] pt-8">

@@ -4,6 +4,7 @@ import { logger } from "../logger";
 import { referralManager } from "./referral";
 import { StripeClient } from "../integrations/stripe";
 import { env } from "../env";
+import { createNotification, NotifType } from "./notification";
 
 const stripe = new StripeClient({
     apiKey: env.STRIPE_API_KEY || "",
@@ -190,6 +191,19 @@ export class AffiliateManager {
             });
 
             logger.info({ referralId: referral.id, commissionAmount }, "Affiliate referral converted");
+
+            // Notify affiliate
+            const affiliate = await prisma.affiliate.findUnique({ where: { id: referral.affiliateId } });
+            if (affiliate) {
+                await createNotification({
+                    userId: affiliate.userId,
+                    type: NotifType.COMMISSION_EARNED,
+                    title: "Commission Earned!",
+                    body: `Congratulations! You've earned a commission of $${commissionAmount.toFixed(2)} from a referral conversion.`,
+                    data: { referralId: referral.id, amount: commissionAmount }
+                });
+            }
+
             return updatedReferral;
         } catch (err: unknown) {
             logger.error({ err, refereeId }, "Failed to convert affiliate referral");
@@ -344,6 +358,15 @@ export class AffiliateManager {
                         transactionId: transferId
                     }
                 });
+            });
+
+            // Notify affiliate of successful payout
+            await createNotification({
+                userId: affiliate.userId,
+                type: NotifType.PAYOUT_PROCESSED,
+                title: "Payout Successful",
+                body: `Your payout of $${payoutAmount.toFixed(2)} ($${(netAmount/100).toFixed(2)} net) has been processed and sent to your Stripe account.`,
+                data: { payoutId: result.id, amount: payoutAmount }
             });
 
             return { success: true, payout: result };

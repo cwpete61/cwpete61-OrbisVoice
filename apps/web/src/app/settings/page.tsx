@@ -269,6 +269,7 @@ function SettingsContent() {
     ltdLimit: 1000,
     aiInfraLimit: 250000,
     emailVerificationEnabled: true,
+    globalEmailEnabled: true,
   });
 
   const tokenLoaded = useTokenFromUrl();
@@ -363,6 +364,7 @@ function SettingsContent() {
             ltdLimit: data.data.ltdLimit,
             aiInfraLimit: data.data.aiInfraLimit,
             emailVerificationEnabled: data.data.emailVerificationEnabled ?? true,
+            globalEmailEnabled: data.data.globalEmailEnabled ?? true,
           });
         }
       }
@@ -2848,7 +2850,7 @@ function SettingsContent() {
                     </div>
                     <div>
                       <label className="mb-1.5 block text-xs text-[rgba(240,244,250,0.6)]">
-                        Default Level
+                        Default Commission Level
                       </label>
                       <select
                         value={settingsForm.defaultCommissionLevel}
@@ -2858,12 +2860,39 @@ function SettingsContent() {
                             defaultCommissionLevel: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                        className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
                       >
-                        <option value="LOW">Low</option>
-                        <option value="MEDIUM">Medium</option>
-                        <option value="HIGH">High</option>
+                        <option value="LOW">LOW</option>
+                        <option value="MED">MED</option>
+                        <option value="HIGH">HIGH</option>
                       </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
+                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                    System Control
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-[#f0f4fa]">System-wide Email</p>
+                        <p className="text-xs text-[rgba(240,244,250,0.4)]">Enable or disable all outgoing emails platform-wide</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSettingsForm({ ...settingsForm, globalEmailEnabled: !settingsForm.globalEmailEnabled })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          settingsForm.globalEmailEnabled ? 'bg-[#14b8a6]' : 'bg-gray-700'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            settingsForm.globalEmailEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                     </div>
                   </div>
                 </div>

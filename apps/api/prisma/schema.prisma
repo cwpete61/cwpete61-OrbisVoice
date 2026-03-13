@@ -283,6 +283,7 @@ model PlatformSettings {
   ltdLimit                 Int             @default(1000)
   aiInfraLimit             Int             @default(250000)
   emailVerificationEnabled Boolean         @default(true)
+  globalEmailEnabled       Boolean         @default(true)
   updatedAt                DateTime        @updatedAt
 }
 

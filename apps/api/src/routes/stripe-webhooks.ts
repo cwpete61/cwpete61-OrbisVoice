@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { env } from "../env";
 import { logger } from "../logger";
 import crypto from "crypto";
+import { createNotification, NotifType } from "../services/notification";
 
 /**
  * Stripe Webhook Handler
@@ -237,6 +238,15 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                 logger.error({ err }, "Error creating LTD recurring subscription");
                             }
                         }
+
+                        // Notify user of activation
+                        await createNotification({
+                            userId: user.id,
+                            type: NotifType.SYSTEM_ANNOUNCEMENT,
+                            title: "Subscription Activated!",
+                            body: `Your upgrade to ${tier.toUpperCase()} was successful. Your new usage limit is ${tenant.usageLimit} conversations.`,
+                            data: { tier, amount: amountTotal }
+                        });
                         break;
                     }
 
@@ -343,6 +353,14 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                     payoutId: payout.id,
                                     amount: payout.amount / 100
                                 }, "Connected account payout confirmed by bank");
+
+                                await createNotification({
+                                    userId: affiliate.userId,
+                                    type: NotifType.PAYOUT_PROCESSED,
+                                    title: "Funds Sent to Bank",
+                                    body: `The bank has confirmed receipt of your payout ($${(payout.amount / 100).toFixed(2)}).`,
+                                    data: { payoutId: payout.id }
+                                });
                             }
                         }
                         break;
@@ -365,10 +383,17 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                     failureMessage: payout.failure_message,
                                 }, "⚠️ Connected account payout FAILED — manual review needed");
 
-                                // Flag the affiliate's stripe account as needing attention
                                 await prisma.affiliate.update({
                                     where: { id: affiliate.id },
                                     data: { stripeAccountStatus: "pending" }
+                                });
+
+                                await createNotification({
+                                    userId: affiliate.userId,
+                                    type: NotifType.PAYOUT_SCHEDULED, // Using scheduled since we don't have a FAILED type yet, or maybe manual
+                                    title: "Payout Failed: Action Required",
+                                    body: `Your bank payout of $${(payout.amount / 100).toFixed(2)} failed. Reason: ${payout.failure_message || 'Bank error'}. Please update your bank details.`,
+                                    data: { payoutId: payout.id, error: payout.failure_code }
                                 });
                             }
                         }

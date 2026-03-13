@@ -70,9 +70,12 @@ export async function createNotification(opts: CreateNotifOptions) {
         });
 
         // Determine if email should be sent
+        const settings = await prisma.platformSettings.findFirst({ where: { id: "global" } });
+        const globalEmail = settings?.globalEmailEnabled ?? true;
+        
         const masterEmail = user.emailNotifications ?? true;
         const typeEnabled = getTypeEnabled(type, pref);
-        const shouldEmail = sendEmail !== undefined ? sendEmail : (masterEmail && typeEnabled);
+        const shouldEmail = globalEmail && (sendEmail !== undefined ? sendEmail : (masterEmail && typeEnabled));
 
         if (shouldEmail) {
             const emailSent = await sendEmailNotification({
