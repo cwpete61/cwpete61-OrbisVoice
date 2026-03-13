@@ -18,6 +18,13 @@ export const API_BASE = (() => {
     return DEV_SSR_URL;
 })();
 
+export const COMMERCE_BASE = (() => {
+    if (typeof window !== "undefined") {
+        return "/commerce";
+    }
+    return process.env.NODE_ENV === "production" ? "http://commerce-agent:4005" : "http://localhost:4005";
+})();
+
 export interface User {
   id: string;
   email: string;

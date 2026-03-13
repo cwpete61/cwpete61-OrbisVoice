@@ -142,6 +142,28 @@ services:
     networks:
       - orbisvoice-prod-network
 
+  commerce-agent:
+    image: ghcr.io/cwpete61/orbisvoice-commerce-agent:latest
+    container_name: orbisvoice-commerce-agent-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      COMMERCE_PORT: 4005
+      DATABASE_URL: ${COMMERCE_DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      CORE_API_URL: http://api:4001
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orbisvoice-prod-network
+
 networks:
   orbisvoice-prod-network:
     name: orbisvoice-prod-network

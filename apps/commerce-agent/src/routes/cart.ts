@@ -14,7 +14,7 @@ export default async function cartRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/', async (request) => {
-    const userId = (request.user as any).sub;
+    const userId = (request.user as any).userId;
     const items = await getCart(userId);
     
     // Enrich items with product data from our local mirror
@@ -42,14 +42,14 @@ export default async function cartRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: body.error.format() });
     }
 
-    const userId = (request.user as any).sub;
+    const userId = (request.user as any).userId;
     const cart = await addToCart(userId, body.data.productId, body.data.quantity);
 
     return { success: true, cart };
   });
 
   fastify.delete('/', async (request) => {
-    const userId = (request.user as any).sub;
+    const userId = (request.user as any).userId;
     await clearCart(userId);
     return { success: true };
   });
