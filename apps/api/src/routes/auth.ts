@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse, AuthPayload } from "../types";
+import { env } from "../env";
 import { referralManager } from "../services/referral";
 import { affiliateManager } from "../services/affiliate";
 import { verifyTurnstileToken } from "../services/turnstile";
@@ -334,6 +335,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(500).send({
           ok: false,
           message: "Internal server error",
+          error: err instanceof Error ? err.message : String(err),
+          stack: env.NODE_ENV !== 'production' ? (err as any).stack : undefined
         } as ApiResponse);
       }
     }
