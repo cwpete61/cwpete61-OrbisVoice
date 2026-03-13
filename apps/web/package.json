@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.42.0",
+    "@marsidev/react-turnstile": "^1.4.2",
     "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.3",

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse, AuthPayload } from "../types";
-import { authenticate } from "../middleware/auth";
+import { authenticate, requireAdmin } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 import { randomBytes } from "crypto";
 
@@ -13,7 +13,7 @@ const CreateApiKeySchema = z.object({
 
 export async function apiKeyRoutes(fastify: FastifyInstance) {
   // List API keys for tenant
-  fastify.get("/api-keys", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
+  fastify.get("/api-keys", { onRequest: [authenticate, requireAdmin] }, async (request: FastifyRequest, reply) => {
     try {
       const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
       const keys = await prisma.apiKey.findMany({
@@ -43,7 +43,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // Create new API key
   fastify.post<{ Body: z.infer<typeof CreateApiKeySchema> }>(
     "/api-keys",
-    { onRequest: [authenticate] },
+    { onRequest: [authenticate, requireAdmin] },
     async (request: FastifyRequest, reply) => {
       try {
         const body = CreateApiKeySchema.parse(request.body);
@@ -91,7 +91,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // Revoke API key
   fastify.delete<{ Params: { id: string } }>(
     "/api-keys/:id",
-    { onRequest: [authenticate] },
+    { onRequest: [authenticate, requireAdmin] },
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };

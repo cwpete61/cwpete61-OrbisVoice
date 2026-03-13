@@ -6,6 +6,7 @@ import { logger } from "../logger";
 import { ApiResponse, AuthPayload } from "../types";
 import { referralManager } from "../services/referral";
 import { affiliateManager } from "../services/affiliate";
+import { verifyTurnstileToken } from "../services/turnstile";
 
 const isGmail = (email: string) => {
   return true; // Allowing all email domains for standard login
@@ -39,11 +40,13 @@ const SignupSchema = z.object({
   password: z.string().min(8),
   referralCode: z.string().optional(),
   affiliateSlug: z.string().optional(),
+  captchaToken: z.string().optional(),
 });
 
 const LoginSchema = z.object({
   email: z.string(),
   password: z.string(),
+  captchaToken: z.string().optional(),
 });
 
 export async function authRoutes(fastify: FastifyInstance) {
@@ -53,6 +56,17 @@ export async function authRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const body = SignupSchema.parse(request.body);
+
+        // Verify Turnstile
+        if (body.captchaToken) {
+          const valid = await verifyTurnstileToken(body.captchaToken);
+          if (!valid) {
+            return reply.code(400).send({
+              ok: false,
+              message: "Security check failed. Please try again.",
+            } as ApiResponse);
+          }
+        }
 
         // Check if user exists
         const existing = await prisma.user.findUnique({
@@ -80,12 +94,14 @@ export async function authRoutes(fastify: FastifyInstance) {
         const hashedPassword = await bcrypt.hash(body.password, 10);
 
         // Create tenant (for free signup, each user gets their own tenant)
+        // No subscription assigned until upgrade, with $0.50 trial credits (approx 3 conversions)
         const tenant = await prisma.tenant.create({
           data: {
             name: `${body.name}'s Workspace`,
             subscriptionTier: "free",
             subscriptionStatus: "none",
-            usageLimit: 100, // Default free limit
+            usageLimit: 0, // No base monthly usage
+            creditBalance: 3, // $0.50 trial credits
           },
         });
 
@@ -182,6 +198,17 @@ export async function authRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       try {
         const body = LoginSchema.parse(request.body);
+
+        // Verify Turnstile
+        if (body.captchaToken) {
+          const valid = await verifyTurnstileToken(body.captchaToken);
+          if (!valid) {
+            return reply.code(400).send({
+              ok: false,
+              message: "Security check failed. Please try again.",
+            } as ApiResponse);
+          }
+        }
 
         // Find user
         const user = await prisma.user.findFirst({

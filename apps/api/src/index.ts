@@ -27,7 +27,7 @@ import { registerToolHandlers } from "./tools/handlers";
 import { referralManager } from "./services/referral";
 import { leadRoutes } from "./routes/leads";
 import { payoutRoutes } from "./routes/payouts";
-import { adminRoutes } from "./routes/admin";
+import { adminRoutes, subscriberAdminRoutes } from "./routes/admin";
 import { notificationRoutes } from "./routes/notifications";
 import { helpRoutes } from "./routes/help";
 import { prisma } from "./db";
@@ -121,6 +121,7 @@ fastify.register(stripeWebhookRoutes);
 fastify.register(payoutRoutes);
 fastify.register(leadRoutes, { prefix: "/api/leads" });
 fastify.register(adminRoutes);
+fastify.register(subscriberAdminRoutes, { prefix: "/admin" });
 fastify.register(notificationRoutes);
 fastify.register(helpRoutes);
 

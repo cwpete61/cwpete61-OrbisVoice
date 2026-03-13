@@ -270,3 +270,225 @@ export async function adminRoutes(fastify: FastifyInstance) {
         }
     });
 }
+
+/**
+ * Subscriber Management Routes
+ */
+export async function subscriberAdminRoutes(fastify: FastifyInstance) {
+    fastify.addHook("onRequest", requireAdmin);
+
+    // GET /admin/subscribers/:id/overview
+    fastify.get<{ Params: { id: string } }>(
+        "/subscribers/:id/overview",
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const tenant = await prisma.tenant.findUnique({
+                    where: { id },
+                    include: {
+                        users: { select: { id: true, name: true, email: true, role: true, isAdmin: true, createdAt: true, affiliate: { select: { payoutHeld: true, id: true } } } },
+                        agents: { select: { id: true, name: true, voiceId: true, createdAt: true, _count: { select: { transcripts: true, leads: true } } } },
+                    },
+                });
+                if (!tenant) return reply.code(404).send({ ok: false, message: "Subscriber not found" } as ApiResponse);
+
+                return reply.code(200).send({ ok: true, data: tenant } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to get subscriber overview");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+
+    // GET /admin/subscribers/:id/settings
+    fastify.get<{ Params: { id: string } }>(
+        "/subscribers/:id/settings",
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const [twilio, google] = await Promise.all([
+                    prisma.tenantTwilioConfig.findUnique({ where: { tenantId: id } }),
+                    prisma.tenantGoogleConfig.findUnique({ where: { tenantId: id } }),
+                ]);
+
+                return reply.send({
+                    ok: true,
+                    data: {
+                        twilio: twilio ? {
+                            accountSid: twilio.accountSid,
+                            authToken: "********",
+                            phoneNumber: twilio.phoneNumber,
+                            hasConfig: true
+                        } : null,
+                        google: google ? {
+                            clientId: google.clientId,
+                            clientSecret: "********",
+                            geminiApiKey: google.geminiApiKey ? "********" : null,
+                            hasConfig: true
+                        } : null
+                    }
+                } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to get subscriber settings");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+
+    // POST /admin/subscribers/:id/settings
+    fastify.post<{ Params: { id: string }; Body: any }>(
+        "/subscribers/:id/settings",
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const { type, config } = request.body as { type: "twilio" | "google"; config: any };
+
+                if (type === "twilio") {
+                    const { accountSid, authToken, phoneNumber } = config;
+                    // If authToken is "********", don't update it if we already have a config
+                    const existing = await prisma.tenantTwilioConfig.findUnique({ where: { tenantId: id } });
+                    
+                    await prisma.tenantTwilioConfig.upsert({
+                        where: { tenantId: id },
+                        create: { tenantId: id, accountSid, authToken, phoneNumber },
+                        update: { 
+                            accountSid, 
+                            phoneNumber,
+                            ...(authToken !== "********" && { authToken })
+                        }
+                    });
+                } else if (type === "google") {
+                    const { clientId, clientSecret, geminiApiKey } = config;
+                    await prisma.tenantGoogleConfig.upsert({
+                        where: { tenantId: id },
+                        create: { tenantId: id, clientId, clientSecret, geminiApiKey },
+                        update: { 
+                            clientId,
+                            ...(clientSecret !== "********" && { clientSecret }),
+                            ...(geminiApiKey !== "********" && { geminiApiKey })
+                        }
+                    });
+                }
+
+                return reply.send({ ok: true, message: "Settings updated" } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to update subscriber settings");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+
+    // DELETE /admin/subscribers/:id/settings/:type
+    fastify.delete<{ Params: { id: string; type: string } }>(
+        "/subscribers/:id/settings/:type",
+        async (request, reply) => {
+            try {
+                const { id, type } = request.params;
+                if (type === "twilio") {
+                    await prisma.tenantTwilioConfig.delete({ where: { tenantId: id } });
+                } else if (type === "google") {
+                    await prisma.tenantGoogleConfig.delete({ where: { tenantId: id } });
+                }
+                return reply.send({ ok: true, message: "Settings removed" } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to delete subscriber settings");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+
+    // GET /admin/subscribers/:id/api-keys
+    fastify.get<{ Params: { id: string } }>(
+        "/subscribers/:id/api-keys",
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const keys = await prisma.apiKey.findMany({
+                    where: { tenantId: id },
+                    orderBy: { createdAt: "desc" }
+                });
+                return reply.send({ ok: true, data: keys } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to get subscriber API keys");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+
+    // POST /admin/subscribers/:id/api-keys
+    fastify.post<{ Params: { id: string }; Body: { name: string } }>(
+        "/subscribers/:id/api-keys",
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const { name } = request.body;
+                
+                const { randomBytes } = await import("node:crypto");
+                const key = `ov_${randomBytes(24).toString("hex")}`;
+
+                const apiKey = await prisma.apiKey.create({
+                    data: {
+                        tenantId: id,
+                        name: name || "Admin Generated Key",
+                        key,
+                    }
+                });
+
+                return reply.code(201).send({ ok: true, data: apiKey } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to create subscriber API key");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+
+    // DELETE /admin/subscribers/:id/api-keys/:keyId
+    fastify.delete<{ Params: { id: string; keyId: string } }>(
+        "/subscribers/:id/api-keys/:keyId",
+        async (request, reply) => {
+            try {
+                const { id, keyId } = request.params;
+                await prisma.apiKey.delete({
+                    where: { id: keyId, tenantId: id }
+                });
+                return reply.send({ ok: true, message: "API key revoked" } as ApiResponse);
+            } catch (err) {
+                logger.error(err, "Failed to revoke subscriber API key");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+    // POST /admin/subscribers/:id/billing-portal
+    fastify.post<{ Params: { id: string }; Body: { returnUrl?: string } }>(
+        "/subscribers/:id/billing-portal",
+        async (request, reply) => {
+            try {
+                const { id } = request.params;
+                const body = (request.body || {}) as { returnUrl?: string };
+                const returnUrl = body.returnUrl;
+                
+                const tenant = await prisma.tenant.findUnique({
+                    where: { id },
+                });
+
+                if (!tenant || !tenant.stripeCustomerId) {
+                    return reply.code(400).send({ ok: false, message: "No active billing account found for this subscriber" } as ApiResponse);
+                }
+
+                const { StripeClient } = await import("../integrations/stripe");
+                const { env } = await import("../env");
+                const stripe = new StripeClient({ apiKey: env.STRIPE_API_KEY || "" });
+
+                const session = await stripe.createPortalSession({
+                    customerId: tenant.stripeCustomerId,
+                    returnUrl: returnUrl || `${env.WEB_URL}/admin/tenants`,
+                });
+
+                return reply.send({ ok: true, url: session.url } as any);
+            } catch (err) {
+                logger.error(err, "Failed to create subscriber billing portal session");
+                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
+            }
+        }
+    );
+}

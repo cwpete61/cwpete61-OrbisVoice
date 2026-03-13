@@ -129,7 +129,7 @@ function SettingsContent() {
   const [showNewKey, setShowNewKey] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "api");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "notifications");
   const [profile, setProfile] = useState<any>(null);
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState<any>(null);
@@ -281,12 +281,7 @@ function SettingsContent() {
 
   // Fetch non-admin data first
   useEffect(() => {
-    fetchApiKeys();
     fetchProfile();
-    checkCalendarConnection();
-    checkGmailConnection();
-    fetchGmailCredentials();
-    fetchTenantGoogleConfig();
 
     const token = localStorage.getItem("token");
     if (token) {
@@ -299,14 +294,20 @@ function SettingsContent() {
     }
   }, [tokenLoaded]);
 
-  // Fetch admin-only data when profile is loaded and user is admin
+  // Fetch data when profile is loaded and user is admin
   useEffect(() => {
-    if (isAdmin || isSystemAdmin) {
+    if (profile && (isAdmin || isSystemAdmin)) {
+      fetchApiKeys();
       fetchTwilioConfig();
       fetchSystemEmailConfig();
       fetchStripeConnectConfig();
       fetchGoogleConfig();
       fetchPlatformSettings();
+      checkCalendarConnection();
+      checkGmailConnection();
+      fetchGmailCredentials();
+      fetchTenantGoogleConfig();
+      
       if (activeTab === "role-settings" || activeTab === "system-roles") {
         fetchUsers();
       }
@@ -1124,21 +1125,21 @@ function SettingsContent() {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              setActiveTab("api");
-              router.replace("/settings?tab=api");
-            }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "api"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
-          >
-            API Keys
-          </button>
           {isAdmin && (
             <>
+              <button
+                onClick={() => {
+                  setActiveTab("api");
+                  router.replace("/settings?tab=api");
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "api"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                API Keys
+              </button>
               <button
                 onClick={() => {
                   setActiveTab("google");
@@ -1153,66 +1154,62 @@ function SettingsContent() {
               >
                 Google Config
               </button>
-            </>
-          )}
-          <button
-            onClick={() => {
-              setActiveTab("integrations");
-              router.replace("/settings?tab=integrations");
-              fetchTenantGoogleConfig();
-            }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "integrations"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
-          >
-            Integrations
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("calendar");
-              router.replace("/settings?tab=calendar");
-              checkCalendarConnection();
-            }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "calendar"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
-          >
-            Calendar
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("gmail");
-              router.replace("/settings?tab=gmail");
-              checkGmailConnection();
-            }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "gmail"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
-          >
-            Gmail
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("twilio");
-              router.replace("/settings?tab=twilio");
-              fetchTwilioConfig();
-            }}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              activeTab === "twilio"
-                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-            }`}
-          >
-            Twilio
-          </button>
-          {isAdmin && (
-            <>
+              <button
+                onClick={() => {
+                  setActiveTab("integrations");
+                  router.replace("/settings?tab=integrations");
+                  fetchTenantGoogleConfig();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "integrations"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                Integrations
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("calendar");
+                  router.replace("/settings?tab=calendar");
+                  checkCalendarConnection();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "calendar"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                Calendar
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("gmail");
+                  router.replace("/settings?tab=gmail");
+                  checkGmailConnection();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "gmail"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                Gmail
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("twilio");
+                  router.replace("/settings?tab=twilio");
+                  fetchTwilioConfig();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "twilio"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                Twilio
+              </button>
               <button
                 onClick={() => {
                   setActiveTab("system-email");
@@ -1253,20 +1250,25 @@ function SettingsContent() {
               >
                 Referrals
               </button>
-              <button
-                onClick={() => {
-                  setActiveTab("notifications");
-                  router.replace("/settings?tab=notifications");
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  activeTab === "notifications"
-                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                }`}
-              >
-                🔔 Notifications
-              </button>
+            </>
+          )}
 
+          <button
+            onClick={() => {
+              setActiveTab("notifications");
+              router.replace("/settings?tab=notifications");
+            }}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === "notifications"
+                ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+            }`}
+          >
+            🔔 Notifications
+          </button>
+
+          {isAdmin && (
+            <>
               <button
                 onClick={() => {
                   setActiveTab("system-roles");
@@ -1381,7 +1383,7 @@ function SettingsContent() {
         )}
 
         {/* API Keys Section */}
-        {activeTab === "api" && (
+        {activeTab === "api" && isAdmin && (
           <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">API Keys</h2>
 
@@ -1771,7 +1773,7 @@ function SettingsContent() {
         )}
 
         {/* Widget embed */}
-        {activeTab === "calendar" && (
+        {activeTab === "calendar" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Calendar Connection</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
@@ -1838,7 +1840,7 @@ function SettingsContent() {
         )}
 
         {/* Gmail Connection */}
-        {activeTab === "gmail" && (
+        {activeTab === "gmail" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Gmail Account</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
@@ -1911,7 +1913,7 @@ function SettingsContent() {
         )}
 
         {/* Integrations Section */}
-        {activeTab === "integrations" && (
+        {activeTab === "integrations" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
               Google Cloud & Gemini Integration
@@ -2088,7 +2090,7 @@ function SettingsContent() {
         )}
 
         {/* Twilio Section */}
-        {activeTab === "twilio" && (
+        {activeTab === "twilio" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Twilio Configuration</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
@@ -2204,7 +2206,7 @@ function SettingsContent() {
         )}
 
         {/* Widget embed */}
-        {activeTab === "api" && (
+        {activeTab === "api" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-3 text-sm font-semibold text-[#f0f4fa]">Embedded Widget</h2>
             <p className="mb-4 text-sm text-[rgba(240,244,250,0.45)]">

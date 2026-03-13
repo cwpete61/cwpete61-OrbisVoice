@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
 import { ApiResponse } from "../types";
-import { authenticate } from "../middleware/auth";
+import { authenticate, requireAdmin } from "../middleware/auth";
 
 const TwilioConfigSchema = z.object({
     accountSid: z.string().min(1, "Account SID is required"),
@@ -14,7 +14,7 @@ export default async function twilioRoutes(fastify: FastifyInstance) {
     // Get Twilio config for tenant
     fastify.get(
         "/twilio/config",
-        { onRequest: [authenticate] },
+        { onRequest: [authenticate, requireAdmin] },
         async (request: FastifyRequest, reply) => {
             try {
                 const tenantId = (request as any).user.tenantId;
@@ -44,7 +44,7 @@ export default async function twilioRoutes(fastify: FastifyInstance) {
     // Update Twilio config for tenant
     fastify.put<{ Body: z.infer<typeof TwilioConfigSchema> }>(
         "/twilio/config",
-        { onRequest: [authenticate] },
+        { onRequest: [authenticate, requireAdmin] },
         async (request, reply) => {
             try {
                 const tenantId = (request as any).user.tenantId;

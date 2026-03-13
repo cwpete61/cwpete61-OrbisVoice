@@ -60,6 +60,7 @@ services:
       FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
       FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,12 +90,14 @@ services:
         - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
         - NEXT_PUBLIC_APPCHECK_KEY=${NEXT_PUBLIC_APPCHECK_KEY}
         - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - NEXT_PUBLIC_TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}
     container_name: orbisvoice-web-prod
     restart: always
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://myorbisvoice.com/api}
       NEXT_PUBLIC_VOICE_GATEWAY_URL: ${NEXT_PUBLIC_VOICE_GATEWAY_URL:-wss://myorbisvoice.com/voice}
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
     depends_on:
       api:
         condition: service_started

@@ -77,10 +77,10 @@ model User {
   zip                       String?
   emailNotifications        Boolean                 @default(true)
   emailVerified             DateTime?
-  isEmailVerifiedByAdmin    Boolean                 @default(false)
   emailVerificationToken    String?                 @unique
   resetPasswordToken        String?                 @unique
   resetPasswordExpires      DateTime?
+  isEmailVerifiedByAdmin    Boolean                 @default(false)
   affiliate                 Affiliate?
   notifications             Notification[]
   notificationPref          NotificationPreference?

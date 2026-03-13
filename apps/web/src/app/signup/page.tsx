@@ -7,6 +7,7 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { apiFetch } from "@/lib/api";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 function SignupContent() {
   const [email, setEmail] = useState("");
@@ -16,6 +17,7 @@ function SignupContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const referralCode = searchParams.get("ref") || "";
@@ -37,7 +39,8 @@ function SignupContent() {
           username,
           password,
           referralCode,
-          affiliateSlug
+          affiliateSlug,
+          captchaToken
         }),
       });
       if (res.ok) {
@@ -165,6 +168,14 @@ function SignupContent() {
                     required
                   />
                 </div>
+
+                <div className="flex justify-center py-2">
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+                    onSuccess={(token: string) => setCaptchaToken(token)}
+                  />
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading}

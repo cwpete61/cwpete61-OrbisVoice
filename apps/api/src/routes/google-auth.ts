@@ -228,9 +228,14 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } else {
             // Create new user with Google account
             // Find or create tenant
+            // No subscription assigned until upgrade, with $0.50 trial credits (approx 3 conversions)
             const tenant = await prisma.tenant.create({
               data: {
                 name: `${googleName}'s Workspace`,
+                subscriptionTier: "free",
+                subscriptionStatus: "none",
+                usageLimit: 0,
+                creditBalance: 3,
               },
             });
 

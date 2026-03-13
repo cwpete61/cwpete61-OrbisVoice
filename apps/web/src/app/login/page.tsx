@@ -7,6 +7,7 @@ import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
 import { apiFetch } from "../../lib/api";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const router = useRouter();
 
@@ -26,7 +28,7 @@ export default function LoginPage() {
       const { res, data } = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
       });
       if (res.ok) {
         localStorage.setItem("token", (data.data as any).token);
@@ -143,6 +145,14 @@ export default function LoginPage() {
                   </Link>
                 </div>
               </div>
+
+              <div className="flex justify-center py-2">
+                <Turnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+                  onSuccess={(token: string) => setCaptchaToken(token)}
+                />
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}

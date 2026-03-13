@@ -41,7 +41,8 @@ async function billingRoutes(fastify: FastifyInstance) {
         professional: { conversations: settings?.professionalLimit ?? 10000, price: 497 },
         enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: 997 },
         "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 },
-        ltd: { conversations: settings?.ltdLimit ?? 1000, price: 497, monthly: 20 }
+        ltd: { conversations: settings?.ltdLimit ?? 1000, price: 497, monthly: 20 },
+        free: { conversations: 0, price: 0 }
       };
 
       return {
@@ -72,8 +73,11 @@ async function billingRoutes(fastify: FastifyInstance) {
       else if (tenant.subscriptionTier === 'enterprise') tierInfo = { conversations: settings?.enterpriseLimit ?? 100000, price: 997 };
       else if (tenant.subscriptionTier === 'ai-revenue-infrastructure') tierInfo = { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 };
       else if (tenant.subscriptionTier === 'ltd') tierInfo = { conversations: settings?.ltdLimit ?? 1000, price: 497 };
+      else if (tenant.subscriptionTier === 'free') tierInfo = { conversations: 0, price: 0 };
 
-      const usagePercent = Math.min(100, (tenant.usageCount / (tenant.usageLimit || 1)) * 100);
+      const usagePercent = tenant.usageLimit > 0 
+        ? Math.min(100, (tenant.usageCount / tenant.usageLimit) * 100)
+        : (tenant.usageCount > 0 ? 100 : 0);
 
       return {
         ok: true,

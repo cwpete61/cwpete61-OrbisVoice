@@ -181,27 +181,4 @@ export async function helpRoutes(fastify: FastifyInstance) {
         }
     );
 
-    // ── GET /admin/help/subscribers/:id/overview — read-only subscriber view ──
-    fastify.get<{ Params: { id: string } }>(
-        "/admin/subscribers/:id/overview",
-        { onRequest: [requireAdmin] },
-        async (request, reply) => {
-            try {
-                const { id } = request.params;
-                const tenant = await prisma.tenant.findUnique({
-                    where: { id },
-                    include: {
-                        users: { select: { id: true, name: true, email: true, role: true, isAdmin: true, createdAt: true } },
-                        agents: { select: { id: true, name: true, voiceId: true, createdAt: true, _count: { select: { transcripts: true, leads: true } } } },
-                    },
-                });
-                if (!tenant) return reply.code(404).send({ ok: false, message: "Subscriber not found" } as ApiResponse);
-
-                return reply.code(200).send({ ok: true, data: tenant } as ApiResponse);
-            } catch (err) {
-                logger.error(err, "Failed to get subscriber overview");
-                return reply.code(500).send({ ok: false, message: "Internal server error" } as ApiResponse);
-            }
-        }
-    );
 }

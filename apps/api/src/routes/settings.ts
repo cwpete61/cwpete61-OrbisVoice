@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
-import { authenticate } from "../middleware/auth";
+import { authenticate, requireAdmin } from "../middleware/auth";
 import { ApiResponse } from "../types";
 import { logger } from "../logger";
 
@@ -15,7 +15,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     // Get tenant's Google config
     fastify.get(
         "/settings/google-config",
-        { onRequest: [authenticate] },
+        { onRequest: [authenticate, requireAdmin] },
         async (request, reply) => {
             try {
                 const tenantId = (request as any).user?.tenantId;
@@ -65,7 +65,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     // Update tenant's Google config
     fastify.post<{ Body: z.infer<typeof GoogleConfigSchema> }>(
         "/settings/google-config",
-        { onRequest: [authenticate] },
+        { onRequest: [authenticate, requireAdmin] },
         async (request, reply) => {
             try {
                 const tenantId = (request as any).user?.tenantId;
@@ -109,7 +109,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     // Delete tenant's Google config
     fastify.delete(
         "/settings/google-config",
-        { onRequest: [authenticate] },
+        { onRequest: [authenticate, requireAdmin] },
         async (request, reply) => {
             try {
                 const tenantId = (request as any).user?.tenantId;

@@ -136,15 +136,26 @@ function DashboardContent() {
               Manage and monitor your deployed agents
             </p>
           </div>
-          <Link
-            href="/agents/new"
-            className="btn-primary text-sm flex items-center justify-center gap-2"
-          >
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            New Agent
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/billing"
+              className="px-4 py-2 rounded-lg border border-[#14b8a6]/40 text-[#14b8a6] text-sm font-semibold hover:bg-[#14b8a6]/10 transition flex items-center gap-2"
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M13 7l-5-5-5 5M8 2v12" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Upgrade
+            </Link>
+            <Link
+              href="/agents/new"
+              className="btn-primary text-sm flex items-center justify-center gap-2"
+            >
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 4v16m8-8H4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              New Agent
+            </Link>
+          </div>
         </div>
 
         {/* Onboarding Checklist */}

@@ -14,7 +14,7 @@ interface TierInfo {
 const tierNames = ["starter", "professional", "enterprise"] as const;
 type TierName = (typeof tierNames)[number];
 
-const allTierNames = ["ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
+const allTierNames = ["free", "ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
 type AllTierName = (typeof allTierNames)[number];
 
 const isTierName = (tier: string): tier is TierName =>
@@ -33,6 +33,12 @@ const TIER_CONFIG: Record<AllTierName, {
   frequencyText?: string;
   secondaryPrice?: string;
 }> = {
+  free: {
+    name: "Free Trial",
+    accent: "#94a3b8",
+    description: "Experience OrbisVoice with $0.50 trial credits (approx 3 conversations).",
+    limitText: "Limited Trial"
+  },
   ltd: {
     name: "LTD (Lifetime Deal)",
     accent: "#ef4444",
@@ -285,8 +291,8 @@ function BillingContent() {
 
   const currentTier: AllTierName = isAllTierName(subscription.subscriptionTier)
     ? subscription.subscriptionTier
-    : "starter";
-  const currentTierInfo = availableTiers[currentTier] ?? availableTiers.starter;
+    : "free"; // Default to free if tier is unknown
+  const currentTierInfo = availableTiers ? (availableTiers[currentTier] || { conversations: 0, price: 0 }) : { conversations: 0, price: 0 };
   const currentTierConfig = TIER_CONFIG[currentTier];
   const usagePercent = subscription.usagePercent;
   const isOverLimit = usagePercent >= 100 && subscription.creditBalance <= 0;
@@ -409,7 +415,7 @@ function BillingContent() {
         {/* Available Plans */}
         <section>
           <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Available Plans</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {allTierNames.map((tier) => {
               const info = availableTiers[tier] || (tier === 'ltd' ? { price: 497, conversations: 1000 } : null);
               if (!info) return null;
@@ -421,7 +427,7 @@ function BillingContent() {
                 <div
                   key={tier}
                   className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 hover:shadow-lg ${isCurrent ? "border-[#14b8a6] bg-[#14b8a6]/[0.02]" : "border-white/[0.07]"
-                    }`}
+                    } flex flex-col`}
                 >
                   {config.popular && !isCurrent && (
                     <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/40 font-semibold uppercase tracking-wider">
@@ -465,24 +471,26 @@ function BillingContent() {
                       {tier === 'ltd' ? "lifetime access" : "per month"}
                     </p>
                   </div>
-                  {!isCurrent && (
-                    <button
-                      onClick={() => setSelectedTier(tier)}
-                      className={isUpgrade
-                        ? "btn-primary w-full text-sm"
-                        : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
-                    >
-                      {isUpgrade ? "Upgrade Plan" : "Change Plan"}
-                    </button>
-                  )}
-                  {isCurrent && subscription.subscriptionStatus === "active" && (
-                    <button
-                      onClick={handleCancel}
-                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 w-full"
-                    >
-                      Cancel Plan
-                    </button>
-                  )}
+                  <div className="mt-auto pt-6">
+                    {!isCurrent && (
+                      <button
+                        onClick={() => setSelectedTier(tier)}
+                        className={isUpgrade
+                          ? "btn-primary w-full text-sm"
+                          : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
+                      >
+                        {isUpgrade ? "Upgrade Plan" : "Change Plan"}
+                      </button>
+                    )}
+                    {isCurrent && subscription.subscriptionStatus === "active" && (
+                      <button
+                        onClick={handleCancel}
+                        className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 w-full"
+                      >
+                        Cancel Plan
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}

@@ -47,6 +47,8 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("noreply@orbisvoice.app"),
   EMAIL_FROM_NAME: z.string().default("OrbisVoice"),
+  // Cloudflare Turnstile
+  TURNSTILE_SECRET_KEY: z.string().optional(),
 });
 
 const result = envSchema.safeParse(process.env);

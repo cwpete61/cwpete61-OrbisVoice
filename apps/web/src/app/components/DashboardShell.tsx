@@ -462,7 +462,15 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar with bell */}
         <div className="flex items-center justify-end px-6 py-3 border-b border-white/[0.05] bg-[#080c16]">
-
+          <Link
+            href="/billing"
+            className="mr-5 flex items-center gap-2 rounded-full bg-gradient-to-r from-[#14b8a6] to-[#0d9488] px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-lg shadow-[#14b8a6]/20 transition hover:scale-105 active:scale-95"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M13 7l-5-5-5 5M8 2v12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Upgrade
+          </Link>
 
           <div className="relative" ref={notifRef}>
             <button onClick={toggleNotifs} className="relative p-2 rounded-lg hover:bg-white/[0.05] transition group focus:outline-none">

@@ -279,7 +279,7 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                             data: {
                                 subscriptionStatus: "canceled",
                                 subscriptionTier: "free",
-                                usageLimit: 100 // Reset to free limit
+                                usageLimit: 0 // No base monthly usage for free tier
                             },
                         });
                         logger.info({ tenantId: tenant.id }, "Tenant subscription deleted/canceled");
