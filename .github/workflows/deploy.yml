@@ -117,13 +117,31 @@ jobs:
           host: ${{ env.VPS_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: STRIPE_API_KEY,STRIPE_WEBHOOK_SECRET,OPENAI_API_KEY,GEMINI_API_KEY,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,FIREBASE_PROJECT_ID,FIREBASE_CLIENT_EMAIL,FIREBASE_PRIVATE_KEY,TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY,POSTGRES_PASSWORD,DATABASE_URL,JWT_SECRET
           script: |
             cd /opt/orbisvoice
             # Create certs dir if missing
             mkdir -p nginx/certs
             
-            echo "Constructing fresh deployment via script..."
+            echo "Constructing fresh deployment via script with injected secrets..."
             chmod +x deploy-vps.sh
+            
+            # Export everything for docker-compose to see
+            export STRIPE_API_KEY=$STRIPE_API_KEY
+            export STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
+            export OPENAI_API_KEY=$OPENAI_API_KEY
+            export GEMINI_API_KEY=$GEMINI_API_KEY
+            export GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+            export GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+            export FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID
+            export FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL
+            export FIREBASE_PRIVATE_KEY=$FIREBASE_PRIVATE_KEY
+            export TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY
+            export TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY
+            export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+            export DATABASE_URL=$DATABASE_URL
+            export JWT_SECRET=$JWT_SECRET
+            
             ./deploy-vps.sh
             
             echo "### deployment Diagnostics" > deployment_report.md

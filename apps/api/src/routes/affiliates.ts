@@ -258,14 +258,18 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 // If pending, check Stripe directly to see if they finished onboarding
                 let currentStatus = affiliate.stripeAccountStatus;
                 if (currentStatus === "pending" && env.STRIPE_API_KEY) {
-                    const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
-                    const account = await stripe.accounts.retrieve(affiliate.stripeAccountId);
-                    if (account.details_submitted) {
-                        currentStatus = "active";
-                        await prisma.affiliate.update({
-                            where: { id: affiliate.id },
-                            data: { stripeAccountStatus: "active" },
-                        });
+                    try {
+                        const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                        const account = await stripe.accounts.retrieve(affiliate.stripeAccountId);
+                        if (account.details_submitted) {
+                            currentStatus = "active";
+                            await prisma.affiliate.update({
+                                where: { id: affiliate.id },
+                                data: { stripeAccountStatus: "active" },
+                            });
+                        }
+                    } catch (sErr) {
+                        fastify.log.warn("Stripe status check failed:", sErr);
                     }
                 }
 
@@ -319,42 +323,42 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     return reply.code(400).send({ ok: false, message: "Stripe account is already connected and active." });
                 }
 
-                if (!env.STRIPE_API_KEY) {
-                    return reply.code(400).send({ ok: false, message: "Stripe integration is not configured" });
-                }
+                if (env.STRIPE_API_KEY) {
+                    const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                    let accountId = affiliate.stripeAccountId;
 
-                const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
-                let accountId = affiliate.stripeAccountId;
+                    // Create a new connected account if they don't have one
+                    if (!accountId) {
+                        const account = await stripe.accounts.create({
+                            type: "express",
+                            email: affiliate.payoutEmail || affiliate.user.email,
+                            capabilities: {
+                                transfers: { requested: true },
+                            },
+                        });
+                        accountId = account.id;
 
-                // Create a new connected account if they don't have one
-                if (!accountId) {
-                    const account = await stripe.accounts.create({
-                        type: "express",
-                        email: affiliate.payoutEmail || affiliate.user.email,
-                        capabilities: {
-                            transfers: { requested: true },
-                        },
+                        await prisma.affiliate.update({
+                            where: { id: (affiliate as any).id },
+                            data: { stripeAccountId: accountId, stripeAccountStatus: "pending" },
+                        });
+                    }
+
+                    // Generate onboarding link
+                    const accountLink = await stripe.accountLinks.create({
+                        account: accountId,
+                        refresh_url: `${env.WEB_URL}/affiliates?stripe_refresh=true`,
+                        return_url: `${env.WEB_URL}/affiliates?stripe_return=true`,
+                        type: "account_onboarding",
                     });
-                    accountId = account.id;
 
-                    await prisma.affiliate.update({
-                        where: { id: (affiliate as any).id },
-                        data: { stripeAccountId: accountId, stripeAccountStatus: "pending" },
-                    });
+                    return reply.send({
+                        ok: true,
+                        data: { url: accountLink.url },
+                    } as ApiResponse);
+                } else {
+                    return reply.code(400).send({ ok: false, message: "Stripe integration is not fully configured" });
                 }
-
-                // Generate onboarding link
-                const accountLink = await stripe.accountLinks.create({
-                    account: accountId,
-                    refresh_url: `${env.WEB_URL}/affiliates?stripe_refresh=true`,
-                    return_url: `${env.WEB_URL}/affiliates?stripe_return=true`,
-                    type: "account_onboarding",
-                });
-
-                return reply.send({
-                    ok: true,
-                    data: { url: accountLink.url },
-                } as ApiResponse);
             } catch (err: any) {
                 fastify.log.error("Failed to generate Stripe onboarding link:", err);
                 return reply.code(500).send({ ok: false, message: `Server error: ${err.message}` });
@@ -772,18 +776,13 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     return reply.code(400).send({ ok: false, message: "No active Stripe account connected" });
                 }
 
-                if (!env.STRIPE_API_KEY) {
-                    return reply.code(400).send({ ok: false, message: "Stripe not configured" });
-                }
-
-                if (!env.STRIPE_API_KEY) {
+                if (env.STRIPE_API_KEY) {
+                    const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
+                    const loginLink = await stripe.accounts.createLoginLink(affiliate.stripeAccountId);
+                    return reply.send({ ok: true, data: { url: loginLink.url } } as ApiResponse);
+                } else {
                     return reply.code(400).send({ ok: false, message: "Stripe integration is not configured" });
                 }
-
-                const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
-                const loginLink = await stripe.accounts.createLoginLink(affiliate.stripeAccountId);
-
-                return reply.send({ ok: true, data: { url: loginLink.url } } as ApiResponse);
             } catch (err: any) {
                 fastify.log.error(err);
                 return reply.code(500).send({ ok: false, message: err.message || "Server error" });
