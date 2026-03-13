@@ -15,7 +15,8 @@ const isGmail = (email: string) => {
 
 const SYSTEM_ADMIN_EMAILS = [
   "myorbislocal@gmail.com",
-  "admin@orbisvoice.app"
+  "admin@orbisvoice.app",
+  "talk@myorbisvoice.com"
 ];
 
 
