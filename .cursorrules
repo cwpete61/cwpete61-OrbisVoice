@@ -1,0 +1,9 @@
+# Global Deploy Rule
+
+Whenever asked to "Deploy" or "Push to Live", execute the following steps to trigger the CI/CD pipeline:
+
+1. Stage all changes: `git add .`
+2. Commit changes with a descriptive message: `git commit -m "feat/fix/chore: <description>"`
+3. Push to master: `git push origin master`
+
+Wait for the GitHub Actions pipeline (`.github/workflows/deploy.yml`) to finish building and deploying the changes to the Live VPS automatically. Do not attempt to SSH into the remote server manually unless the GitHub Action fails.
