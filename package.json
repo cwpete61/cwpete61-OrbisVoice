@@ -7,6 +7,7 @@
     "apps/web",
     "apps/voice-gateway",
     "apps/referrals",
+    "apps/commerce-agent",
     "packages/shared",
     "packages/config"
   ],

@@ -269,7 +269,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             });
                         }
                     } catch (sErr) {
-                        fastify.log.warn("Stripe status check failed:", sErr);
+                        fastify.log.warn({ err: sErr }, "Stripe status check failed");
                     }
                 }
 

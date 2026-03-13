@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("COMMERCE_DATABASE_URL")
+}
+
+model CommerceUser {
+  id               String   @id @default(uuid())
+  externalUserId   String   @unique // The UUID from the main system's JWT
+  stripeCustomerId String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  orders           Order[]
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  stripeProductId String   @unique
+  stripePriceId   String   @unique
+  name            String
+  description     String?
+  price           Int // In cents
+  currency        String   @default("usd")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Order {
+  id              String       @id @default(uuid())
+  commerceUserId  String
+  commerceUser    CommerceUser @relation(fields: [commerceUserId], references: [id])
+  stripeSessionId String       @unique
+  stripeInvoiceId String?
+  amountTotal     Int
+  currency        String
+  status          String // pending, completed, failed
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
