@@ -33,14 +33,31 @@ class StripeClient {
   private webhookSecret?: string;
 
   constructor(config: StripeConfig) {
-    if (config.apiKey) {
-      this.stripe = new Stripe(config.apiKey, {
-        apiVersion: "2024-06-20" as any,
-        typescript: true,
-      });
+    const apiKey = config.apiKey?.trim();
+    
+    // Stricter check to prevent "Neither apiKey nor config.authenticator provided" error
+    if (apiKey && typeof apiKey === "string" && apiKey.length > 5 && apiKey !== "undefined" && apiKey !== "null") {
+      try {
+        this.stripe = new Stripe(apiKey, {
+          apiVersion: "2024-06-20" as any,
+          typescript: true,
+        });
+        logger.info({ keyPrefix: apiKey.substring(0, 7) }, "StripeClient initialized successfully");
+      } catch (err: any) {
+        this.stripe = null;
+        logger.error({ 
+          error: err.message, 
+          keyLength: apiKey?.length,
+          keyPrefix: apiKey?.substring(0, 7)
+        }, "CRITICAL: Stripe SDK failed to initialize properly. Stripe features will be disabled.");
+      }
     } else {
       this.stripe = null;
-      logger.warn("StripeClient initialized without an API key. Stripe features will be disabled.");
+      logger.warn({ 
+        keyLength: apiKey?.length, 
+        isString: typeof apiKey === "string",
+        val: apiKey === "undefined" || apiKey === "null" ? apiKey : "[REDACTED]"
+      }, "StripeClient initialized without a valid API key. Stripe features will be disabled.");
     }
     this.webhookSecret = config.webhookSecret;
   }

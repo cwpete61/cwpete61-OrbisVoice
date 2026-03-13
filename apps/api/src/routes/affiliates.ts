@@ -319,6 +319,10 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     return reply.code(400).send({ ok: false, message: "Stripe account is already connected and active." });
                 }
 
+                if (!env.STRIPE_API_KEY) {
+                    return reply.code(400).send({ ok: false, message: "Stripe integration is not configured" });
+                }
+
                 const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
                 let accountId = affiliate.stripeAccountId;
 
@@ -708,6 +712,10 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     } as ApiResponse);
                 }
 
+                if (!env.STRIPE_API_KEY) {
+                    return reply.code(400).send({ ok: false, message: "Stripe integration is not configured" });
+                }
+
                 const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
 
                 // Retrieve live account info
@@ -766,6 +774,10 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
 
                 if (!env.STRIPE_API_KEY) {
                     return reply.code(400).send({ ok: false, message: "Stripe not configured" });
+                }
+
+                if (!env.STRIPE_API_KEY) {
+                    return reply.code(400).send({ ok: false, message: "Stripe integration is not configured" });
                 }
 
                 const stripe = new Stripe(env.STRIPE_API_KEY, { apiVersion: "2024-06-20" as any });
