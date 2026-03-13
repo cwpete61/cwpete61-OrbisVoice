@@ -31,7 +31,7 @@ class LeadService {
 
             // Trigger notification to all users of the tenant
             const users = await prisma.user.findMany({ where: { tenantId: data.tenantId } });
-            await Promise.allSettled(users.map(u =>
+            await Promise.allSettled(users.map((u: any) =>
                 createNotification({
                     userId: u.id,
                     type: NotifType.LEAD_CAPTURED,

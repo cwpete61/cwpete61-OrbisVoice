@@ -108,7 +108,7 @@ export class ReferralManager {
           where: { affiliateId: affiliate.id, refereeId: { not: null } }
         });
 
-        const refereeIds = affRefs.map(r => r.refereeId).filter(Boolean) as string[];
+        const refereeIds = affRefs.map((r: any) => r.refereeId).filter(Boolean) as string[];
         if (refereeIds.length > 0) {
           affiliateSignups = await prisma.user.findMany({
             where: { id: { in: refereeIds } },
@@ -173,9 +173,9 @@ export class ReferralManager {
       const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
       const feePercent = settings?.transactionFeePercent || 3.4;
 
-      const pendingRewards = txs.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0);
-      const availableRewards = txs.filter(t => t.status === 'available').reduce((sum, t) => sum + t.amount, 0);
-      const totalRewards = txs.filter(t => t.status === 'available' || t.status === 'paid').reduce((sum, t) => sum + t.amount, 0);
+      const pendingRewards = txs.filter((t: any) => t.status === 'pending').reduce((sum: number, t: any) => sum + t.amount, 0);
+      const availableRewards = txs.filter((t: any) => t.status === 'available').reduce((sum: number, t: any) => sum + t.amount, 0);
+      const totalRewards = txs.filter((t: any) => t.status === 'available' || t.status === 'paid').reduce((sum: number, t: any) => sum + t.amount, 0);
 
       const estimatedFee = availableRewards * (feePercent / 100);
       const estimatedNetBalance = availableRewards - estimatedFee;
@@ -184,7 +184,7 @@ export class ReferralManager {
         totalClicks: 0,
         totalReferred: activities.length,
         accepted: activities.filter(a => a.status === 'accepted').length,
-        completed: activities.filter(a => a.status === 'completed' || txs.some(t => t.refereeId === a.id && t.status === 'pending')).length,
+        completed: activities.filter((a: any) => a.status === 'completed' || txs.some((t: any) => t.refereeId === a.id && t.status === 'pending')).length,
         pendingRewards,
         availableRewards,
         totalRewards,

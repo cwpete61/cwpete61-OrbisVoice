@@ -187,7 +187,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         dataByMonth[key] = { monthDate: d, name, AgentSales: 0, ReferrerSales: 0, TotalSales: 0 };
       }
 
-      transactions.forEach(t => {
+      transactions.forEach((t: any) => {
         const d = t.createdAt;
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         if (dataByMonth[key]) {
@@ -216,7 +216,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         include: { tenant: true }
       });
 
-      organicUsers.forEach(u => {
+      organicUsers.forEach((u: any) => {
         const tier = u.tenant?.subscriptionTier;
         if (tier && tier !== 'free') {
           const d = u.createdAt;
@@ -234,7 +234,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         }
       });
 
-      const formattedData = Object.keys(dataByMonth).sort().map(k => ({
+      const formattedData = Object.keys(dataByMonth).sort().map((k: string) => ({
         name: dataByMonth[k].name,
         'Agent Sales': Math.round(dataByMonth[k].AgentSales),
         'Referrer Sales': Math.round(dataByMonth[k].ReferrerSales),
@@ -296,7 +296,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         where: { tenantId },
         select: { id: true }
       });
-      const agentIds = agents.map(a => a.id);
+      const agentIds = agents.map((a: any) => a.id);
 
       const transcripts = await prisma.transcript.findMany({
         where: {
@@ -324,7 +324,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         }
       });
 
-      const formattedData = Object.keys(dataByDate).sort().map(date => ({
+      const formattedData = Object.keys(dataByDate).sort().map((date: string) => ({
         date,
         count: dataByDate[date]
       }));

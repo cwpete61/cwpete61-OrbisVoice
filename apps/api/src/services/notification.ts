@@ -166,7 +166,7 @@ async function sendEmailNotification({
 export async function broadcastNotification(opts: Omit<CreateNotifOptions, "userId">) {
     try {
         const users = await prisma.user.findMany({ select: { id: true } });
-        await Promise.allSettled(users.map((u) => createNotification({ ...opts, userId: u.id })));
+        await Promise.allSettled(users.map((u: any) => createNotification({ ...opts, userId: u.id })));
     } catch (err) {
         logger.error(err, "Failed to broadcast notification");
     }

@@ -799,7 +799,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                         createdAt: { gte: ytdStart },
                     },
                 });
-                const ytdEarnings = ytdTxs.reduce((s, t) => s + t.amount, 0);
+                const ytdEarnings = ytdTxs.reduce((s: number, t: any) => s + t.amount, 0);
                 const thresholdCrossed = ytdEarnings >= 600;
 
                 // 1099 availability via Stripe (if connected)

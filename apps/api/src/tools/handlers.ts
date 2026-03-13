@@ -416,8 +416,8 @@ const getSubscriptionHandler: ToolHandler = async (input, _context) => {
       data: {
         subscriptionId: subscription.id,
         status: subscription.status,
-        plan: subscription.items?.data?.[0]?.plan?.id || "unknown",
-        nextBilling: new Date(subscription.current_period_end * 1000).toISOString(),
+        plan: (subscription as any).items?.data?.[0]?.plan?.id || "unknown",
+        nextBilling: new Date((subscription as any).current_period_end * 1000).toISOString(),
       },
     };
   } catch (err) {
