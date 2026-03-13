@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { authenticate, requireAdmin, requireSystemAdmin } from "../middleware/auth";
 import { prisma } from "../db";
+import { env } from "../env";
 import { ApiResponse, AuthPayload } from "../types";
 
 const UpdateProfileSchema = z.object({
@@ -1196,8 +1197,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const stripeModule = await import("stripe");
         const Stripe = stripeModule.default;
 
-        // Use the environment variable Stripe key
-        const stripeKey = process.env.STRIPE_API_KEY;
+        // Use the centralized env configuration
+        const stripeKey = env.STRIPE_API_KEY;
         if (!stripeKey) {
           return reply.code(400).send({
             ok: false,
