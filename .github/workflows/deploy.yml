@@ -53,7 +53,6 @@ jobs:
 
       - name: Set lower case owner name
         run: |
-          # Use OWNER_LC as a real environment variable for subsequent steps
           echo "OWNER_LC=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build and Push API
@@ -112,92 +111,20 @@ jobs:
           source: "docker-compose.prod.yml,nginx/"
           target: "/opt/orbisvoice"
 
-      - name: Prepare Database URL
-        id: db-url
-        run: |
-          # Use node to safely URL encode the password on the runner
-          PW="${{ env.POSTGRES_PASSWORD || 'Orbis@8214@@' }}"
-          ENCODED_PW=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$PW")
-          echo "DATABASE_URL=postgresql://postgres:${ENCODED_PW}@postgres:5432/orbisvoice?schema=public" >> $GITHUB_ENV
-          echo "POSTGRES_PASSWORD=$PW" >> $GITHUB_ENV
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.VPS_IP }}
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: POSTGRES_PASSWORD,DATABASE_URL,JWT_SECRET,STRIPE_API_KEY,STRIPE_WEBHOOK_SECRET,OPENAI_API_KEY,GEMINI_API_KEY,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,FIREBASE_PROJECT_ID,FIREBASE_CLIENT_EMAIL,FIREBASE_PRIVATE_KEY,TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY
           script: |
             cd /opt/orbisvoice
+            # Create certs dir if missing
             mkdir -p nginx/certs
             
-            # Ensure firewall is open
-            if command -v ufw > /dev/null; then
-              ufw allow 80/tcp || true
-              ufw allow 443/tcp || true
-              ufw allow 4001/tcp || true
-            fi
-            
-            echo "Environment variables passed. Constructing fresh deployment..."
-            export JWT_SECRET="${{ env.JWT_SECRET || 'dev-orbis-secret-change-me' }}"
-            
-            echo "Checking certificates..."
-            ls -la nginx/certs/
-            
-            # Stop existing containers from THIS compose file
-            echo "Stopping matching containers..."
-            docker compose -f docker-compose.prod.yml stop || true
-            
-            # Remove legacy/conflicting containers that are NOT in our current stack
-            # Specifically targeting 'orbis-local-app' if it exists and uses port 3000
-            echo "Checking for conflicting containers..."
-            docker rm -f orbis-local-app || true
-            docker rm -f orbisvoice-api-prod orbisvoice-web-prod orbisvoice-nginx-prod || true
-
-            echo "Pulling latest images..."
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
-
-            echo "Starting fresh containers..."
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
-            DATABASE_URL=$DATABASE_URL \
-            JWT_SECRET="${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}" \
-            STRIPE_API_KEY="${{ secrets.STRIPE_API_KEY }}" \
-            STRIPE_WEBHOOK_SECRET="${{ secrets.STRIPE_WEBHOOK_SECRET }}" \
-            OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
-            GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
-            GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
-            FIREBASE_PROJECT_ID="${{ secrets.FIREBASE_PROJECT_ID }}" \
-            FIREBASE_CLIENT_EMAIL="${{ secrets.FIREBASE_CLIENT_EMAIL }}" \
-            FIREBASE_PRIVATE_KEY="${{ secrets.FIREBASE_PRIVATE_KEY }}" \
-            TURNSTILE_SITE_KEY="${{ secrets.TURNSTILE_SITE_KEY }}" \
-            TURNSTILE_SECRET_KEY="${{ secrets.TURNSTILE_SECRET_KEY }}" \
-            docker compose -f docker-compose.prod.yml up -d --force-recreate
-
-            # Wait for healthy
-            echo "Waiting for services to stabilize..."
-            sleep 15
-            
-            echo "Wait for Database to be ready..."
-            for i in {1..10}; do
-              if docker exec -T orbisvoice-postgres-prod pg_isready -h localhost -U postgres; then
-                echo "Postgres is READY"
-                break
-              fi
-              echo "Waiting for Postgres... ($i/10)"
-              sleep 5
-            done
-            
-            echo "Performing Out-of-Band Database Migration..."
-            docker run --rm --network orbisvoice-prod-network \
-              -e DATABASE_URL=$DATABASE_URL \
-              ghcr.io/cwpete61/orbisvoice-api:latest \
-              npx prisma db push --accept-data-loss > prisma_push.log 2>&1
-            cat prisma_push.log
-            
-            echo "Testing Database Connection (via API)..."
-            docker exec -T orbisvoice-api-prod node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.\$queryRaw\`SELECT 1\`.then(() => console.log('DB_CONNECTION_SUCCESS')).catch(err => { console.error('DB_CONNECTION_FAILED:', err.message); process.exit(1); })" || echo "Database test failed"
+            echo "Constructing fresh deployment via script..."
+            chmod +x deploy-vps.sh
+            ./deploy-vps.sh
             
             # Capture diagnostics
             echo "### deployment Diagnostics" > deployment_report.md
@@ -206,41 +133,13 @@ jobs:
             docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" >> deployment_report.md
             echo '```' >> deployment_report.md
             
-            echo "#### Port Usage (Host)" >> deployment_report.md
+            echo "#### API Logs (Last 100 lines)" >> deployment_report.md
             echo '```' >> deployment_report.md
-            ss -tulpn | grep -E "80|443|4001|5440" >> deployment_report.md
-            echo '```' >> deployment_report.md
-
-            echo "#### API Logs (Last 50 lines)" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            docker logs --tail 50 orbisvoice-api-prod 2>&1 >> deployment_report.md || echo "No api logs" >> deployment_report.md
-            echo '```' >> deployment_report.md
-
-            echo "#### Nginx Logs (Tail 30)" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            docker logs --tail 30 orbisvoice-nginx-prod 2>&1 >> deployment_report.md || echo "No nginx logs" >> deployment_report.md
-            echo '```' >> deployment_report.md
-
-            echo "#### API Logs (Tail 50)" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            docker logs orbisvoice-api-prod --tail 50 >> deployment_report.md 2>&1 || echo "No api logs" >> deployment_report.md
+            docker logs --tail 100 orbisvoice-api-prod 2>&1 >> deployment_report.md || echo "No api logs" >> deployment_report.md
             echo '```' >> deployment_report.md
             
             cp deployment_report.md $GITHUB_STEP_SUMMARY || true
-            
             docker system prune -f
-
-      - name: Git Telemetry
-        run: |
-          git config --global user.name "Deployment Bot"
-          git config --global user.email "bot@orbisvoice.app"
-          git fetch origin telemetry || git checkout -b telemetry
-          git checkout telemetry
-          # We need to get the file from the VPS back to the runner
-          # Since scp-action only goes one way, we use a trick or just use the summary
-          # Actually, the best way is to cat it in a step and redirect it
-        env:
-          SSH_PRIVATE_KEY: ${{ env.SSH_PRIVATE_KEY }}
 
       - name: Fetch Telemetry
         run: |

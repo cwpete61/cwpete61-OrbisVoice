@@ -66,6 +66,10 @@ if (parsed.NODE_ENV === "production") {
   const missingKeys = [];
   if (!parsed.STRIPE_API_KEY) missingKeys.push(`STRIPE_API_KEY (${typeof parsed.STRIPE_API_KEY === 'string' ? 'empty string' : 'undefined/null'})`);
   if (!parsed.STRIPE_WEBHOOK_SECRET) missingKeys.push("STRIPE_WEBHOOK_SECRET");
+  if (!parsed.STRIPE_PRICE_STARTER) missingKeys.push("STRIPE_PRICE_STARTER");
+  if (!parsed.STRIPE_PRICE_PROFESSIONAL) missingKeys.push("STRIPE_PRICE_PROFESSIONAL");
+  if (!parsed.STRIPE_PRICE_ENTERPRISE) missingKeys.push("STRIPE_PRICE_ENTERPRISE");
+  if (!parsed.STRIPE_PRICE_AI_INFRA) missingKeys.push("STRIPE_PRICE_AI_INFRA");
   if (!parsed.GOOGLE_CLIENT_ID) missingKeys.push("GOOGLE_CLIENT_ID");
   if (!parsed.GOOGLE_CLIENT_SECRET) missingKeys.push("GOOGLE_CLIENT_SECRET");
   if (!parsed.OPENAI_API_KEY) missingKeys.push("OPENAI_API_KEY");

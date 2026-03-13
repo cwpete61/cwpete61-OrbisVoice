@@ -1,80 +1,52 @@
 ### deployment Diagnostics
-#### Prisma Push Log (Out-of-Band)
-```
-warn The configuration property `package.json#prisma` is deprecated and will be removed in Prisma 7. Please migrate to a Prisma config file (e.g., `prisma.config.ts`).
-For more information, see: https://pris.ly/prisma-config
-
-Prisma schema loaded from prisma/schema.prisma
-Datasource "db": PostgreSQL database "orbisvoice", schema "public" at "postgres:5432"
-
-The database is already in sync with the Prisma schema.
-
-Running generate... (Use --skip-generate to skip the generators)
-[2K[1A[2K[GRunning generate... - Prisma Client
-[2K[1A[2K[G✔ Generated Prisma Client (v6.19.2) to ./../../node_modules/@prisma/client in 8
-63ms
-
-┌─────────────────────────────────────────────────────────┐
-│  Update available 6.19.2 -> 7.5.0                       │
-│                                                         │
-│  This is a major update - please follow the guide at    │
-│  https://pris.ly/d/major-version-upgrade                │
-│                                                         │
-│  Run the following to update                            │
-│    npm i --save-dev prisma@latest                       │
-│    npm i @prisma/client@latest                          │
-└─────────────────────────────────────────────────────────┘
-```
-#### API Logs (Last 50 lines)
-```
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
-
-⚠️  WARNING: Missing production environment variables:
-   - STRIPE_API_KEY
-   - STRIPE_WEBHOOK_SECRET
-   - OPENAI_API_KEY
-Some features (Payment, Login, AI) may not work correctly.
-
-{"level":30,"time":1773417486014,"pid":1,"hostname":"6142a71f5245","msg":"Session manager initialized with Redis"}
-{"level":30,"time":1773417486015,"pid":1,"hostname":"6142a71f5245","msg":"Session manager initialized"}
-{"level":30,"time":1773417486015,"pid":1,"hostname":"6142a71f5245","msg":"Tool handlers registered"}
-{"level":30,"time":1773417486263,"pid":1,"hostname":"6142a71f5245","msg":"Admin roles synchronized"}
-{"level":30,"time":1773417486274,"pid":1,"hostname":"6142a71f5245","msg":"Admin bootstrap completed"}
-{"level":30,"time":1773417486518,"pid":1,"hostname":"6142a71f5245","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
-{"level":30,"time":1773417486518,"pid":1,"hostname":"6142a71f5245","context":"fastify","msg":"Server listening at http://172.18.0.4:4001"}
-{"level":30,"time":1773417486518,"pid":1,"hostname":"6142a71f5245","msg":"Server running at http://0.0.0.0:4001"}
-{"level":30,"time":1773417494531,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":40622},"msg":"incoming request"}
-{"level":30,"time":1773417494543,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":11.574452012777328,"msg":"request completed"}
-{"level":30,"time":1773417504648,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":49064},"msg":"incoming request"}
-{"level":30,"time":1773417504650,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.5129380226135254,"msg":"request completed"}
-{"level":30,"time":1773417514844,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":44004},"msg":"incoming request"}
-{"level":30,"time":1773417514848,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":4.141597002744675,"msg":"request completed"}
-{"level":30,"time":1773417524986,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":54970},"msg":"incoming request"}
-{"level":30,"time":1773417524989,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.5516600012779236,"msg":"request completed"}
-{"level":30,"time":1773417535099,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":55054},"msg":"incoming request"}
-{"level":30,"time":1773417535101,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.1605240106582642,"msg":"request completed"}
-```
-#### Port Usage (Host)
-```
-tcp   LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1611170,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1611192,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:4001      0.0.0.0:*    users:(("docker-proxy",pid=1610989,fd=8))              
-tcp   LISTEN 0      4096         0.0.0.0:5440      0.0.0.0:*    users:(("docker-proxy",pid=1610760,fd=8))              
-tcp   LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1611176,fd=8))              
-tcp   LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1611199,fd=8))              
-tcp   LISTEN 0      4096            [::]:4001         [::]:*    users:(("docker-proxy",pid=1610994,fd=8))              
-tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-proxy",pid=1610771,fd=8))              
-```
 #### Container Status
 ```
 NAMES                           STATUS                        PORTS
-orbisvoice-nginx-prod           Up 59 seconds                 0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
-orbisvoice-web-prod             Up 59 seconds                 3000/tcp
+orbisvoice-nginx-prod           Up About a minute             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+orbisvoice-web-prod             Up About a minute             3000/tcp
 orbisvoice-voice-gateway-prod   Up About a minute             4001/tcp
 orbisvoice-api-prod             Up About a minute (healthy)   0.0.0.0:4001->4001/tcp, [::]:4001->4001/tcp
 orbisvoice-postgres-prod        Up About a minute (healthy)   0.0.0.0:5440->5432/tcp, [::]:5440->5432/tcp
 orbisvoice-redis-prod           Up About a minute (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
-orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+```
+#### Port Usage (Host)
+```
+tcp   LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=1738023,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*    users:(("docker-proxy",pid=1738045,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:4001      0.0.0.0:*    users:(("docker-proxy",pid=1737850,fd=8))              
+tcp   LISTEN 0      4096         0.0.0.0:5440      0.0.0.0:*    users:(("docker-proxy",pid=1737590,fd=8))              
+tcp   LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=1738030,fd=8))              
+tcp   LISTEN 0      4096            [::]:443          [::]:*    users:(("docker-proxy",pid=1738051,fd=8))              
+tcp   LISTEN 0      4096            [::]:4001         [::]:*    users:(("docker-proxy",pid=1737855,fd=8))              
+tcp   LISTEN 0      4096            [::]:5440         [::]:*    users:(("docker-proxy",pid=1737599,fd=8))              
+```
+#### API Logs (Last 50 lines)
+```
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+{"level":40,"time":1773435791420,"pid":1,"hostname":"312ce9768eb5","keyLength":0,"isString":true,"val":"[REDACTED]","msg":"StripeClient initialized without a valid API key. Stripe features will be disabled."}
+{"level":30,"time":1773435793002,"pid":1,"hostname":"312ce9768eb5","msg":"Session manager initialized with Redis"}
+{"level":30,"time":1773435793003,"pid":1,"hostname":"312ce9768eb5","msg":"Session manager initialized"}
+{"level":30,"time":1773435793003,"pid":1,"hostname":"312ce9768eb5","msg":"Tool handlers registered"}
+{"level":30,"time":1773435793230,"pid":1,"hostname":"312ce9768eb5","msg":"Admin roles synchronized"}
+{"level":30,"time":1773435793246,"pid":1,"hostname":"312ce9768eb5","msg":"Admin bootstrap completed"}
+{"level":40,"time":1773435793301,"pid":1,"hostname":"312ce9768eb5","keyLength":0,"isString":true,"val":"[REDACTED]","msg":"StripeClient initialized without a valid API key. Stripe features will be disabled."}
+{"level":30,"time":1773435793502,"pid":1,"hostname":"312ce9768eb5","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
+{"level":30,"time":1773435793502,"pid":1,"hostname":"312ce9768eb5","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
+{"level":30,"time":1773435793502,"pid":1,"hostname":"312ce9768eb5","msg":"Server running at http://0.0.0.0:4001"}
+{"level":30,"time":1773435800798,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":44852},"msg":"incoming request"}
+{"level":30,"time":1773435800819,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":18.827238976955414,"msg":"request completed"}
+{"level":30,"time":1773435810945,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":51206},"msg":"incoming request"}
+{"level":30,"time":1773435810947,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.2386900186538696,"msg":"request completed"}
+{"level":30,"time":1773435821104,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":39196},"msg":"incoming request"}
+{"level":30,"time":1773435821106,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":2.579919993877411,"msg":"request completed"}
+{"level":30,"time":1773435831271,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":35090},"msg":"incoming request"}
+{"level":30,"time":1773435831273,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.8685299754142761,"msg":"request completed"}
+{"level":30,"time":1773435841439,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":37600},"msg":"incoming request"}
+{"level":30,"time":1773435841441,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.2361650168895721,"msg":"request completed"}
+{"level":30,"time":1773435851556,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-6","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":49206},"msg":"incoming request"}
+{"level":30,"time":1773435851558,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-6","res":{"statusCode":200},"responseTime":1.7775799930095673,"msg":"request completed"}
+{"level":30,"time":1773435861718,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-7","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":34888},"msg":"incoming request"}
+{"level":30,"time":1773435861720,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-7","res":{"statusCode":200},"responseTime":1.2072519958019257,"msg":"request completed"}
 ```
 #### Nginx Logs (Tail 30)
 ```
@@ -87,45 +59,39 @@ orbis-local-app                 Up 2 days                     0.0.0.0:3000->3000
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
 /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
 /docker-entrypoint.sh: Configuration complete; ready for start up
-2026/03/13 15:58:05 [notice] 1#1: using the "epoll" event method
-2026/03/13 15:58:05 [notice] 1#1: nginx/1.29.6
-2026/03/13 15:58:05 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
-2026/03/13 15:58:05 [notice] 1#1: OS: Linux 6.8.0-101-generic
-2026/03/13 15:58:05 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
-2026/03/13 15:58:05 [notice] 1#1: start worker processes
-2026/03/13 15:58:05 [notice] 1#1: start worker process 30
-2026/03/13 15:58:05 [notice] 1#1: start worker process 31
-2026/03/13 15:58:05 [notice] 1#1: start worker process 32
-2026/03/13 15:58:05 [notice] 1#1: start worker process 33
-2026/03/13 15:58:05 [notice] 1#1: start worker process 34
-2026/03/13 15:58:05 [notice] 1#1: start worker process 35
 ```
 #### API Logs (Tail 50)
 ```
-[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
 
 ⚠️  WARNING: Missing production environment variables:
-   - STRIPE_API_KEY
+   - STRIPE_API_KEY (empty string)
    - STRIPE_WEBHOOK_SECRET
    - OPENAI_API_KEY
 Some features (Payment, Login, AI) may not work correctly.
 
-{"level":30,"time":1773417486014,"pid":1,"hostname":"6142a71f5245","msg":"Session manager initialized with Redis"}
-{"level":30,"time":1773417486015,"pid":1,"hostname":"6142a71f5245","msg":"Session manager initialized"}
-{"level":30,"time":1773417486015,"pid":1,"hostname":"6142a71f5245","msg":"Tool handlers registered"}
-{"level":30,"time":1773417486263,"pid":1,"hostname":"6142a71f5245","msg":"Admin roles synchronized"}
-{"level":30,"time":1773417486274,"pid":1,"hostname":"6142a71f5245","msg":"Admin bootstrap completed"}
-{"level":30,"time":1773417486518,"pid":1,"hostname":"6142a71f5245","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
-{"level":30,"time":1773417486518,"pid":1,"hostname":"6142a71f5245","context":"fastify","msg":"Server listening at http://172.18.0.4:4001"}
-{"level":30,"time":1773417486518,"pid":1,"hostname":"6142a71f5245","msg":"Server running at http://0.0.0.0:4001"}
-{"level":30,"time":1773417494531,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":40622},"msg":"incoming request"}
-{"level":30,"time":1773417494543,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":11.574452012777328,"msg":"request completed"}
-{"level":30,"time":1773417504648,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":49064},"msg":"incoming request"}
-{"level":30,"time":1773417504650,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.5129380226135254,"msg":"request completed"}
-{"level":30,"time":1773417514844,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":44004},"msg":"incoming request"}
-{"level":30,"time":1773417514848,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":4.141597002744675,"msg":"request completed"}
-{"level":30,"time":1773417524986,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":54970},"msg":"incoming request"}
-{"level":30,"time":1773417524989,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.5516600012779236,"msg":"request completed"}
-{"level":30,"time":1773417535099,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":55054},"msg":"incoming request"}
-{"level":30,"time":1773417535101,"pid":1,"hostname":"6142a71f5245","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.1605240106582642,"msg":"request completed"}
+{"level":40,"time":1773435791420,"pid":1,"hostname":"312ce9768eb5","keyLength":0,"isString":true,"val":"[REDACTED]","msg":"StripeClient initialized without a valid API key. Stripe features will be disabled."}
+{"level":30,"time":1773435793002,"pid":1,"hostname":"312ce9768eb5","msg":"Session manager initialized with Redis"}
+{"level":30,"time":1773435793003,"pid":1,"hostname":"312ce9768eb5","msg":"Session manager initialized"}
+{"level":30,"time":1773435793003,"pid":1,"hostname":"312ce9768eb5","msg":"Tool handlers registered"}
+{"level":30,"time":1773435793230,"pid":1,"hostname":"312ce9768eb5","msg":"Admin roles synchronized"}
+{"level":30,"time":1773435793246,"pid":1,"hostname":"312ce9768eb5","msg":"Admin bootstrap completed"}
+{"level":40,"time":1773435793301,"pid":1,"hostname":"312ce9768eb5","keyLength":0,"isString":true,"val":"[REDACTED]","msg":"StripeClient initialized without a valid API key. Stripe features will be disabled."}
+{"level":30,"time":1773435793502,"pid":1,"hostname":"312ce9768eb5","context":"fastify","msg":"Server listening at http://127.0.0.1:4001"}
+{"level":30,"time":1773435793502,"pid":1,"hostname":"312ce9768eb5","context":"fastify","msg":"Server listening at http://172.18.0.5:4001"}
+{"level":30,"time":1773435793502,"pid":1,"hostname":"312ce9768eb5","msg":"Server running at http://0.0.0.0:4001"}
+{"level":30,"time":1773435800798,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-1","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":44852},"msg":"incoming request"}
+{"level":30,"time":1773435800819,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-1","res":{"statusCode":200},"responseTime":18.827238976955414,"msg":"request completed"}
+{"level":30,"time":1773435810945,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-2","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":51206},"msg":"incoming request"}
+{"level":30,"time":1773435810947,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-2","res":{"statusCode":200},"responseTime":1.2386900186538696,"msg":"request completed"}
+{"level":30,"time":1773435821104,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-3","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":39196},"msg":"incoming request"}
+{"level":30,"time":1773435821106,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-3","res":{"statusCode":200},"responseTime":2.579919993877411,"msg":"request completed"}
+{"level":30,"time":1773435831271,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-4","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":35090},"msg":"incoming request"}
+{"level":30,"time":1773435831273,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-4","res":{"statusCode":200},"responseTime":1.8685299754142761,"msg":"request completed"}
+{"level":30,"time":1773435841439,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-5","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":37600},"msg":"incoming request"}
+{"level":30,"time":1773435841441,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-5","res":{"statusCode":200},"responseTime":1.2361650168895721,"msg":"request completed"}
+{"level":30,"time":1773435851556,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-6","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":49206},"msg":"incoming request"}
+{"level":30,"time":1773435851558,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-6","res":{"statusCode":200},"responseTime":1.7775799930095673,"msg":"request completed"}
+{"level":30,"time":1773435861718,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-7","req":{"method":"GET","url":"/health","host":"localhost:4001","remoteAddress":"127.0.0.1","remotePort":34888},"msg":"incoming request"}
+{"level":30,"time":1773435861720,"pid":1,"hostname":"312ce9768eb5","context":"fastify","reqId":"req-7","res":{"statusCode":200},"responseTime":1.2072519958019257,"msg":"request completed"}
 ```
