@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { logger } from "../logger";
 
 export interface StripeConfig {
@@ -28,59 +29,32 @@ export interface StripeTransfer {
 }
 
 class StripeClient {
-  private apiKey: string;
+  private stripe: Stripe;
   private webhookSecret?: string;
-  private baseUrl = "https://api.stripe.com/v1";
 
   constructor(config: StripeConfig) {
-    this.apiKey = config.apiKey;
+    this.stripe = new Stripe(config.apiKey, {
+      apiVersion: "2024-06-20" as any,
+      typescript: true,
+    });
     this.webhookSecret = config.webhookSecret;
-  }
-
-  private getAuthHeader(): string {
-    return `Bearer ${this.apiKey}`;
   }
 
   /**
    * Create a payment intent
    */
-  async createPaymentIntent(payment: StripePaymentIntent): Promise<any> {
+  async createPaymentIntent(payment: StripePaymentIntent): Promise<Stripe.PaymentIntent> {
     try {
-      const params = new URLSearchParams({
-        amount: (payment.amount * 100).toString(), // Convert to cents
+      const intent = await this.stripe.paymentIntents.create({
+        amount: Math.round(payment.amount * 100), // Convert to cents
         currency: payment.currency,
+        description: payment.description,
+        metadata: payment.metadata,
       });
-
-      if (payment.description) {
-        params.append("description", payment.description);
-      }
-
-      if (payment.metadata) {
-        Object.entries(payment.metadata).forEach(([key, value]) => {
-          params.append(`metadata[${key}]`, String(value));
-        });
-      }
-
-      const response = await fetch(`${this.baseUrl}/payment_intents`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe payment intent creation failed");
-        throw new Error(`Stripe error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ intentId: data.id, amount: payment.amount }, "Payment intent created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe payment intent");
+      logger.info({ intentId: intent.id, amount: payment.amount }, "Payment intent created");
+      return intent;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack }, "Failed to create Stripe payment intent");
       throw err;
     }
   }
@@ -93,38 +67,18 @@ class StripeClient {
     amount: number,
     currency: string = "usd",
     description?: string
-  ): Promise<any> {
+  ): Promise<Stripe.Charge> {
     try {
-      const params = new URLSearchParams({
-        amount: (amount * 100).toString(),
+      const charge = await this.stripe.charges.create({
+        amount: Math.round(amount * 100),
         currency,
         customer: customerId,
+        description,
       });
-
-      if (description) {
-        params.append("description", description);
-      }
-
-      const response = await fetch(`${this.baseUrl}/charges`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe charge creation failed");
-        throw new Error(`Stripe error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ chargeId: data.id, amount }, "Charge created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe charge");
+      logger.info({ chargeId: charge.id, amount }, "Charge created");
+      return charge;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack }, "Failed to create Stripe charge");
       throw err;
     }
   }
@@ -132,46 +86,18 @@ class StripeClient {
   /**
    * Create a customer
    */
-  async createCustomer(customer: StripeCustomer): Promise<any> {
+  async createCustomer(customer: StripeCustomer): Promise<Stripe.Customer> {
     try {
-      const params = new URLSearchParams({
+      const stripeCustomer = await this.stripe.customers.create({
         email: customer.email,
+        name: customer.name,
+        description: customer.description,
+        metadata: customer.metadata,
       });
-
-      if (customer.name) {
-        params.append("name", customer.name);
-      }
-
-      if (customer.description) {
-        params.append("description", customer.description);
-      }
-
-      if (customer.metadata) {
-        Object.entries(customer.metadata).forEach(([key, value]) => {
-          params.append(`metadata[${key}]`, String(value));
-        });
-      }
-
-      const response = await fetch(`${this.baseUrl}/customers`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe customer creation failed");
-        throw new Error(`Stripe error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ customerId: data.id }, "Customer created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe customer");
+      logger.info({ customerId: stripeCustomer.id }, "Customer created");
+      return stripeCustomer;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, email: customer.email }, "Failed to create Stripe customer");
       throw err;
     }
   }
@@ -179,26 +105,13 @@ class StripeClient {
   /**
    * Get subscription
    */
-  async getSubscription(subscriptionId: string): Promise<any> {
+  async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
     try {
-      const response = await fetch(`${this.baseUrl}/subscriptions/${subscriptionId}`, {
-        method: "GET",
-        headers: {
-          Authorization: this.getAuthHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe subscription retrieval failed");
-        throw new Error(`Stripe error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ subscriptionId, status: data.status }, "Subscription retrieved");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to get Stripe subscription");
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+      logger.info({ subscriptionId, status: subscription.status }, "Subscription retrieved");
+      return subscription;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, subscriptionId }, "Failed to get Stripe subscription");
       throw err;
     }
   }
@@ -210,39 +123,17 @@ class StripeClient {
     customerId: string,
     priceId: string,
     metadata?: Record<string, any>
-  ): Promise<any> {
+  ): Promise<Stripe.Subscription> {
     try {
-      const params = new URLSearchParams({
+      const subscription = await this.stripe.subscriptions.create({
         customer: customerId,
-        items: JSON.stringify([{ price: priceId }]),
+        items: [{ price: priceId }],
+        metadata,
       });
-
-      if (metadata) {
-        Object.entries(metadata).forEach(([key, value]) => {
-          params.append(`metadata[${key}]`, String(value));
-        });
-      }
-
-      const response = await fetch(`${this.baseUrl}/subscriptions`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe subscription creation failed");
-        throw new Error(`Stripe error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ subscriptionId: data.id }, "Subscription created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe subscription");
+      logger.info({ subscriptionId: subscription.id }, "Subscription created");
+      return subscription;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, customerId }, "Failed to create Stripe subscription");
       throw err;
     }
   }
@@ -250,47 +141,23 @@ class StripeClient {
   /**
    * Create a transfer (e.g. to a connected account)
    */
-  async createTransfer(transfer: StripeTransfer): Promise<any> {
+  async createTransfer(transfer: StripeTransfer): Promise<Stripe.Transfer> {
     try {
-      const params = new URLSearchParams({
-        amount: Math.round(transfer.amount * 100).toString(), // Convert to cents and ensure integer
+      const stripeTransfer = await this.stripe.transfers.create({
+        amount: Math.round(transfer.amount * 100),
         currency: transfer.currency,
         destination: transfer.destination,
+        description: transfer.description,
+        metadata: transfer.metadata,
       });
-
-      if (transfer.description) {
-        params.append("description", transfer.description);
-      }
-
-      if (transfer.metadata) {
-        Object.entries(transfer.metadata).forEach(([key, value]) => {
-          params.append(`metadata[${key}]`, String(value));
-        });
-      }
-
-      const response = await fetch(`${this.baseUrl}/transfers`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe transfer creation failed");
-        throw new Error(`Stripe error: ${response.status} - ${error}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ transferId: data.id, destination: transfer.destination, amount: transfer.amount }, "Transfer created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe transfer");
+      logger.info({ transferId: stripeTransfer.id, destination: transfer.destination, amount: transfer.amount }, "Transfer created");
+      return stripeTransfer;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, destination: transfer.destination }, "Failed to create Stripe transfer");
       throw err;
     }
   }
+
   /**
    * Create a checkout session
    */
@@ -303,53 +170,35 @@ class StripeClient {
     mode?: "subscription" | "payment";
     description?: string;
     customText?: string;
-  }): Promise<any> {
+  }): Promise<Stripe.Checkout.Session> {
     try {
-      const body = new URLSearchParams({
+      const session = await this.stripe.checkout.sessions.create({
         customer: params.customerId,
         mode: params.mode || "subscription",
         success_url: params.successUrl,
         cancel_url: params.cancelUrl,
-        "line_items[0][price]": params.priceId,
-        "line_items[0][quantity]": "1",
+        line_items: [
+          {
+            price: params.priceId,
+            quantity: 1,
+          },
+        ],
+        metadata: params.metadata,
+        payment_intent_data: params.mode === "payment" ? {
+          description: params.description,
+        } : undefined,
+        subscription_data: params.mode === "subscription" ? {
+          description: params.description,
+          metadata: params.metadata,
+        } : undefined,
+        custom_text: params.customText ? {
+          submit: { message: params.customText },
+        } : undefined,
       });
-
-      if (params.metadata) {
-        Object.entries(params.metadata).forEach(([key, value]) => {
-          body.append(`metadata[${key}]`, String(value));
-        });
-      }
-
-      if (params.mode === "payment" && params.description) {
-        body.append("payment_intent_data[description]", params.description);
-      } else if (params.description) {
-        body.append("subscription_data[description]", params.description);
-      }
-
-      if (params.customText) {
-        body.append("custom_text[submit][message]", params.customText);
-      }
-
-      const response = await fetch(`${this.baseUrl}/checkout/sessions`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe checkout session creation failed");
-        throw new Error(`Stripe error: ${response.status} - ${error}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ sessionId: data.id }, "Checkout session created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe checkout session");
+      logger.info({ sessionId: session.id }, "Checkout session created");
+      return session;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, customerId: params.customerId }, "Failed to create Stripe checkout session");
       throw err;
     }
   }
@@ -360,33 +209,16 @@ class StripeClient {
   async createPortalSession(params: {
     customerId: string;
     returnUrl: string;
-  }): Promise<any> {
+  }): Promise<Stripe.BillingPortal.Session> {
     try {
-      const body = new URLSearchParams({
+      const session = await this.stripe.billingPortal.sessions.create({
         customer: params.customerId,
         return_url: params.returnUrl,
       });
-
-      const response = await fetch(`${this.baseUrl}/billing_portal/sessions`, {
-        method: "POST",
-        headers: {
-          Authorization: this.getAuthHeader(),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Stripe portal session creation failed");
-        throw new Error(`Stripe error: ${response.status} - ${error}`);
-      }
-
-      const data = (await response.json()) as any;
-      logger.info({ portalId: data.id }, "Portal session created");
-      return data;
-    } catch (err) {
-      logger.error({ err }, "Failed to create Stripe portal session");
+      logger.info({ portalId: session.id }, "Portal session created");
+      return session;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, customerId: params.customerId }, "Failed to create Stripe portal session");
       throw err;
     }
   }

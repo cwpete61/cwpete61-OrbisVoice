@@ -95,7 +95,8 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/checkout",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId, email } = request.user as any;
+      const { tenantId } = request.user as any;
+      let { email } = request.user as any;
       const { tier, successUrl, cancelUrl } = CheckoutSchema.parse(request.body);
 
       const tenant = await prisma.tenant.findUnique({
@@ -106,11 +107,26 @@ async function billingRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: "Tenant not found" });
       }
 
+      // Fallback: If email is missing from JWT, find it in the DB
+      if (!email) {
+        const dbUser = await prisma.user.findFirst({
+          where: { tenantId, isAdmin: true },
+          select: { email: true }
+        });
+        email = dbUser?.email;
+      }
+
+      if (!email) {
+        logger.error({ tenantId, tier }, "Cannot create checkout: missing user email");
+        return reply.status(400).send({ error: "Your account is missing an email address. Please update your profile." });
+      }
+
       let customerId = tenant.stripeCustomerId;
 
       // Create Stripe customer if doesn't exist
       if (!customerId) {
         try {
+          logger.info({ tenantId, email }, "Creating new Stripe customer");
           const customer = await stripe.createCustomer({
             email,
             name: tenant.name,
@@ -122,18 +138,29 @@ async function billingRoutes(fastify: FastifyInstance) {
             where: { id: tenantId },
             data: { stripeCustomerId: customerId },
           });
-        } catch (err) {
-          logger.error({ err, tenantId }, "Failed to create Stripe customer");
-          return reply.status(500).send({ error: "Stripe customer creation failed" });
+          logger.info({ tenantId, customerId }, "Stripe customer associated with tenant");
+        } catch (err: any) {
+          logger.error({ 
+            err: err.message, 
+            type: err.type,
+            code: err.code,
+            tenantId, 
+            email 
+          }, "Failed to create Stripe customer");
+          return reply.status(500).send({ 
+            error: "Stripe customer creation failed",
+            details: process.env.NODE_ENV === "development" ? err.message : undefined
+          });
         }
       }
 
       const priceId = getPriceId(tier);
-      logger.info({ tier, priceId }, "Checking out for tier");
+      logger.info({ tier, priceId, customerId }, "Initiating checkout session");
 
       if (!priceId || priceId.includes("placeholder")) {
+        logger.error({ tier, priceId }, "Invalid price ID configuration");
         return reply.status(400).send({ 
-          error: `Price ID not configured for tier: ${tier}. If you just added it to .env, please restart the API server.` 
+          error: `Price ID not configured for tier: ${tier}.` 
         });
       }
 
@@ -154,9 +181,18 @@ async function billingRoutes(fastify: FastifyInstance) {
           url: session.url,
           sessionId: session.id,
         };
-      } catch (err) {
-        logger.error({ err, tenantId }, "Failed to create checkout session");
-        return reply.status(500).send({ error: "Checkout session creation failed" });
+      } catch (err: any) {
+        logger.error({ 
+          err: err.message, 
+          type: err.type,
+          code: err.code,
+          tenantId, 
+          tier 
+        }, "Failed to create checkout session");
+        return reply.status(500).send({ 
+          error: "Checkout session creation failed",
+          details: process.env.NODE_ENV === "development" ? err.message : undefined
+        });
       }
     }
   );

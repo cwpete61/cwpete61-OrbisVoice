@@ -316,7 +316,7 @@ export class AffiliateManager {
                 if (!isDummy && (env.NODE_ENV === "production" || env.STRIPE_API_KEY)) {
                     try {
                         const transfer = await stripe.createTransfer({
-                            amount: netAmount,
+                            amount: payoutAmount - feeAmount, // Pass dollars, StripeClient handles conversion to cents
                             currency: "usd",
                             destination: affiliate.stripeAccountId!,
                             description: `Affiliate payout for ${affiliate.slug}`,
