@@ -6,14 +6,14 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const logger = pino({
-  transport: {
-    target: 'pino-pretty',
-    options: { colorize: true }
+const fastify = Fastify({ 
+  logger: {
+    transport: {
+      target: 'pino-pretty',
+      options: { colorize: true }
+    }
   }
 });
-
-const fastify = Fastify({ logger });
 
 async function start() {
   try {
