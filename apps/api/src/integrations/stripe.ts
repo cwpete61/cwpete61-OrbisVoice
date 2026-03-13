@@ -29,14 +29,19 @@ export interface StripeTransfer {
 }
 
 class StripeClient {
-  private stripe: Stripe;
+  private stripe: Stripe | null;
   private webhookSecret?: string;
 
   constructor(config: StripeConfig) {
-    this.stripe = new Stripe(config.apiKey, {
-      apiVersion: "2024-06-20" as any,
-      typescript: true,
-    });
+    if (config.apiKey) {
+      this.stripe = new Stripe(config.apiKey, {
+        apiVersion: "2024-06-20" as any,
+        typescript: true,
+      });
+    } else {
+      this.stripe = null;
+      logger.warn("StripeClient initialized without an API key. Stripe features will be disabled.");
+    }
     this.webhookSecret = config.webhookSecret;
   }
 
@@ -44,6 +49,7 @@ class StripeClient {
    * Create a payment intent
    */
   async createPaymentIntent(payment: StripePaymentIntent): Promise<Stripe.PaymentIntent> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
     try {
       const intent = await this.stripe.paymentIntents.create({
         amount: Math.round(payment.amount * 100), // Convert to cents
@@ -68,6 +74,7 @@ class StripeClient {
     currency: string = "usd",
     description?: string
   ): Promise<Stripe.Charge> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
     try {
       const charge = await this.stripe.charges.create({
         amount: Math.round(amount * 100),
@@ -87,6 +94,7 @@ class StripeClient {
    * Create a customer
    */
   async createCustomer(customer: StripeCustomer): Promise<Stripe.Customer> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
     try {
       const stripeCustomer = await this.stripe.customers.create({
         email: customer.email,
@@ -103,9 +111,38 @@ class StripeClient {
   }
 
   /**
+   * Create or get a customer by email
+   */
+  async getOrCreateCustomer(email: string, name?: string): Promise<Stripe.Customer> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
+    try {
+      const customers = await this.stripe.customers.list({
+        email,
+        limit: 1,
+      });
+
+      if (customers.data.length > 0) {
+        return customers.data[0];
+      }
+
+      const customer = await this.stripe.customers.create({
+        email,
+        name,
+      });
+
+      logger.info({ customerId: customer.id }, "Stripe customer created");
+      return customer;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, email }, "Failed to get or create Stripe customer");
+      throw err;
+    }
+  }
+
+  /**
    * Get subscription
    */
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
     try {
       const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
       logger.info({ subscriptionId, status: subscription.status }, "Subscription retrieved");
@@ -124,6 +161,7 @@ class StripeClient {
     priceId: string,
     metadata?: Record<string, any>
   ): Promise<Stripe.Subscription> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
     try {
       const subscription = await this.stripe.subscriptions.create({
         customer: customerId,
@@ -139,9 +177,73 @@ class StripeClient {
   }
 
   /**
-   * Create a transfer (e.g. to a connected account)
+   * Create a checkout session
+   */
+  async createCheckoutSession(params: {
+    customerId: string;
+    priceId: string;
+    successUrl: string;
+    cancelUrl: string;
+    mode?: Stripe.Checkout.SessionCreateParams.Mode;
+    allowPromotionCodes?: boolean;
+    clientReferenceId?: string;
+    metadata?: Record<string, string>;
+  }): Promise<Stripe.Checkout.Session> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
+    try {
+      const session = await this.stripe.checkout.sessions.create({
+        customer: params.customerId,
+        line_items: [
+          {
+            price: params.priceId,
+            quantity: 1,
+          },
+        ],
+        mode: params.mode || "subscription",
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        allow_promotion_codes: params.allowPromotionCodes,
+        client_reference_id: params.clientReferenceId,
+        metadata: params.metadata,
+        subscription_data: params.mode === "subscription" ? {
+          metadata: params.metadata,
+        } : undefined,
+      });
+
+      logger.info({ sessionId: session.id }, "Stripe checkout session created");
+      return session;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, customerId: params.customerId }, "Failed to create Stripe checkout session");
+      throw err;
+    }
+  }
+
+  /**
+   * Create a billing portal session
+   */
+  async createPortalSession(params: {
+    customerId: string;
+    returnUrl: string;
+  }): Promise<Stripe.BillingPortal.Session> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
+    try {
+      const session = await this.stripe.billingPortal.sessions.create({
+        customer: params.customerId,
+        return_url: params.returnUrl,
+      });
+      logger.info({ portalId: session.id }, "Portal session created");
+      return session;
+    } catch (err: any) {
+      logger.error({ err: err.message, stack: err.stack, customerId: params.customerId }, "Failed to create Stripe portal session");
+      throw err;
+    }
+  }
+
+  /**
+   * Create a transfer
    */
   async createTransfer(transfer: StripeTransfer): Promise<Stripe.Transfer> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
     try {
       const stripeTransfer = await this.stripe.transfers.create({
         amount: Math.round(transfer.amount * 100),
@@ -159,68 +261,13 @@ class StripeClient {
   }
 
   /**
-   * Create a checkout session
+   * Handle webhook events
    */
-  async createCheckoutSession(params: {
-    customerId: string;
-    priceId: string;
-    successUrl: string;
-    cancelUrl: string;
-    metadata?: Record<string, any>;
-    mode?: "subscription" | "payment";
-    description?: string;
-    customText?: string;
-  }): Promise<Stripe.Checkout.Session> {
-    try {
-      const session = await this.stripe.checkout.sessions.create({
-        customer: params.customerId,
-        mode: params.mode || "subscription",
-        success_url: params.successUrl,
-        cancel_url: params.cancelUrl,
-        line_items: [
-          {
-            price: params.priceId,
-            quantity: 1,
-          },
-        ],
-        metadata: params.metadata,
-        payment_intent_data: params.mode === "payment" ? {
-          description: params.description,
-        } : undefined,
-        subscription_data: params.mode === "subscription" ? {
-          description: params.description,
-          metadata: params.metadata,
-        } : undefined,
-        custom_text: params.customText ? {
-          submit: { message: params.customText },
-        } : undefined,
-      });
-      logger.info({ sessionId: session.id }, "Checkout session created");
-      return session;
-    } catch (err: any) {
-      logger.error({ err: err.message, stack: err.stack, customerId: params.customerId }, "Failed to create Stripe checkout session");
-      throw err;
+  constructEvent(payload: string | Buffer, signature: string): Stripe.Event {
+    if (!this.stripe || !this.webhookSecret) {
+      throw new Error("Stripe or Webhook Secret is not configured");
     }
-  }
-
-  /**
-   * Create a billing portal session
-   */
-  async createPortalSession(params: {
-    customerId: string;
-    returnUrl: string;
-  }): Promise<Stripe.BillingPortal.Session> {
-    try {
-      const session = await this.stripe.billingPortal.sessions.create({
-        customer: params.customerId,
-        return_url: params.returnUrl,
-      });
-      logger.info({ portalId: session.id }, "Portal session created");
-      return session;
-    } catch (err: any) {
-      logger.error({ err: err.message, stack: err.stack, customerId: params.customerId }, "Failed to create Stripe portal session");
-      throw err;
-    }
+    return this.stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
   }
 }
 
