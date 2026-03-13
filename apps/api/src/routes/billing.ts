@@ -6,25 +6,30 @@ import { StripeClient } from "../integrations/stripe";
 import { env } from "../env";
 import { logger } from "../logger";
 
-const stripe = new StripeClient({
-  apiKey: env.STRIPE_API_KEY || "",
-});
-
 // Price ID mapping - fallback to placeholders if not in env
-const PRICE_IDS: Record<string, string> = {
-  starter: process.env.STRIPE_PRICE_STARTER || "price_starter_placeholder",
-  professional: process.env.STRIPE_PRICE_PROFESSIONAL || "price_professional_placeholder",
-  enterprise: process.env.STRIPE_PRICE_ENTERPRISE || "price_enterprise_placeholder",
-  "ai-revenue-infrastructure": process.env.STRIPE_PRICE_AI_INFRA || "price_ai_infra_placeholder",
+// Price ID helper function
+const getPriceId = (tier: string) => {
+  switch (tier) {
+    case "starter": return env.STRIPE_PRICE_STARTER;
+    case "professional": return env.STRIPE_PRICE_PROFESSIONAL;
+    case "enterprise": return env.STRIPE_PRICE_ENTERPRISE;
+    case "ai-revenue-infrastructure": return env.STRIPE_PRICE_AI_INFRA;
+    case "ltd": return env.STRIPE_PRICE_LTD;
+    default: return null;
+  }
 };
 
 const CheckoutSchema = z.object({
   tier: z.enum(["starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]),
-  successUrl: z.string().url().optional(),
-  cancelUrl: z.string().url().optional(),
+  successUrl: z.string().optional(),
+  cancelUrl: z.string().optional(),
 });
 
 async function billingRoutes(fastify: FastifyInstance) {
+  const stripe = new StripeClient({
+    apiKey: env.STRIPE_API_KEY || "",
+  });
+
   // Get available tiers
   fastify.get(
     "/billing/tiers",
@@ -119,20 +124,25 @@ async function billingRoutes(fastify: FastifyInstance) {
         }
       }
 
-      const priceId = PRICE_IDS[tier];
-      if (!priceId || (priceId.includes("placeholder") && env.NODE_ENV === 'production')) {
+      const priceId = getPriceId(tier);
+      logger.info({ tier, priceId }, "Checking out for tier");
+
+      if (!priceId || priceId.includes("placeholder")) {
         return reply.status(400).send({ 
-          error: `Price ID not configured for tier: ${tier}. Please contact support.` 
+          error: `Price ID not configured for tier: ${tier}. If you just added it to .env, please restart the API server.` 
         });
       }
 
       try {
         const session = await stripe.createCheckoutSession({
           customerId: customerId!,
-          priceId: priceId.includes("placeholder") ? "price_1T2kHaEFjM4hGTWYOvNxHr89" : priceId, // Fallback to a test price if placeholder
+          priceId,
           successUrl: successUrl || `${env.WEB_URL}/billing?success=true`,
           cancelUrl: cancelUrl || `${env.WEB_URL}/billing?canceled=true`,
           metadata: { tenantId, tier },
+          mode: tier === 'ltd' ? 'payment' : 'subscription',
+          description: tier === 'ltd' ? "Lifetime deal for AI engine. A $20/month charge for token costs begins next month." : undefined,
+          customText: tier === 'ltd' ? "By paying $497 now, you agree to a recurring $20/month fee for token costs starting next month." : undefined,
         });
 
         return {
@@ -158,8 +168,21 @@ async function billingRoutes(fastify: FastifyInstance) {
         where: { id: tenantId },
       });
 
-      if (!tenant || !tenant.stripeSubscriptionId) {
-        return reply.status(400).send({ error: "No active subscription found to cancel" });
+      if (!tenant) {
+        return reply.status(404).send({ error: "Tenant not found" });
+      }
+
+      // If they are on a paid tier but no sub ID (e.g. legacy or manual), just reset them
+      if (!tenant.stripeSubscriptionId) {
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: {
+            subscriptionStatus: "canceled",
+            subscriptionTier: "free",
+            usageLimit: 100
+          }
+        });
+        return { ok: true, message: "Subscription reset to free tier" };
       }
 
       try {

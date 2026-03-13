@@ -204,10 +204,11 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                 data: {
                                     subscriptionTier: tier,
                                     subscriptionStatus: "active",
-                                    usageLimit: newUsageLimit
+                                    usageLimit: newUsageLimit,
+                                    stripeSubscriptionId: session.subscription ? String(session.subscription) : undefined
                                 },
                             });
-                            logger.info({ tenantId: tenant.id, tier, newUsageLimit }, "Tenant upgraded via checkout");
+                            logger.info({ tenantId: tenant.id, tier, newUsageLimit, subId: session.subscription }, "Tenant upgraded via checkout");
                         }
 
                         // For LTD: auto-create the $20/month recurring subscription
@@ -221,7 +222,7 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                     },
                                     body: new URLSearchParams({
                                         customer: customerId,
-                                        "items[0][price]": "price_1T2kHaEFjM4hGTWYOvNxHr89",
+                                        "items[0][price]": env.STRIPE_PRICE_LTD_HOSTING || "price_ltd_hosting_placeholder",
                                         "trial_period_days": "30",
                                         "metadata[tier]": "ltd",
                                         "metadata[tenantId]": tenant.id,
@@ -255,10 +256,11 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                             where: { id: tenant.id },
                             data: {
                                 subscriptionStatus: status,
+                                stripeSubscriptionId: subscription.id,
                                 ...(tier ? { subscriptionTier: tier } : {}),
                             },
                         });
-                        logger.info({ tenantId: tenant.id, status, tier }, "Tenant subscription updated");
+                        logger.info({ tenantId: tenant.id, status, tier, subId: subscription.id }, "Tenant subscription updated");
                         break;
                     }
 

@@ -4,6 +4,22 @@ on:
   push:
     branches: [ master ]
 
+env:
+  OWNER_LC: ${{ github.repository_owner }}
+  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+  NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+  FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+  FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+  FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+  FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+  FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+  FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+  APPCHECK_KEY: ${{ secrets.APPCHECK_KEY }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  VPS_IP: ${{ secrets.VPS_IP }}
+  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -24,9 +40,8 @@ jobs:
 
       - name: Set lower case owner name
         run: |
-          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-        env:
-          OWNER: ${{ github.repository_owner }}
+          # Use OWNER_LC as a real environment variable for subsequent steps
+          echo "OWNER_LC=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build and Push API
         uses: docker/build-push-action@v5
@@ -46,15 +61,15 @@ jobs:
           tags: ghcr.io/${{ env.OWNER_LC }}/orbisvoice-web:latest
           no-cache: true
           build-args: |
-            NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
-            NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-            NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-            NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-            NEXT_PUBLIC_APPCHECK_KEY: ${{ secrets.APPCHECK_KEY }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ env.GOOGLE_CLIENT_ID || 'SET_IN_GITHUB' }}
+            NEXT_PUBLIC_API_URL: ${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_FIREBASE_API_KEY: ${{ env.FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ env.FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ env.FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ env.FIREBASE_STORAGE_BUCKET }}
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ env.FIREBASE_MESSAGING_SENDER_ID }}
+            NEXT_PUBLIC_FIREBASE_APP_ID: ${{ env.FIREBASE_APP_ID }}
+            NEXT_PUBLIC_APPCHECK_KEY: ${{ env.APPCHECK_KEY }}
 
       - name: Build and Push Voice Gateway
         uses: docker/build-push-action@v5
@@ -77,9 +92,9 @@ jobs:
       - name: Copy config files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_IP }}
+          host: ${{ env.VPS_IP }}
           username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
           source: "docker-compose.prod.yml,nginx/"
           target: "/opt/orbisvoice"
 
@@ -87,7 +102,7 @@ jobs:
         id: db-url
         run: |
           # Use node to safely URL encode the password on the runner
-          PW="${{ secrets.POSTGRES_PASSWORD || 'Orbis@8214@@' }}"
+          PW="${{ env.POSTGRES_PASSWORD || 'Orbis@8214@@' }}"
           ENCODED_PW=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$PW")
           echo "DATABASE_URL=postgresql://postgres:${ENCODED_PW}@postgres:5432/orbisvoice?schema=public" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD=$PW" >> $GITHUB_ENV
@@ -95,9 +110,9 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_IP }}
+          host: ${{ env.VPS_IP }}
           username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
           envs: POSTGRES_PASSWORD,DATABASE_URL,JWT_SECRET
           script: |
             cd /opt/orbisvoice
@@ -111,7 +126,7 @@ jobs:
             fi
             
             echo "Environment variables passed. Constructing fresh deployment..."
-            export JWT_SECRET="${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}"
+            export JWT_SECRET="${{ env.JWT_SECRET || 'dev-orbis-secret-change-me' }}"
             
             echo "Checking certificates..."
             ls -la nginx/certs/
@@ -192,14 +207,14 @@ jobs:
           # Since scp-action only goes one way, we use a trick or just use the summary
           # Actually, the best way is to cat it in a step and redirect it
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PRIVATE_KEY: ${{ env.SSH_PRIVATE_KEY }}
 
       - name: Fetch Telemetry
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ env.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ secrets.VPS_IP }}:/opt/orbisvoice/deployment_report.md .
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no root@${{ env.VPS_IP }}:/opt/orbisvoice/deployment_report.md .
 
       - name: Push Telemetry to Branch
         run: |

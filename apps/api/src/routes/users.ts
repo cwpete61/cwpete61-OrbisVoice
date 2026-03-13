@@ -669,7 +669,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
           });
 
           if (dbRequestingUser?.role === "SYSTEM_ADMIN") {
-            userData.emailVerified = emailVerifiedByAdmin ? new Date() : null;
+            userData.isEmailVerifiedByAdmin = !!emailVerifiedByAdmin;
+            if (emailVerifiedByAdmin) {
+              userData.emailVerified = new Date();
+            }
           } else {
             return reply.code(403).send({
               ok: false,
@@ -686,6 +689,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           role: true,
           isBlocked: true,
           commissionLevel: true,
+          isEmailVerifiedByAdmin: true,
           tenant: {
             select: {
               subscriptionStatus: true,

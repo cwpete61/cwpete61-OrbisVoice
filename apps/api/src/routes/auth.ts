@@ -201,7 +201,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             tenantId: true,
             role: true,
             isAdmin: true,
-            emailVerified: true
+            emailVerified: true,
+            isEmailVerifiedByAdmin: true
           }
         }) as any;
 
@@ -259,7 +260,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Check if email verified
-        if (!user.emailVerified && !user.isAdmin) {
+        if (!user.emailVerified && !user.isEmailVerifiedByAdmin && !user.isAdmin) {
           return reply.code(403).send({
             ok: false,
             message: "Please verify your email address before logging in.",

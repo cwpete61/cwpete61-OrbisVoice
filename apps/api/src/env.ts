@@ -26,6 +26,12 @@ const envSchema = z.object({
   // Stripe API
   STRIPE_API_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_STARTER: z.string().optional(),
+  STRIPE_PRICE_PROFESSIONAL: z.string().optional(),
+  STRIPE_PRICE_ENTERPRISE: z.string().optional(),
+  STRIPE_PRICE_AI_INFRA: z.string().optional(),
+  STRIPE_PRICE_LTD: z.string().optional(),
+  STRIPE_PRICE_LTD_HOSTING: z.string().optional(),
   // Twilio API
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),

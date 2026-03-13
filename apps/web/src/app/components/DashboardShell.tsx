@@ -462,15 +462,7 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar with bell */}
         <div className="flex items-center justify-end px-6 py-3 border-b border-white/[0.05] bg-[#080c16]">
-          {/* Upgrade Button for Free Users */}
-          {profile?.tenant?.subscriptionTier === 'free' && (
-            <Link 
-              href="/billing"
-              className="mr-3 px-4 py-1.5 rounded-full bg-gradient-to-r from-[#14b8a6] to-[#0ea5e9] text-white text-[10px] font-bold uppercase tracking-wider hover:scale-105 transition shadow-[0_0_15px_rgba(20,184,166,0.2)]"
-            >
-              Upgrade
-            </Link>
-          )}
+
 
           <div className="relative" ref={notifRef}>
             <button onClick={toggleNotifs} className="relative p-2 rounded-lg hover:bg-white/[0.05] transition group focus:outline-none">

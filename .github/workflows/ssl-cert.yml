@@ -51,10 +51,10 @@ jobs:
       - name: Deploy with rsync
         if: ${{ github.event.inputs.dry_run == 'false' || github.event_name == 'schedule' }}
         env:
-          HOST: ${{ secrets.SERVER_HOST || secrets.VPS_IP }}
+          HOST: ${{ secrets.VPS_IP }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY || secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
           rsync -avz orbis_cert.zip root@"$HOST":/opt/orbisvoice/nginx/certs/

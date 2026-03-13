@@ -36,10 +36,10 @@ const TIER_CONFIG: Record<AllTierName, {
   ltd: {
     name: "LTD (Lifetime Deal)",
     accent: "#ef4444",
-    description: "One-time payment for lifetime engine access + hosting costs.",
+    description: "Lifetime access for a one-time fee. A recurring $20/month charge for AI token consumption will commence starting next month.",
     limitText: "Limited Time Offer",
     frequencyText: "One-Time Payment",
-    secondaryPrice: "$20/month hosting fee"
+    secondaryPrice: "$20/month tokens (starts next month)"
   },
   starter: {
     name: "Starter",
@@ -543,7 +543,7 @@ function BillingContent() {
                 </div>
                 {selectedTier === "ltd" && (
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-[rgba(240,244,250,0.5)]">+ Monthly Hosting</span>
+                    <span className="text-sm text-[rgba(240,244,250,0.5)]">+ Token Costs</span>
                     <span className="text-sm font-semibold text-[#f0f4fa]">$20/mo</span>
                   </div>
                 )}

@@ -270,7 +270,7 @@ function UsersContent() {
             tier: (user?.tenant?.subscriptionTier as string) || "starter",
             commissionLevel: user.commissionLevel || "LOW",
             role: user.role || "USER",
-            emailVerifiedByAdmin: !!user.emailVerified,
+            emailVerifiedByAdmin: !!user.isEmailVerifiedByAdmin || !!user.emailVerified,
         });
     };
 
@@ -930,10 +930,10 @@ function UsersContent() {
                                                                     {user.role === "SYSTEM_ADMIN" ? "System Admin" : (user.role === "ADMIN" || user.isAdmin ? "Admin" : "User")}
                                                                 </span>
                                                                 <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                                                {user.emailVerified ? (
+                                                                {user.emailVerified || user.isEmailVerifiedByAdmin ? (
                                                                     <span className="flex items-center gap-1 text-[10px] font-bold text-[#14b8a6] uppercase tracking-wider">
                                                                         <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6]" />
-                                                                        Verified
+                                                                        {user.isEmailVerifiedByAdmin ? "Admin Verified" : "Verified"}
                                                                     </span>
                                                                 ) : (
                                                                     <span className="flex items-center gap-1 text-[10px] font-bold text-yellow-500/80 uppercase tracking-wider">

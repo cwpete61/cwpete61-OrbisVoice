@@ -301,6 +301,8 @@ class StripeClient {
     cancelUrl: string;
     metadata?: Record<string, any>;
     mode?: "subscription" | "payment";
+    description?: string;
+    customText?: string;
   }): Promise<any> {
     try {
       const body = new URLSearchParams({
@@ -316,6 +318,16 @@ class StripeClient {
         Object.entries(params.metadata).forEach(([key, value]) => {
           body.append(`metadata[${key}]`, String(value));
         });
+      }
+
+      if (params.mode === "payment" && params.description) {
+        body.append("payment_intent_data[description]", params.description);
+      } else if (params.description) {
+        body.append("subscription_data[description]", params.description);
+      }
+
+      if (params.customText) {
+        body.append("custom_text[submit][message]", params.customText);
       }
 
       const response = await fetch(`${this.baseUrl}/checkout/sessions`, {

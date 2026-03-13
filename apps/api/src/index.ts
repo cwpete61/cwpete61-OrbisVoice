@@ -52,9 +52,12 @@ fastify.register(helmet, {
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://*.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://m.stripe.network"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https:", "https://*.stripe.com"],
+      connectSrc: ["'self'", "https://*.googleapis.com", "https://api.stripe.com", "https://m.stripe.network"],
+      frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
     },
   },
   crossOriginOpenerPolicy: { policy: "unsafe-none" },
