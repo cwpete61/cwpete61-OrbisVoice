@@ -22,6 +22,10 @@ env:
   TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
   TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
 
+concurrency:
+  group: "production-deployment-${{ github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
