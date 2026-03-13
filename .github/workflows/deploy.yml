@@ -138,17 +138,23 @@ jobs:
             echo "Checking certificates..."
             ls -la nginx/certs/
             
-            # Safe deployment steps (keeping volumes)
-            echo "Stopping containers (preserving volumes)..."
-            docker compose -f docker-compose.prod.yml down || true
-            docker system prune -f || true
+            # Stop existing containers from THIS compose file
+            echo "Stopping matching containers..."
+            docker compose -f docker-compose.prod.yml stop || true
             
+            # Remove legacy/conflicting containers that are NOT in our current stack
+            # Specifically targeting 'orbis-local-app' if it exists and uses port 3000
+            echo "Checking for conflicting containers..."
+            docker rm -f orbis-local-app || true
+            docker rm -f orbisvoice-api-prod orbisvoice-web-prod orbisvoice-nginx-prod || true
+
             echo "Pulling latest images..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
-            
+
             echo "Starting fresh containers..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
             DATABASE_URL=$DATABASE_URL \
+            JWT_SECRET="${{ secrets.JWT_SECRET || 'dev-orbis-secret-change-me' }}" \
             STRIPE_API_KEY=$STRIPE_API_KEY \
             STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET \
             OPENAI_API_KEY=$OPENAI_API_KEY \
@@ -160,7 +166,11 @@ jobs:
             FIREBASE_PRIVATE_KEY=$FIREBASE_PRIVATE_KEY \
             TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY \
             TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY \
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --force-recreate
+
+            # Wait for healthy
+            echo "Waiting for services to stabilize..."
+            sleep 15
             
             echo "Wait for Database to be ready..."
             for i in {1..10}; do
@@ -182,30 +192,26 @@ jobs:
             echo "Testing Database Connection (via API)..."
             docker exec -T orbisvoice-api-prod node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.\$queryRaw\`SELECT 1\`.then(() => console.log('DB_CONNECTION_SUCCESS')).catch(err => { console.error('DB_CONNECTION_FAILED:', err.message); process.exit(1); })" || echo "Database test failed"
             
+            # Capture diagnostics
             echo "### deployment Diagnostics" > deployment_report.md
-            echo "#### Prisma Push Log (Out-of-Band)" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            cat prisma_push.log >> deployment_report.md
-            echo '```' >> deployment_report.md
-            
-            echo "#### API Logs (Last 50 lines)" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            docker logs orbisvoice-api-prod --tail 50 >> deployment_report.md 2>&1 || echo "No api logs" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            
-            echo "#### Port Usage (Host)" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            ss -tulpn | grep -E "80|443|4001|5440" >> deployment_report.md || echo "No tracked ports in use" >> deployment_report.md
-            echo '```' >> deployment_report.md
-            
             echo "#### Container Status" >> deployment_report.md
             echo '```' >> deployment_report.md
             docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" >> deployment_report.md
             echo '```' >> deployment_report.md
+            
+            echo "#### Port Usage (Host)" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            ss -tulpn | grep -E "80|443|4001|5440" >> deployment_report.md
+            echo '```' >> deployment_report.md
+
+            echo "#### API Logs (Last 50 lines)" >> deployment_report.md
+            echo '```' >> deployment_report.md
+            docker logs --tail 50 orbisvoice-api-prod 2>&1 >> deployment_report.md || echo "No api logs" >> deployment_report.md
+            echo '```' >> deployment_report.md
 
             echo "#### Nginx Logs (Tail 30)" >> deployment_report.md
             echo '```' >> deployment_report.md
-            docker logs orbisvoice-nginx-prod --tail 30 >> deployment_report.md 2>&1 || echo "No nginx logs" >> deployment_report.md
+            docker logs --tail 30 orbisvoice-nginx-prod 2>&1 >> deployment_report.md || echo "No nginx logs" >> deployment_report.md
             echo '```' >> deployment_report.md
 
             echo "#### API Logs (Tail 50)" >> deployment_report.md
