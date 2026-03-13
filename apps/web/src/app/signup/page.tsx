@@ -169,12 +169,17 @@ function SignupContent() {
                   />
                 </div>
 
-                <div className="flex justify-center py-2">
-                  <Turnstile
-                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-                    onSuccess={(token: string) => setCaptchaToken(token)}
-                  />
-                </div>
+                {/* Cloudflare Turnstile CAPTCHA (Disabled Locally) */}
+                {/* <Turnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onError={() => {
+                    setError("Turnstile verification failed. Please try again.");
+                    setCaptchaToken("");
+                  }}
+                  onExpire={() => setCaptchaToken("")}
+                  className="mx-auto"
+                /> */}
 
                 <button
                   type="submit"

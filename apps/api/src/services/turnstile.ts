@@ -3,8 +3,8 @@ import { logger } from "../logger";
 
 export async function verifyTurnstileToken(token: string): Promise<boolean> {
   const secret = env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
-    logger.warn("TURNSTILE_SECRET_KEY not set - skipping verification");
+  if (!secret || env.NODE_ENV === "development") {
+    logger.warn("Skipping Turnstile verification: Not set or running in development");
     return true;
   }
 

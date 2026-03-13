@@ -146,12 +146,17 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="flex justify-center py-2">
-                <Turnstile
+               {/* Cloudflare Turnstile CAPTCHA (Disabled Locally) */}
+                {/* <Turnstile
                   siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-                  onSuccess={(token: string) => setCaptchaToken(token)}
-                />
-              </div>
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onError={() => {
+                    setError("Turnstile verification failed. Please try again.");
+                    setCaptchaToken("");
+                  }}
+                  onExpire={() => setCaptchaToken("")}
+                  className="mx-auto"
+                /> */}
 
               <button
                 type="submit"
