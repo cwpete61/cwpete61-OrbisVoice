@@ -29,6 +29,7 @@ import { payoutRoutes } from "./routes/payouts";
 import { adminRoutes, subscriberAdminRoutes } from "./routes/admin";
 import { notificationRoutes } from "./routes/notifications";
 import { helpRoutes } from "./routes/help";
+import { commerceBridgeRoutes } from "./routes/commerce-bridge";
 import { prisma } from "./db";
 
 const fastify = Fastify({
@@ -123,6 +124,7 @@ fastify.register(adminRoutes);
 fastify.register(subscriberAdminRoutes, { prefix: "/admin" });
 fastify.register(notificationRoutes);
 fastify.register(helpRoutes);
+fastify.register(commerceBridgeRoutes);
 
 // Start server
 const start = async () => {

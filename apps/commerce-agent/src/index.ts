@@ -31,7 +31,23 @@ async function start() {
       return { status: 'ok', service: 'commerce-agent' };
     });
 
-    // 3. TODO: Routes (Cart, Checkout, Mirror)
+    // 3. Webhook raw body handling
+    fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+      try {
+        if (req.url?.includes('/webhooks/stripe')) {
+          done(null, body);
+        } else {
+          done(null, JSON.parse(body as string));
+        }
+      } catch (err: any) {
+        done(err, undefined);
+      }
+    });
+
+    // 4. Routes
+    await fastify.register(import('./routes/cart'), { prefix: '/cart' });
+    await fastify.register(import('./routes/admin'), { prefix: '/internal' });
+    await fastify.register(import('./routes/webhooks'), { prefix: '/webhooks' });
 
     const port = parseInt(process.env.COMMERCE_PORT || '4005');
     await fastify.listen({ port, host: '0.0.0.0' });
