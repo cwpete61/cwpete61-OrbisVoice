@@ -36,10 +36,13 @@ async function getTransporter() {
         const cfg = await prisma.systemEmailConfig.findUnique({ where: { id: "global" } });
         if (!cfg?.smtpServer || !cfg?.username || !cfg?.password) return null;
 
+        const port = Number(cfg.smtpPort || 587);
+        const secure = port === 465 || cfg.smtpSecurity === "SSL";
+
         return nodemailer.createTransport({
             host: cfg.smtpServer,
-            port: Number(cfg.smtpPort ?? 587),
-            secure: cfg.smtpSecurity === "SSL",
+            port,
+            secure,
             auth: { user: cfg.username, pass: cfg.password },
         });
     } catch {
@@ -145,8 +148,9 @@ async function sendEmailNotification({
         }
 
         const config = await prisma.systemEmailConfig.findUnique({ where: { id: "global" } });
+        
         await transport.sendMail({
-            from: config?.username ?? "noreply@orbisvoice.app",
+            from: `"OrbisVoice App" <${config?.username || "noreply@orbisvoice.app"}>`,
             to,
             subject,
             html,
