@@ -30,14 +30,21 @@ export async function adminRoutes(fastify: FastifyInstance) {
                 totalUsers,
                 totalAgents,
                 totalTranscripts,
+                totalLeads,
+                bookedLeads,
+                avgDurationRes,
                 subscriptionStats,
                 recentActivities,
-                revenueStats
             ] = await Promise.all([
                 prisma.tenant.count(),
                 prisma.user.count(),
                 prisma.agent.count(),
                 prisma.transcript.count(),
+                prisma.lead.count(),
+                prisma.lead.count({ where: { isBooked: true } }),
+                prisma.transcript.aggregate({
+                    _avg: { duration: true }
+                }),
                 prisma.tenant.groupBy({
                     by: ['subscriptionTier'],
                     _count: true,
@@ -47,11 +54,10 @@ export async function adminRoutes(fastify: FastifyInstance) {
                     orderBy: { createdAt: 'desc' },
                     include: { agent: { select: { name: true, tenantId: true } } }
                 }).catch(() => []),
-                prisma.tenant.aggregate({
-                    _count: true,
-                    where: { subscriptionStatus: "active" }
-                })
             ]);
+
+            const avgDuration = Math.round(avgDurationRes._avg.duration || 0);
+            const conversionRate = totalLeads > 0 ? (bookedLeads / totalLeads) * 100 : 0;
 
             // Calculate MRR (estimated based on current pricing)
             const tiers: Record<string, number> = {
@@ -78,8 +84,10 @@ export async function adminRoutes(fastify: FastifyInstance) {
                     totalUsers,
                     totalAgents,
                     totalTranscripts,
+                    totalLeads,
+                    avgDuration,
+                    conversionRate,
                     estimatedMRR,
-                    activeSubscriptions: revenueStats._count,
                     subscriptionBreakdown: subscriptionStats,
                     recentActivities,
                     systemHealth: {
@@ -165,12 +173,16 @@ export async function adminRoutes(fastify: FastifyInstance) {
                 "lowCommission", "medCommission", "highCommission",
                 "payoutMinimum", "refundHoldDays", "payoutCycleDelayMonths",
                 "transactionFeePercent", "starterLimit", "professionalLimit",
-                "enterpriseLimit", "aiInfraLimit", "ltdLimit"
+                "enterpriseLimit", "aiInfraLimit", "ltdLimit", "emailVerificationEnabled"
             ];
 
             allowedFields.forEach(field => {
                 if (body[field] !== undefined) {
-                    updateData[field] = Number(body[field]);
+                    if (field === "emailVerificationEnabled") {
+                        updateData[field] = Boolean(body[field]);
+                    } else {
+                        updateData[field] = Number(body[field]);
+                    }
                 }
             });
 

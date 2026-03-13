@@ -6,69 +6,8 @@ import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
 
-interface TierInfo {
-  conversations: number;
-  price: number;
-}
-
-const tierNames = ["starter", "professional", "enterprise"] as const;
-type TierName = (typeof tierNames)[number];
-
-const allTierNames = ["free", "ltd", "starter", "professional", "enterprise", "ai-revenue-infrastructure"] as const;
-type AllTierName = (typeof allTierNames)[number];
-
-const isTierName = (tier: string): tier is TierName =>
-  tierNames.includes(tier as TierName);
-
-const isAllTierName = (tier: string): tier is AllTierName =>
-  allTierNames.includes(tier as AllTierName);
-
-// Tier display configuration
-const TIER_CONFIG: Record<AllTierName, {
-  name: string;
-  accent: string;
-  description: string;
-  popular?: boolean;
-  limitText?: string;
-  frequencyText?: string;
-  secondaryPrice?: string;
-}> = {
-  free: {
-    name: "Free Trial",
-    accent: "#94a3b8",
-    description: "Experience OrbisVoice with $0.50 trial credits (approx 3 conversations).",
-    limitText: "Limited Trial"
-  },
-  ltd: {
-    name: "LTD (Lifetime Deal)",
-    accent: "#ef4444",
-    description: "Lifetime access for a one-time fee. A recurring $20/month charge for AI token consumption will commence starting next month.",
-    limitText: "Limited Time Offer",
-    frequencyText: "One-Time Payment",
-    secondaryPrice: "$20/month tokens (starts next month)"
-  },
-  starter: {
-    name: "Starter",
-    accent: "#14b8a6",
-    description: "Core conversion engine for single-location teams"
-  },
-  professional: {
-    name: "Professional",
-    accent: "#f97316",
-    description: "AI qualification and revenue acceleration",
-    popular: true
-  },
-  enterprise: {
-    name: "Enterprise",
-    accent: "#38bdf8",
-    description: "Multi-location revenue infrastructure"
-  },
-  "ai-revenue-infrastructure": {
-    name: "AI Revenue Infrastructure",
-    accent: "#a855f7",
-    description: "AI operations command for revenue control"
-  }
-};
+import PricingTable, { AllTierName, TIER_CONFIGS } from "../components/PricingTable";
+import UsageChart from "../components/UsageChart";
 
 interface SubscriptionData {
   id: string;
@@ -85,15 +24,16 @@ interface SubscriptionData {
   usagePercent: number;
   shouldReset: boolean;
   creditBalance: number;
-  tierInfo: TierInfo;
+  tierInfo: {
+    conversations: number;
+    price: number;
+  };
 }
-
-type TierLimits = Record<AllTierName, TierInfo>;
 
 function BillingContent() {
   const router = useRouter();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-  const [availableTiers, setAvailableTiers] = useState<TierLimits | null>(null);
+  const [availableTiers, setAvailableTiers] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedTier, setSelectedTier] = useState<AllTierName | null>(null);
@@ -289,11 +229,7 @@ function BillingContent() {
     );
   }
 
-  const currentTier: AllTierName = isAllTierName(subscription.subscriptionTier)
-    ? subscription.subscriptionTier
-    : "free"; // Default to free if tier is unknown
-  const currentTierInfo = availableTiers ? (availableTiers[currentTier] || { conversations: 0, price: 0 }) : { conversations: 0, price: 0 };
-  const currentTierConfig = TIER_CONFIG[currentTier];
+  const currentTier: AllTierName = subscription.subscriptionTier as AllTierName;
   const usagePercent = subscription.usagePercent;
   const isOverLimit = usagePercent >= 100 && subscription.creditBalance <= 0;
 
@@ -301,99 +237,108 @@ function BillingContent() {
     <DashboardShell tokenLoaded={tokenLoaded}>
       <div className="px-8 py-8">
         {/* Page header */}
-        <div className="mb-8">
-          <h1 className="text-xl font-bold text-[#f0f4fa]">Billing & Usage</h1>
-          <p className="mt-0.5 text-sm text-[rgba(240,244,250,0.45)]">
-            Manage your subscription and monitor usage
+        <div className="mb-8 text-center md:text-left">
+          <h1 className="text-3xl font-black text-white tracking-tight">Billing & Infrastructure</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Monitor your revenue operations and scale your AI workforce
           </p>
         </div>
 
+        {/* Usage Analytics Trend */}
+        <section className="mb-12">
+          <UsageChart />
+        </section>
+
         {/* Current Subscription */}
-        <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 mb-8 shadow-xl">
-          <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Current Subscription</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Active Plan</p>
-              <p className="text-2xl font-bold" style={{ color: currentTierConfig.accent }}>
-                {currentTierConfig.name}
+        <section className="rounded-3xl border border-white/[0.07] bg-[#0c111d] p-8 mb-12 shadow-2xl relative overflow-hidden">
+           {/* Abstract Gradient Background for Section */}
+           <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#14b8a6]/10 to-transparent pointer-events-none" />
+
+          <h2 className="text-lg font-bold text-white mb-8 flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-[#14b8a6]" />
+            Subscription Overview
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Active Infrastructure</p>
+              <p className="text-3xl font-black text-white capitalize">
+                {currentTier}
               </p>
-              <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
-                ${currentTierInfo.price}/month
-              </p>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-2 italic">
-                {currentTierConfig.description}
-              </p>
+              <div className="mt-4 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs text-gray-400 font-medium">Standard Operations</span>
+              </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide mb-2">Status & Renewal</p>
-              <p className="text-lg font-semibold text-[#f0f4fa] capitalize">
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Lifecycle Status</p>
+              <p className="text-xl font-bold text-white capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
               {subscription.subscriptionEnds && (
-                <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
-                  Next payment: {new Date(subscription.subscriptionEnds).toLocaleDateString()}
+                <p className="text-xs text-gray-400 mt-2 font-medium">
+                  Next snapshot: {new Date(subscription.subscriptionEnds).toLocaleDateString()}
                 </p>
-              )}
-              {subscription.billingEmail && (
-                <p className="text-xs text-[rgba(240,244,250,0.3)] mt-2">{subscription.billingEmail}</p>
               )}
             </div>
 
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-xs text-[rgba(240,244,250,0.4)] uppercase tracking-wide">Usage Monthly</p>
+            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <div className="flex justify-between items-start mb-4">
+                <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
                 {subscription.creditBalance > 0 && (
-                  <span className="bg-[#14b8a6]/10 text-[#14b8a6] text-[10px] px-2 py-0.5 rounded-full border border-[#14b8a6]/30 font-bold">
-                    {subscription.creditBalance} EXTRA CREDITS
+                  <span className="bg-[#14b8a6]/20 text-[#14b8a6] text-[9px] px-2 py-0.5 rounded-full border border-[#14b8a6]/30 font-black">
+                     +{subscription.creditBalance} RESERVE
                   </span>
                 )}
               </div>
-              <div className="flex justify-between text-sm mb-3">
-                <span className="text-[rgba(240,244,250,0.5)]">Conversations</span>
-                <span className={isOverLimit ? "text-red-400 font-bold" : "font-semibold text-[#f0f4fa]"}>
+              <div className="flex justify-between text-sm mb-4">
+                <span className="text-gray-400">Monthly Conversations</span>
+                <span className={isOverLimit ? "text-red-400 font-black" : "font-black text-white"}>
                   {subscription.usageCount} / {subscription.usageLimit}
                 </span>
               </div>
-              <div className="h-3 bg-[#080c16] rounded-full overflow-hidden mb-2">
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
                 <div
-                  className={`h-full transition-all ${isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
+                  className={`h-full transition-all duration-1000 ${isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
                     }`}
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
-              <p className="text-[10px] text-[rgba(240,244,250,0.3)]">
-                Resets on {new Date(subscription.usageResetAt).toLocaleDateString()}
+              <p className="text-[10px] text-gray-600 font-medium">
+                Cycle resets on {new Date(subscription.usageResetAt).toLocaleDateString()}
               </p>
             </div>
           </div>
 
           {isOverLimit && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6 mb-6">
-              <p className="text-red-400 font-semibold flex items-center gap-2">
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L1 21h22L12 2zm0 3.5L19.5 19h-15L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" />
-                </svg>
-                Usage Limit Exceeded
-              </p>
-              <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
-                Your monthly conversation limit has been reached. Upgrade your plan or purchase a one-time package to continue.
-              </p>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 mt-8 flex items-center gap-4 animate-pulse">
+               <div className="h-10 w-10 flex items-center justify-center rounded-full bg-red-500/20 text-red-500 shrink-0">
+                  <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+               </div>
+               <div>
+                  <p className="text-red-400 font-bold text-sm">Critical: Infrastructure Limit Exceeded</p>
+                  <p className="text-xs text-red-400/70 mt-0.5">Automated operations have reached the monthly ceiling. Please scale your plan below.</p>
+               </div>
             </div>
           )}
 
           {/* Manage Billing (Stripe Portal) */}
-          <div className="mt-6 pt-6 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="mt-10 pt-8 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-              <h3 className="text-[#f0f4fa] font-medium text-sm">Need to update payment info?</h3>
-              <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">Manage your cards, address, and invoices securely via Stripe.</p>
+              <h3 className="text-white font-bold text-sm">Revenue Management Portal</h3>
+              <p className="text-xs text-gray-500 mt-1">Manage payment methods, jurisdictional details, and invoice history securely via Stripe.</p>
             </div>
             <button
               onClick={async () => {
                 try {
                   const res = await fetch(`${API_BASE}/billing/portal`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: { 
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ returnUrl: window.location.href })
                   });
                   const data = await res.json();
                   if (data.url) window.location.href = data.url;
@@ -402,132 +347,63 @@ function BillingContent() {
                   alert('Connection error');
                 }
               }}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] flex items-center gap-2 whitespace-nowrap"
+              className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-white/10 border border-white/10 flex items-center gap-3 whitespace-nowrap shadow-xl"
             >
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
-              Manage Billing Settings
+              Secure Management Portal
             </button>
           </div>
         </section>
 
         {/* Available Plans */}
-        <section>
-          <h2 className="text-lg font-bold text-[#f0f4fa] mb-6">Available Plans</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {allTierNames.map((tier) => {
-              const info = availableTiers[tier] || (tier === 'ltd' ? { price: 497, conversations: 1000 } : null);
-              if (!info) return null;
-              const isCurrent = tier === currentTier;
-              const isUpgrade = info.price > currentTierInfo.price;
-              const config = TIER_CONFIG[tier];
-
-              return (
-                <div
-                  key={tier}
-                  className={`relative rounded-2xl border bg-[#0c111d] p-6 transition-all hover:border-opacity-40 hover:shadow-lg ${isCurrent ? "border-[#14b8a6] bg-[#14b8a6]/[0.02]" : "border-white/[0.07]"
-                    } flex flex-col`}
-                >
-                  {config.popular && !isCurrent && (
-                    <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/40 font-semibold uppercase tracking-wider">
-                      Popular
-                    </span>
-                  )}
-                  {isCurrent && (
-                    <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#14b8a6]/10 text-[#14b8a6] border border-[#14b8a6]/40 font-semibold uppercase tracking-wider">
-                      Current
-                    </span>
-                  )}
-                  {config.limitText && !isCurrent && (
-                    <span className="absolute -top-3 right-6 text-[10px] px-2 py-0.5 rounded-full bg-[#ef4444]/10 text-[#ef4444] border border-[#ef4444]/40 font-semibold uppercase tracking-wider">
-                      {config.limitText}
-                    </span>
-                  )}
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-[#f0f4fa]">
-                      {config.name}
-                    </h3>
-                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)] leading-relaxed">{config.description}</p>
-                  </div>
-                  <div className="mb-4">
-                    <p className="text-4xl font-bold" style={{ color: config.accent }}>
-                      ${info.price}
-                    </p>
-                    <p className="text-sm text-[rgba(240,244,250,0.4)] mt-1">
-                      {tier === 'ltd' ? "One-Time Payment" : (config.frequencyText || "per month")}
-                    </p>
-                    {config.secondaryPrice && (
-                      <p className="text-xs text-[rgba(240,244,250,0.45)] mt-1 font-medium">
-                        + {config.secondaryPrice}
-                      </p>
-                    )}
-                  </div>
-                  <div className="mb-6 pb-6 border-b border-white/[0.05]">
-                    <p className="text-sm font-medium" style={{ color: config.accent }}>
-                      {info.conversations.toLocaleString()} conversations
-                    </p>
-                    <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
-                      {tier === 'ltd' ? "lifetime access" : "per month"}
-                    </p>
-                  </div>
-                  <div className="mt-auto pt-6">
-                    {!isCurrent && (
-                      <button
-                        onClick={() => setSelectedTier(tier)}
-                        className={isUpgrade
-                          ? "btn-primary w-full text-sm"
-                          : "px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full"}
-                      >
-                        {isUpgrade ? "Upgrade Plan" : "Change Plan"}
-                      </button>
-                    )}
-                    {isCurrent && subscription.subscriptionStatus === "active" && (
-                      <button
-                        onClick={handleCancel}
-                        className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 w-full"
-                      >
-                        Cancel Plan
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        <section className="mb-20">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+            <div>
+               <h2 className="text-2xl font-black text-white tracking-tight">Infrastructure Tiers</h2>
+               <p className="text-sm text-gray-500 mt-2">Choose the operation capacity that matches your revenue goals.</p>
+            </div>
           </div>
+          
+          <PricingTable 
+            currentTier={currentTier}
+            availableTiers={availableTiers}
+            onSelect={(tier) => setSelectedTier(tier)}
+            onCancel={handleCancel}
+            subscriptionStatus={subscription.subscriptionStatus}
+          />
         </section>
 
         {/* Conversation Packages */}
         {packages.length > 0 && (
-          <>
-            <div className="my-10 border-t border-white/[0.05]"></div>
-            <section>
-              <h2 className="text-lg font-bold text-[#f0f4fa] mb-2">Conversation Packages</h2>
-              <p className="text-sm text-[rgba(240,244,250,0.45)] mb-6">Need more conversations? Purchase one-time packages that roll over until used.</p>
+          <section className="mb-20">
+            <h2 className="text-xl font-bold text-white mb-2">Operation Reserves</h2>
+            <p className="text-sm text-gray-500 mb-8">Purchase one-time conversation packages for extra bandwidth with no expiration.</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {packages.map((pkg) => (
-                  <div key={pkg.id} className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 transition-all hover:border-white/[0.15] hover:shadow-lg">
-                    <h3 className="text-lg font-bold text-[#f0f4fa]">{pkg.name}</h3>
-                    <p className="text-xs text-[rgba(240,244,250,0.45)] mt-1">One-time purchase</p>
-                    <div className="my-4">
-                      <p className="text-3xl font-bold text-[#14b8a6]">${pkg.price}</p>
-                    </div>
-                    <div className="mb-6 pb-6 border-b border-white/[0.05]">
-                      <p className="text-sm font-medium text-[#f0f4fa]">+{pkg.credits.toLocaleString()} conversations</p>
-                    </div>
-                    <button
-                      onClick={() => handleBuyPackage(pkg)}
-                      disabled={purchasingPackage === pkg.id}
-                      className="px-4 py-2.5 rounded-lg text-sm font-medium transition bg-white/[0.04] text-[#f0f4fa] hover:bg-white/[0.08] border border-white/[0.07] w-full disabled:opacity-50"
-                    >
-                      {purchasingPackage === pkg.id ? "Processing..." : "Buy Package"}
-                    </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {packages.map((pkg) => (
+                <div key={pkg.id} className="rounded-3xl border border-white/5 bg-[#0c111d] p-8 transition-all hover:border-white/10 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#14b8a6]/5 rounded-bl-3xl" />
+                  <h3 className="text-lg font-bold text-white group-hover:text-[#14b8a6] transition-colors">{pkg.name}</h3>
+                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-black tracking-widest">Reserve Package</p>
+                  <div className="my-6">
+                    <p className="text-4xl font-black text-white">${pkg.price}</p>
                   </div>
-                ))}
-              </div>
-            </section>
-          </>
+                  <div className="mb-8 pb-6 border-b border-white/5">
+                    <p className="text-sm font-bold text-gray-300">+{pkg.credits.toLocaleString()} Conversations</p>
+                  </div>
+                  <button
+                    onClick={() => handleBuyPackage(pkg)}
+                    disabled={purchasingPackage === pkg.id}
+                    className="px-4 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-[#14b8a6] hover:border-transparent border border-white/10 w-full disabled:opacity-50"
+                  >
+                    {purchasingPackage === pkg.id ? "Verifying..." : "Acquire Credits"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Upgrade Modal */}
@@ -535,18 +411,18 @@ function BillingContent() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8 max-w-md w-full shadow-2xl">
               <h3 className="text-xl font-bold text-[#f0f4fa] mb-2">
-                {TIER_CONFIG[selectedTier].name}
+                {TIER_CONFIGS[selectedTier].name}
               </h3>
               <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">
-                {TIER_CONFIG[selectedTier].description}
+                {TIER_CONFIGS[selectedTier].description}
               </p>
               <div className="bg-[#080c16] rounded-xl p-4 mb-6 border border-white/[0.05]">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-[rgba(240,244,250,0.5)]">
                     {selectedTier === "ltd" ? "One-Time Payment" : "Monthly Price"}
                   </span>
-                  <span className="text-2xl font-bold" style={{ color: TIER_CONFIG[selectedTier].accent }}>
-                    ${availableTiers[selectedTier].price}
+                  <span className="text-2xl font-bold" style={{ color: TIER_CONFIGS[selectedTier].accent }}>
+                    ${availableTiers[selectedTier]?.price || 0}
                   </span>
                 </div>
                 {selectedTier === "ltd" && (
@@ -558,7 +434,7 @@ function BillingContent() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[rgba(240,244,250,0.5)]">Conversations</span>
                   <span className="text-sm font-semibold text-[#f0f4fa]">
-                    {availableTiers[selectedTier].conversations.toLocaleString()}/month
+                    {availableTiers[selectedTier]?.conversations.toLocaleString() || 0}/month
                   </span>
                 </div>
               </div>

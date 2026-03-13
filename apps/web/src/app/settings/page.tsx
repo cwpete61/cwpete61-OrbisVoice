@@ -3,20 +3,11 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
+import Toggle from "../components/Toggle";
 import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
 
-const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
-  <div
-    onClick={onChange}
-    className={`relative h-5 w-9 rounded-full cursor-pointer transition-colors ${value ? "bg-[#14b8a6]" : "bg-white/20"}`}
-  >
-    <span
-      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-0.5"}`}
-    />
-  </div>
-);
 
 function NotificationPrefsPanel({
   notifPrefs,
@@ -26,6 +17,8 @@ function NotificationPrefsPanel({
   notifMsg,
   onSave,
   setNotifPrefs,
+  emailVerificationEnabled,
+  onToggleVerification,
 }: any) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -73,6 +66,19 @@ function NotificationPrefsPanel({
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 space-y-6">
       <h2 className="text-sm font-semibold text-[#f0f4fa]">🔔 Notification Preferences</h2>
+
+      {/* Global Email Verification Toggle */}
+      {onToggleVerification && (
+        <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#14b8a6]/5 px-5 py-4">
+          <div>
+            <p className="text-sm font-semibold text-[#14b8a6]">System Email Verification</p>
+            <p className="text-xs text-[rgba(20,184,166,0.6)] mt-0.5">
+              Forces all users to verify their email addresses system-wide.
+            </p>
+          </div>
+          <Toggle value={emailVerificationEnabled} onChange={onToggleVerification} />
+        </div>
+      )}
 
       {/* Master toggle */}
       <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
@@ -262,6 +268,7 @@ function SettingsContent() {
     enterpriseLimit: 100000,
     ltdLimit: 1000,
     aiInfraLimit: 250000,
+    emailVerificationEnabled: true,
   });
 
   const tokenLoaded = useTokenFromUrl();
@@ -355,6 +362,7 @@ function SettingsContent() {
             enterpriseLimit: data.data.enterpriseLimit,
             ltdLimit: data.data.ltdLimit,
             aiInfraLimit: data.data.aiInfraLimit,
+            emailVerificationEnabled: data.data.emailVerificationEnabled ?? true,
           });
         }
       }
@@ -1364,6 +1372,20 @@ function SettingsContent() {
             setMasterEmail={setMasterEmail}
             savingNotif={savingNotif}
             notifMsg={notifMsg}
+            emailVerificationEnabled={settingsForm.emailVerificationEnabled}
+            onToggleVerification={isAdmin ? () => {
+              const newVal = !settingsForm.emailVerificationEnabled;
+              setSettingsForm(prev => ({ ...prev, emailVerificationEnabled: newVal }));
+              const token = localStorage.getItem("token");
+              fetch(`${API_BASE}/admin/settings`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ emailVerificationEnabled: newVal }),
+              });
+            } : null}
             onSave={async () => {
               setSavingNotif(true);
               setNotifMsg(null);
@@ -2229,12 +2251,14 @@ function SettingsContent() {
         {/* System Email Section */}
         {activeTab === "system-email" && isAdmin && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
-              System Email Configuration
-            </h2>
-            <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
-              Configure the global email settings used to send transactional emails for the SaaS.
-            </p>
+            <div className="mb-4">
+              <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
+                System Email Configuration
+              </h2>
+              <p className="text-sm text-[rgba(240,244,250,0.45)]">
+                Configure the global email settings used to send transactional emails for the SaaS.
+              </p>
+            </div>
 
             <form onSubmit={saveSystemEmailConfig} className="space-y-6">
               {/* Account Information */}

@@ -66,6 +66,7 @@ export interface PlatformSettings {
   enterpriseLimit: number;
   ltdLimit: number;
   aiInfraLimit: number;
+  emailVerificationEnabled: boolean;
 }
 
 export interface Affiliate {
@@ -152,6 +153,10 @@ export interface AdminStats {
   totalTenants: number;
   totalUsers: number;
   totalAgents: number;
+  totalTranscripts: number;
+  totalLeads: number;
+  conversionRate: number;
+  avgDuration: number;
   estimatedMRR: number;
   subscriptionBreakdown: Array<{
     subscriptionTier: string;

@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
+import Toggle from "../components/Toggle";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { API_BASE, AdminStats, authHeader } from "@/lib/api";
+import { API_BASE, AdminStats, PlatformSettings, authHeader } from "@/lib/api";
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<AdminStats | null>(null);
+    const [settings, setSettings] = useState<PlatformSettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
     useEffect(() => {
         fetchStats();
+        fetchSettings();
     }, []);
 
     const fetchStats = async () => {
@@ -27,8 +30,47 @@ export default function AdminDashboard() {
             }
         } catch (err) {
             setError("Failed to connect to API");
+        } 
+    };
+
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/admin/settings`, {
+                headers: authHeader(),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSettings(data.data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch settings:", err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleToggleEmailVerification = async () => {
+        if (!settings) return;
+        const newVal = !settings.emailVerificationEnabled;
+        // Optimistic update
+        setSettings({ ...settings, emailVerificationEnabled: newVal });
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/settings`, {
+                method: "PATCH",
+                headers: {
+                    ...authHeader(),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ emailVerificationEnabled: newVal }),
+            });
+            if (!res.ok) {
+                throw new Error("Failed to update settings");
+            }
+        } catch (err) {
+            console.error("Failed to update email verification setting:", err);
+            // Revert
+            fetchSettings();
         }
     };
 
@@ -96,16 +138,35 @@ export default function AdminDashboard() {
                         value={stats?.totalUsers || 0}
                         icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zm12 14v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>}
                     />
+                     <StatCard
+                        title="Estimated MRR"
+                        value={`$${stats?.estimatedMRR || 0}`}
+                        icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>}
+                        isHighlight
+                    />
                     <StatCard
                         title="Total Agents"
                         value={stats?.totalAgents || 0}
                         icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4m0-4h.01" /></svg>}
                     />
+                </div>
+
+                {/* Secondary Stats */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3 mt-6">
                     <StatCard
-                        title="Estimated MRR"
-                        value={`$${stats?.estimatedMRR || 0}`}
-                        icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>}
-                        isHighlight
+                        title="Platform Leads"
+                        value={stats?.totalLeads || 0}
+                        icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8z" /><path d="M23 21v-2a4 4 0 00-3-3.87" /></svg>}
+                    />
+                    <StatCard
+                        title="Conversion Rate"
+                        value={`${stats?.conversionRate?.toFixed(1) || 0}%`}
+                        icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20v-6M6 20V10M18 20V4" /></svg>}
+                    />
+                    <StatCard
+                        title="Avg Duration"
+                        value={`${stats?.avgDuration || 0}s`}
+                        icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                     />
                 </div>
 
@@ -164,6 +225,43 @@ export default function AdminDashboard() {
                             <button className="w-full mt-4 py-2 border border-white/[0.08] rounded-lg text-xs text-[rgba(240,244,250,0.5)] hover:bg-white/[0.03] transition">
                                 View Full Logs
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Global Controls */}
+                    <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl relative overflow-hidden">
+                        <h2 className="mb-6 text-xl font-semibold flex items-center gap-2">
+                             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Platform Controls
+                        </h2>
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                                <div>
+                                    <p className="text-sm font-semibold text-[#f0f4fa]">Email Verification</p>
+                                    <p className="text-xs text-[rgba(240,244,250,0.4)] mt-1">
+                                        {settings?.emailVerificationEnabled ? "Signup verification is ON" : "Signup verification is OFF"}
+                                    </p>
+                                </div>
+                                <Toggle 
+                                    value={settings?.emailVerificationEnabled ?? true} 
+                                    onChange={handleToggleEmailVerification} 
+                                />
+                            </div>
+                            
+                            <div className="pt-4 border-t border-white/[0.05]">
+                                <p className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.3)] mb-4">Maintenance</p>
+                                <button
+                                    onClick={() => window.location.href = '/admin/system'}
+                                    className="w-full py-2.5 flex items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] text-xs text-[#f0f4fa] hover:bg-white/[0.05] transition"
+                                >
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
+                                    Advanced System Settings
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

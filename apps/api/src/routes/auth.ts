@@ -131,20 +131,29 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as any,
         });
 
-        // Send verification email
+        // Send verification email (if enabled)
         try {
-          const webUrl = process.env.WEB_URL || "http://localhost:3000";
-          const verifyUrl = `${webUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(body.email)}`;
-          const { createNotification, NotifType } = await import("../services/notification");
-          
-          await createNotification({
-            userId: user.id,
-            type: NotifType.EMAIL_VERIFICATION,
-            title: "Verify your email address",
-            body: `Welcome to OrbisVoice, ${body.name}! Please verify your email address by clicking the link below:\n\n${verifyUrl}\n\nIf you did not create an account, please ignore this email.`,
-            sendEmail: true
-          });
-          logger.info({ userId: user.id, email: body.email }, "Verification email sent on signup");
+          if (settings?.emailVerificationEnabled) {
+            const webUrl = process.env.WEB_URL || "http://localhost:3000";
+            const verifyUrl = `${webUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(body.email)}`;
+            const { createNotification, NotifType } = await import("../services/notification");
+            
+            await createNotification({
+              userId: user.id,
+              type: NotifType.EMAIL_VERIFICATION,
+              title: "Verify your email address",
+              body: `Welcome to OrbisVoice, ${body.name}! Please verify your email address by clicking the link below:\n\n${verifyUrl}\n\nIf you did not create an account, please ignore this email.`,
+              sendEmail: true
+            });
+            logger.info({ userId: user.id, email: body.email }, "Verification email sent on signup");
+          } else {
+            // Auto-verify if setting is disabled
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { emailVerified: new Date() }
+            });
+            logger.info({ userId: user.id }, "Bypassing email verification (globally disabled)");
+          }
         } catch (emailErr) {
           logger.error({ emailErr, userId: user.id }, "Failed to send verification email on signup");
         }
@@ -174,7 +183,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         
         return reply.code(201).send({
           ok: true,
-          message: "Signup successful! Please check your email to verify your account.",
+          message: settings?.emailVerificationEnabled 
+            ? "Signup successful! Please check your email to verify your account."
+            : "Signup successful!",
           data: { user: { id: user.id, email: user.email, name: user.name, username: (user as any).username } },
         } as ApiResponse);
       } catch (err) {
@@ -289,8 +300,9 @@ export async function authRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        // Check if email verified
-        if (!user.emailVerified && !user.isEmailVerifiedByAdmin && !user.isAdmin) {
+        // Check if email verified (if enabled)
+        const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+        if (settings?.emailVerificationEnabled && !user.emailVerified && !user.isEmailVerifiedByAdmin && !user.isAdmin) {
           return reply.code(403).send({
             ok: false,
             message: "Please verify your email address before logging in.",
@@ -335,8 +347,6 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(500).send({
           ok: false,
           message: "Internal server error",
-          error: err instanceof Error ? err.message : String(err),
-          stack: env.NODE_ENV !== 'production' ? (err as any).stack : undefined
         } as ApiResponse);
       }
     }
