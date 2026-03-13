@@ -1,0 +1,46 @@
+name: Promote User to Admin (One-Time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'User email to promote'
+        required: true
+        default: 'talk@myorbisvoice.com'
+
+env:
+  VPS_IP: ${{ secrets.VPS_IP }}
+  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promote user via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VPS_IP }}
+          username: root
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          script: |
+            docker exec orbisvoice-api-prod node -e "
+              const { PrismaClient } = require('@prisma/client');
+              const p = new PrismaClient();
+              (async () => {
+                const email = '${{ github.event.inputs.email }}';
+                const user = await p.user.findUnique({ where: { email } });
+                if (!user) { console.error('User not found:', email); process.exit(1); }
+                await p.user.update({
+                  where: { id: user.id },
+                  data: {
+                    role: 'SYSTEM_ADMIN',
+                    isAdmin: true,
+                    emailVerified: new Date(),
+                    isEmailVerifiedByAdmin: true
+                  }
+                });
+                console.log('SUCCESS: Promoted', email, 'to SYSTEM_ADMIN');
+                await p.\$disconnect();
+              })().catch(e => { console.error(e); process.exit(1); });
+            "
