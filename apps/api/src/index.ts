@@ -5,7 +5,6 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import bcrypt from "bcryptjs";
 import { env } from "./env";
-
 import { logger } from "./logger";
 import { authRoutes } from "./routes/auth";
 import { agentRoutes } from "./routes/agents";
@@ -140,75 +139,93 @@ const start = async () => {
     registerToolHandlers();
     logger.info("Tool handlers registered");
 
-    // Bootstrap admin user
-    try {
-      const adminEmail = "admin@orbisvoice.app";
-      const adminExist = await prisma.user.findFirst({
-        where: { email: adminEmail }
-      });
+    // Bootstrap admin user with retries
+    const maxRetries = 5;
+    let retries = 0;
+    let bootstrapped = false;
 
-      if (!adminExist) {
-        // Create a default tenant for the admin if none exists
-        let defaultTenant = await prisma.tenant.findFirst();
-        if (!defaultTenant) {
-          defaultTenant = await prisma.tenant.create({
-            data: { name: "System Workspace" }
-          });
-          logger.info("Default system tenant created");
-        }
-
-        // Create the admin user
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash("admin123", salt);
-        
-        await prisma.user.create({
-          data: {
-            email: adminEmail,
-            name: "System Admin",
-            isAdmin: true,
-            role: "SYSTEM_ADMIN",
-            tenantId: defaultTenant.id,
-            emailVerified: new Date(),
-            passwordHash: passwordHash
-          }
+    while (retries < maxRetries && !bootstrapped) {
+      try {
+        const adminEmail = "admin@orbisvoice.app";
+        const adminExist = await prisma.user.findFirst({
+          where: { email: adminEmail }
         });
-        logger.info("Admin user created");
-      } else {
-        // Ensure existing admin has correct roles and a password if missing
-        const updateData: any = { isAdmin: true, role: "SYSTEM_ADMIN" };
-        
-        if (!adminExist.passwordHash) {
+
+        if (!adminExist) {
+          // Create a default tenant for the admin if none exists
+          let defaultTenant = await prisma.tenant.findFirst();
+          if (!defaultTenant) {
+            defaultTenant = await prisma.tenant.create({
+              data: { name: "System Workspace" }
+            });
+            logger.info("Default system tenant created");
+          }
+
+          // Create the admin user
           const salt = await bcrypt.genSalt(10);
-          updateData.passwordHash = await bcrypt.hash("admin123", salt);
-          logger.info("Admin password reset to 'admin123'");
+          const passwordHash = await bcrypt.hash("admin123", salt);
+          
+          await prisma.user.create({
+            data: {
+              email: adminEmail,
+              name: "System Admin",
+              isAdmin: true,
+              role: "SYSTEM_ADMIN",
+              tenantId: defaultTenant.id,
+              emailVerified: new Date(),
+              passwordHash: passwordHash
+            }
+          });
+          logger.info("Admin user created");
+        } else {
+          // Ensure existing admin has correct roles and a password if missing
+          const updateData: any = { isAdmin: true, role: "SYSTEM_ADMIN" };
+          
+          if (!adminExist.passwordHash) {
+            const salt = await bcrypt.genSalt(10);
+            updateData.passwordHash = await bcrypt.hash("admin123", salt);
+            logger.info("Admin password reset to 'admin123'");
+          }
+
+          await prisma.user.update({
+            where: { id: adminExist.id },
+            data: updateData
+          });
+          logger.info("Admin roles synchronized");
         }
 
-        await prisma.user.update({
-          where: { id: adminExist.id },
-          data: updateData
-        });
-        logger.info("Admin roles synchronized");
+        // Bootstrap global platform settings
+        const settingsCount = await prisma.platformSettings.count();
+        if (settingsCount === 0) {
+          await prisma.platformSettings.create({
+            data: {
+              id: "global",
+              starterLimit: 1000,
+              professionalLimit: 10000,
+              enterpriseLimit: 100000,
+              aiInfraLimit: 250000,
+              ltdLimit: 1000,
+            }
+          });
+          logger.info("Platform settings bootstrapped");
+        }
+        
+        logger.info("Admin bootstrap completed");
+        bootstrapped = true;
+      } catch (err: any) {
+        retries++;
+        if (err.code === 'P2021' || err.message?.includes('does not exist')) {
+          logger.warn(`Bootstrap tables not ready (attempt ${retries}/${maxRetries}), waiting...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        } else {
+          logger.error({ err }, "Unexpected bootstrap failure");
+          break;
+        }
       }
+    }
 
-
-
-      // Bootstrap global platform settings
-      const settingsCount = await prisma.platformSettings.count();
-      if (settingsCount === 0) {
-        await prisma.platformSettings.create({
-          data: {
-            id: "global",
-            starterLimit: 1000,
-            professionalLimit: 10000,
-            enterpriseLimit: 100000,
-            aiInfraLimit: 250000,
-            ltdLimit: 1000,
-          }
-        });
-        logger.info("Platform settings bootstrapped");
-      }
-    } catch (err) {
-      logger.error({ err }, "Bootstrap failed");
+    if (!bootstrapped) {
+      logger.error("Bootstrap failed after all retries. The database might need manual migration.");
     }
 
     await fastify.listen({ port: env.PORT, host: "0.0.0.0" });

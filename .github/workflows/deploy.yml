@@ -119,8 +119,8 @@ jobs:
         with:
           host: ${{ env.VPS_IP }}
           username: root
-          key: ${{ env.SSH_PRIVATE_KEY }}
-          envs: POSTGRES_PASSWORD,DATABASE_URL,JWT_SECRET,TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: POSTGRES_PASSWORD,DATABASE_URL,JWT_SECRET,STRIPE_API_KEY,STRIPE_WEBHOOK_SECRET,OPENAI_API_KEY,GEMINI_API_KEY,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,FIREBASE_PROJECT_ID,FIREBASE_CLIENT_EMAIL,FIREBASE_PRIVATE_KEY,TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY
           script: |
             cd /opt/orbisvoice
             mkdir -p nginx/certs
@@ -138,16 +138,29 @@ jobs:
             echo "Checking certificates..."
             ls -la nginx/certs/
             
-            # Stop containers (WITHOUT destroying volumes - preserves database!)
-            echo "Stopping containers (keeping data volumes)..."
+            # Safe deployment steps (keeping volumes)
+            echo "Stopping containers (preserving volumes)..."
             docker compose -f docker-compose.prod.yml down || true
-            docker system prune -af || true
+            docker system prune -f || true
             
             echo "Pulling latest images..."
             POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL docker compose -f docker-compose.prod.yml pull
             
             echo "Starting fresh containers..."
-            POSTGRES_PASSWORD=$POSTGRES_PASSWORD DATABASE_URL=$DATABASE_URL TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY docker compose -f docker-compose.prod.yml up -d
+            POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
+            DATABASE_URL=$DATABASE_URL \
+            STRIPE_API_KEY=$STRIPE_API_KEY \
+            STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET \
+            OPENAI_API_KEY=$OPENAI_API_KEY \
+            GEMINI_API_KEY=$GEMINI_API_KEY \
+            GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID \
+            GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET \
+            FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID \
+            FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL \
+            FIREBASE_PRIVATE_KEY=$FIREBASE_PRIVATE_KEY \
+            TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY \
+            TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY \
+            docker compose -f docker-compose.prod.yml up -d
             
             echo "Wait for Database to be ready..."
             for i in {1..10}; do
