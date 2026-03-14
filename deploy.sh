@@ -34,8 +34,11 @@ git reset --hard origin/$BRANCH
 log "Code updated to $(git log -1 --format='%h %s')"
 
 # 2. Build and restart all services
-log "Building and restarting containers..."
-docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
+log "Clearing Docker build cache (as requested)..."
+docker builder prune -f --filter "until=24h"
+
+log "Building and restarting containers (clean build)..."
+docker compose -f "$COMPOSE_FILE" up -d --build --no-cache --remove-orphans
 
 # 3. Wait for API to be healthy
 log "Waiting for API health check..."
