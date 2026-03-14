@@ -101,7 +101,14 @@ fi
 echo ""
 echo "=== Next Step: Configure GitHub Webhook ==="
 echo "1. Go to: https://github.com/cwpete61/cwpete61-OrbisVoice/settings/hooks/new"
-echo "2. Payload URL: http://$(curl -s ifconfig.me):9000/webhook"
+IP=$(curl -s ifconfig.me)
+if [[ $IP =~ ":" ]]; then
+  # IPv6 address detected, wrap in square brackets
+  PAYLOAD_URL="http://[$IP]:9000/webhook"
+else
+  PAYLOAD_URL="http://$IP:9000/webhook"
+fi
+echo "2. Payload URL: $PAYLOAD_URL"
 echo "3. Content type: application/json"
 echo "4. Secret: (the WEBHOOK_SECRET value from your .env)"
 echo "5. Events: Just the push event"
