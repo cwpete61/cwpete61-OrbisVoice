@@ -51,7 +51,11 @@ until curl -sf http://localhost:4001/health > /dev/null 2>&1; do
 done
 [ $WAITED -lt $MAX_WAIT ] && log "API is healthy (took ${WAITED}s)"
 
-# 4. Run commerce DB migration
+# 4. Run database migrations
+log "Syncing Primary API DB schema..."
+docker exec orbisvoice-api-prod npx prisma db push --accept-data-loss 2>&1 | tee -a "$LOG_FILE" || \
+  log "WARNING: API DB sync failed (non-fatal)"
+
 log "Syncing Commerce DB schema..."
 docker exec orbisvoice-commerce-agent-prod \
   npx prisma db push --schema=prisma/schema.prisma --accept-data-loss 2>&1 | tee -a "$LOG_FILE" || \
