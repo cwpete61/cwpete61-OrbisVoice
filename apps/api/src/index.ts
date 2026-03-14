@@ -99,7 +99,18 @@ fastify.get("/health", async () => {
 
 // Base API endpoint
 fastify.get("/api", async () => {
-  return { message: "OrbisVoice API v1", version: "1.0.1" };
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../version.json"), "utf8"));
+    return { 
+      message: "OrbisVoice API v1", 
+      version: versionData.version,
+      deployTime: versionData.deployTime
+    };
+  } catch (err) {
+    return { message: "OrbisVoice API v1", version: "1.0.1 (fallback)" };
+  }
 });
 
 // Register route groups
