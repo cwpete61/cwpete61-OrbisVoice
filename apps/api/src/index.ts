@@ -99,7 +99,7 @@ fastify.get("/health", async () => {
 
 // Base API endpoint
 fastify.get("/api", async () => {
-  return { message: "OrbisVoice API v1", version: "1.0.0" };
+  return { message: "OrbisVoice API v1", version: "1.0.1" };
 });
 
 // Register route groups
