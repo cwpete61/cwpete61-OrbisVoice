@@ -21,12 +21,14 @@ model Tenant {
   usageLimit           Int                 @default(100)
   usageCount           Int                 @default(0)
   usageResetAt         DateTime            @default(now())
+  creditBalance        Float               @default(0)
   billingEmail         String?
   agents               Agent[]
   apiKeys              ApiKey[]
   googleConfig         TenantGoogleConfig?
   twilioConfig         TenantTwilioConfig?
   users                User[]
+  leads                Lead[]
 }
 
 model TenantTwilioConfig {
@@ -41,31 +43,51 @@ model TenantTwilioConfig {
 }
 
 model User {
-  id                   String              @id @default(cuid())
-  tenantId             String
-  email                String              @unique
-  name                 String
-  passwordHash         String?
-  referralCodeUsed     String?
-  referralRewardTotal  Float               @default(0)
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  isAdmin              Boolean             @default(false)
-  avatar               String?
-  username             String?             @unique
-  googleId             String?             @unique
-  googleEmail          String?
-  googleName           String?
-  googleProfilePicture String?
-  googleAuthProvider   String?
-  role                 UserRole            @default(USER)
-  isBlocked            Boolean             @default(false)
-  commissionLevel      CommissionLevel     @default(LOW)
-  isAffiliate          Boolean             @default(false)
-  affiliate            Affiliate?
-  referralsCreated     Referral[]          @relation("referrer")
-  rewards              RewardTransaction[] @relation("referrer_rewards")
-  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                     String                   @id @default(cuid())
+  tenantId               String
+  email                  String                   @unique
+  name                   String
+  firstName              String?
+  lastName               String?
+  businessName           String?
+  phone                  String?
+  address                String?
+  unit                   String?
+  city                   String?
+  state                  String?
+  zip                    String?
+  taxFormUrl             String?
+  tinSsn                 String?
+  passwordHash           String?
+  referralCodeUsed       String?
+  referralRewardTotal    Float                    @default(0)
+  emailVerified          DateTime?
+  emailNotifications     Boolean                  @default(true)
+  emailVerificationToken String?
+  isEmailVerifiedByAdmin Boolean                  @default(false)
+  resetPasswordToken     String?
+  resetPasswordExpires   DateTime?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  isAdmin                Boolean                  @default(false)
+  avatar                 String?
+  username               String?                  @unique
+  googleId               String?                  @unique
+  googleEmail            String?
+  googleName             String?
+  googleProfilePicture   String?
+  googleAuthProvider     String?
+  role                   UserRole                 @default(USER)
+  isBlocked              Boolean                  @default(false)
+  commissionLevel        CommissionLevel          @default(LOW)
+  isAffiliate            Boolean                  @default(false)
+  affiliate              Affiliate?
+  referralsCreated       Referral[]               @relation("referrer")
+  rewards                RewardTransaction[]      @relation("referrer_rewards")
+  rewardsReceived        RewardTransaction[]      @relation("referee_rewards")
+  notifications          Notification[]
+  notifPreference        NotificationPreference?
+  tenant                 Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, email])
 }
@@ -76,11 +98,13 @@ model Agent {
   name         String
   systemPrompt String
   voiceId      String               @default("default")
+  isActive     Boolean              @default(true)
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   toolAudits   ToolExecutionAudit[]
   transcripts  Transcript[]
+  leads        Lead[]
 }
 
 model ApiKey {
@@ -128,6 +152,7 @@ model RewardTransaction {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   referrer        User      @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
+  referee         User?     @relation("referee_rewards", fields: [refereeId], references: [id])
 }
 
 model ToolExecutionAudit {
@@ -172,12 +197,21 @@ model SystemEmailConfig {
 }
 
 model StripeConnectConfig {
-  id            String   @id @default("global")
-  clientId      String?
-  enabled       Boolean  @default(false)
-  minimumPayout Float    @default(100)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default("global")
+  clientId          String?
+  accountId         String?
+  publishableKey    String?
+  secretKey         String?
+  webhookSecret     String?
+  priceStarter      String?
+  priceProfessional String?
+  priceEnterprise   String?
+  priceLtd          String?
+  priceAiInfra      String?
+  enabled           Boolean  @default(false)
+  minimumPayout     Float    @default(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model TenantGoogleConfig {
@@ -232,6 +266,9 @@ model PlatformSettings {
   enterpriseLimit          Int             @default(100000)
   ltdLimit                 Int             @default(1000)
   aiInfraLimit             Int             @default(250000)
+  emailVerificationEnabled Boolean         @default(false)
+  globalEmailEnabled       Boolean         @default(true)
+  transactionFeePercent    Float           @default(3.4)
   updatedAt                DateTime        @updatedAt
   commissionDurationMonths Int             @default(0)
   payoutMinimum            Float           @default(100)
@@ -241,24 +278,33 @@ model PlatformSettings {
 }
 
 model Affiliate {
-  id                  String              @id @default(cuid())
-  userId              String              @unique
-  status              AffiliateStatus     @default(PENDING)
-  slug                String              @unique
-  paymentInfo         String?
-  totalEarnings       Float               @default(0)
-  totalPaid           Float               @default(0)
-  balance             Float               @default(0)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  payoutEmail         String?
-  payoutMethod        String?
-  payoutPhone         String?
-  stripeAccountId     String?             @unique
-  stripeAccountStatus String?
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payouts             AffiliatePayout[]
-  referrals           AffiliateReferral[]
+  id                   String              @id @default(cuid())
+  userId               String              @unique
+  status               AffiliateStatus     @default(PENDING)
+  slug                 String              @unique
+  paymentInfo          String?
+  totalEarnings        Float               @default(0)
+  totalPaid            Float               @default(0)
+  balance              Float               @default(0)
+  lockedCommissionRate Float?
+  customCommissionRate Float?
+  taxFormCompleted     Boolean             @default(false)
+  tax1099Uploaded      Boolean             @default(false)
+  payoutHeld           Boolean             @default(false)
+  payoutHoldReason     String?
+  payoutHoldLiftedAt   DateTime?
+  payoutHoldLiftedBy   String?
+  lastPayoutAt         DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  payoutEmail          String?
+  payoutMethod         String?
+  payoutPhone          String?
+  stripeAccountId      String?             @unique
+  stripeAccountStatus  String?
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payouts              AffiliatePayout[]
+  referrals            AffiliateReferral[]
 }
 
 model AffiliateReferral {
@@ -276,6 +322,8 @@ model AffiliatePayout {
   id            String       @id @default(cuid())
   affiliateId   String
   amount        Float
+  feeAmount     Float?
+  netAmount     Float?
   status        PayoutStatus @default(PENDING)
   method        String       @default("stripe")
   transactionId String?
@@ -286,6 +334,7 @@ model AffiliatePayout {
 
 enum UserRole {
   ADMIN
+  SYSTEM_ADMIN
   USER
 }
 
@@ -311,4 +360,90 @@ enum PayoutStatus {
   PENDING
   PAID
   CANCELLED
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  tenantId  String
+  agentId   String
+  name      String
+  phone     String
+  email     String?
+  summary   String?
+  metadata  String?
+  isBooked  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      String
+  data      Json?
+  read      Boolean  @default(false)
+  emailSent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  commissions   Boolean @default(true)
+  payouts       Boolean @default(true)
+  leads         Boolean @default(true)
+  usageWarnings Boolean @default(true)
+  announcements Boolean @default(true)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique
+  subject   String
+  bodyHtml  String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FaqEntry {
+  id          String        @id @default(cuid())
+  question    String
+  answer      String
+  category    String        @default("general")
+  source      String        @default("admin")
+  published   Boolean       @default(true)
+  helpful     Int           @default(0)
+  notHelpful  Int           @default(0)
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  questions   FaqQuestion[]
+}
+
+model FaqQuestion {
+  id              String    @id @default(cuid())
+  question        String
+  suggestedAnswer String?
+  status          String    @default("pending")
+  faqEntryId      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  faqEntry        FaqEntry? @relation(fields: [faqEntryId], references: [id])
+}
+
+model ConversationPackage {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  credits   Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
