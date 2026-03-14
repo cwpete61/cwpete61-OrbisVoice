@@ -8,15 +8,17 @@ import { logger } from "../logger";
 
 // Price ID mapping - fallback to placeholders if not in env
 // Price ID helper function
-const getPriceId = (tier: string) => {
-  switch (tier) {
-    case "starter": return env.STRIPE_PRICE_STARTER;
-    case "professional": return env.STRIPE_PRICE_PROFESSIONAL;
-    case "enterprise": return env.STRIPE_PRICE_ENTERPRISE;
-    case "ai-revenue-infrastructure": return env.STRIPE_PRICE_AI_INFRA;
-    case "ltd": return env.STRIPE_PRICE_LTD;
-    default: return null;
-  }
+// Price ID helper function - now fetches from DB-backed config or env fallback
+const getPriceIdsFromConfig = async () => {
+  const stripeConfig = await prisma.stripeConnectConfig.findUnique({ where: { id: "global" } });
+  
+  return {
+    starter: stripeConfig?.priceStarter || env.STRIPE_PRICE_STARTER,
+    professional: stripeConfig?.priceProfessional || env.STRIPE_PRICE_PROFESSIONAL,
+    enterprise: stripeConfig?.priceEnterprise || env.STRIPE_PRICE_ENTERPRISE,
+    "ai-revenue-infrastructure": stripeConfig?.priceAiInfra || env.STRIPE_PRICE_AI_INFRA,
+    ltd: stripeConfig?.priceLtd || env.STRIPE_PRICE_LTD,
+  };
 };
 
 const CheckoutSchema = z.object({
@@ -153,13 +155,15 @@ async function billingRoutes(fastify: FastifyInstance) {
         }
       }
 
-      const priceId = getPriceId(tier);
+      const priceIds = await getPriceIdsFromConfig();
+      const priceId = (priceIds as any)[tier];
+
       logger.info({ tier, priceId, customerId }, "Initiating checkout session");
 
       if (!priceId || priceId.includes("placeholder")) {
         logger.error({ tier, priceId }, "Invalid price ID configuration");
         return reply.status(400).send({ 
-          error: `Price ID not configured for tier: ${tier}.` 
+          error: `Price ID not configured for tier: ${tier}. Please contact support or update Stripe settings.` 
         });
       }
 

@@ -234,6 +234,11 @@ function SettingsContent() {
     accountId: "",
     publishableKey: "",
     secretKey: "",
+    priceStarter: "",
+    priceProfessional: "",
+    priceEnterprise: "",
+    priceLtd: "",
+    priceAiInfra: "",
     clientId: "", // Deprecated
     enabled: false,
     minimumPayout: 100,
@@ -1513,7 +1518,7 @@ function SettingsContent() {
 
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
-                  Stripe Secret Key (SK_)
+                  Stripe Secret Key (sk_)
                 </label>
                 <PasswordInput
                   value={stripeConnectConfig.secretKey || ""}
@@ -1524,6 +1529,36 @@ function SettingsContent() {
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                 />
                 <p className="mt-1 text-[10px] text-white/30 italic">Required for all backend Stripe operations</p>
+              </div>
+
+              <div className="pt-2">
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                  Billing Tier Price IDs
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[
+                    { key: "priceStarter", label: "Starter Price ID" },
+                    { key: "priceProfessional", label: "Professional Price ID" },
+                    { key: "priceEnterprise", label: "Enterprise Price ID" },
+                    { key: "priceLtd", label: "Lifetime Deal (LTD) Price ID" },
+                    { key: "priceAiInfra", label: "AI Infra Price ID" },
+                  ].map((field) => (
+                    <div key={field.key}>
+                      <label className="mb-1.5 block text-[10px] font-medium text-[rgba(240,244,250,0.5)]">
+                        {field.label}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="price_..."
+                        value={(stripeConnectConfig as any)[field.key] || ""}
+                        onChange={(e) =>
+                          setStripeConnectConfig({ ...stripeConnectConfig, [field.key]: e.target.value })
+                        }
+                        className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-xs text-[#f0f4fa] placeholder-[rgba(240,244,250,0.2)] outline-none focus:border-[#14b8a6]/60 transition"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
