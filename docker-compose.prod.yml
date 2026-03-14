@@ -37,7 +37,6 @@ services:
       - orbisvoice-prod-network
 
   api:
-    image: ghcr.io/cwpete61/orbisvoice-api:latest
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -77,7 +76,6 @@ services:
       retries: 5
 
   web:
-    image: ghcr.io/cwpete61/orbisvoice-web:latest
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -105,7 +103,6 @@ services:
       - orbisvoice-prod-network
 
   voice-gateway:
-    image: ghcr.io/cwpete61/orbisvoice-voice-gateway:latest
     build:
       context: .
       dockerfile: Dockerfile.voice-gateway
@@ -143,7 +140,9 @@ services:
       - orbisvoice-prod-network
 
   commerce-agent:
-    image: ghcr.io/cwpete61/orbisvoice-commerce-agent:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.commerce-agent
     container_name: orbisvoice-commerce-agent-prod
     restart: always
     environment:

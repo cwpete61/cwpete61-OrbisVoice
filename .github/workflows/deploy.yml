@@ -1,8 +1,9 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches: [ master ]
+  workflow_dispatch:
+    # Auto-deploy disabled — webhook server on VPS handles deploys.
+    # Run this manually only for emergency/rollback situations.
 
 env:
   OWNER_LC: ${{ github.repository_owner }}
