@@ -231,7 +231,10 @@ function SettingsContent() {
   const [systemTestEmailTarget, setSystemTestEmailTarget] = useState("");
 
   const [stripeConnectConfig, setStripeConnectConfig] = useState({
-    clientId: "",
+    accountId: "",
+    publishableKey: "",
+    secretKey: "",
+    clientId: "", // Deprecated
     enabled: false,
     minimumPayout: 100,
   });
@@ -821,7 +824,12 @@ function SettingsContent() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ clientId: stripeConnectConfig.clientId })
+        body: JSON.stringify({ 
+          accountId: stripeConnectConfig.accountId,
+          publishableKey: stripeConnectConfig.publishableKey,
+          secretKey: stripeConnectConfig.secretKey,
+          clientId: stripeConnectConfig.clientId
+        })
       });
       const data = await res.json();
 
@@ -1470,55 +1478,90 @@ function SettingsContent() {
             </p>
 
             <form onSubmit={saveStripeConnectConfig} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                    Stripe Account ID (acct_)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="acct_..."
+                    value={stripeConnectConfig.accountId || stripeConnectConfig.clientId || ""}
+                    onChange={(e) =>
+                      setStripeConnectConfig({ ...stripeConnectConfig, accountId: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  />
+                  <p className="mt-1 text-[10px] text-white/30 italic">Used for payouts and identification</p>
+                </div>
+                
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                    Stripe Publishable Key (pk_)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="pk_test_... or pk_live_..."
+                    value={stripeConnectConfig.publishableKey || ""}
+                    onChange={(e) =>
+                      setStripeConnectConfig({ ...stripeConnectConfig, publishableKey: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
                   Stripe Secret Key (SK_)
                 </label>
-                <input
-                  type="text"
-                  value={stripeConnectConfig.clientId}
-                  onChange={(e) =>
-                    setStripeConnectConfig({ ...stripeConnectConfig, clientId: e.target.value })
+                <PasswordInput
+                  value={stripeConnectConfig.secretKey || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setStripeConnectConfig({ ...stripeConnectConfig, secretKey: e.target.value })
                   }
+                  placeholder="sk_test_... or sk_live_..."
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-                  placeholder="sk_live_... or sk_test_..."
                 />
-                <p className="mt-1.5 text-[11px] text-[rgba(240,244,250,0.4)]">
-                  Enter your Stripe Secret Key. This allows you to test connections even if the platform key is not yet configured.
-                </p>
+                <p className="mt-1 text-[10px] text-white/30 italic">Required for all backend Stripe operations</p>
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
-                  Minimum Payout Amount ($)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={stripeConnectConfig.minimumPayout}
-                  onChange={(e) =>
-                    setStripeConnectConfig({
-                      ...stripeConnectConfig,
-                      minimumPayout: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-                  placeholder="100"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                    Minimum Payout Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={stripeConnectConfig.minimumPayout}
+                    onChange={(e) =>
+                      setStripeConnectConfig({
+                        ...stripeConnectConfig,
+                        minimumPayout: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                    placeholder="100"
+                  />
+                </div>
 
-              <label className="flex items-center gap-2 text-sm text-[rgba(240,244,250,0.65)] mt-6">
-                <input
-                  type="checkbox"
-                  checked={stripeConnectConfig.enabled}
-                  onChange={(e) =>
-                    setStripeConnectConfig({ ...stripeConnectConfig, enabled: e.target.checked })
-                  }
-                  className="h-4 w-4 rounded border-white/[0.2] bg-[#05080f]"
-                />
-                Enable Stripe Connect Onboarding
-              </label>
+                <div className="flex flex-col justify-end pb-1">
+                  <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2">
+                    <span className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Onboarding Enabled</span>
+                    <Toggle
+                      value={stripeConnectConfig.enabled}
+                      onChange={() =>
+                        setStripeConnectConfig({
+                          ...stripeConnectConfig,
+                          enabled: !stripeConnectConfig.enabled,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
 
               {stripeConnectMessage && (
                 <div
@@ -1556,19 +1599,20 @@ function SettingsContent() {
                 </div>
               )}
 
-              <div className="pt-2 flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   type="submit"
                   disabled={stripeConnectSaving}
-                  className="btn-primary text-sm disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-[#14b8a6] px-6 py-3 text-sm font-semibold text-[#05080f] transition hover:bg-[#0d9488] disabled:opacity-50"
                 >
-                  {stripeConnectSaving ? "Saving…" : "Save Configuration"}
+                  {stripeConnectSaving ? "Saving..." : "Save Configuration"}
                 </button>
+
                 <button
                   type="button"
                   onClick={testStripeConnectConnection}
-                  disabled={stripeConnectTesting}
-                  className="rounded-lg border border-white/[0.1] bg-white/[0.05] px-5 py-2 text-sm font-medium text-[#f0f4fa] hover:bg-white/[0.1] disabled:opacity-50 transition"
+                  disabled={stripeConnectTesting || (!stripeConnectConfig.secretKey && !stripeConnectConfig.clientId)}
+                  className="flex-1 rounded-xl border border-white/[0.1] bg-white/[0.05] px-6 py-3 text-sm font-semibold text-[#f0f4fa] transition hover:bg-white/[0.1] disabled:opacity-30"
                 >
                   {stripeConnectTesting ? "Testing..." : "Test Connection"}
                 </button>

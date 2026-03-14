@@ -1161,16 +1161,22 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const config = await (prisma).stripeConnectConfig.upsert({
           where: { id: "global" },
           update: {
+            accountId: body.accountId,
+            publishableKey: body.publishableKey,
+            secretKey: body.secretKey,
             clientId: body.clientId,
             enabled: body.enabled,
             minimumPayout: body.minimumPayout,
-          },
+          } as any,
           create: {
             id: "global",
+            accountId: body.accountId,
+            publishableKey: body.publishableKey,
+            secretKey: body.secretKey,
             clientId: body.clientId,
             enabled: body.enabled || false,
             minimumPayout: body.minimumPayout || 100,
-          },
+          } as any,
         });
 
         return reply.send({
@@ -1189,42 +1195,44 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: test Stripe Connect connection
-  fastify.post<{ Body: { clientId?: string } }>(
+  fastify.post<{ Body: { accountId?: string; secretKey?: string; clientId?: string } }>(
     "/admin/stripe-connect/test",
     { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
         const stripeModule = await import("stripe");
         const Stripe = stripeModule.default;
-        // Use the centralized env configuration
-        let stripeKey = env.STRIPE_API_KEY;
-        const { clientId } = request.body || {};
-
-        // If clientId is a secret key (sk_...), use it for the test
-        if (clientId && clientId.startsWith("sk_")) {
-          stripeKey = clientId;
-        }
+        // Check DB config first, then env
+        const dbConfig = await prisma.stripeConnectConfig.findUnique({ where: { id: "global" } });
+        
+        const { accountId, secretKey, clientId } = request.body || {};
+        
+        // Priority: Request body secretKey > Request body clientId (if it's sk_...) > DB secretKey > Env secretKey
+        let stripeKey = secretKey || (clientId?.startsWith("sk_") ? clientId : null) || (dbConfig as any)?.secretKey || env.STRIPE_API_KEY;
+        
+        // Request body accountId > Request body clientId (if it's acct_...) > DB accountId > DB clientId
+        const targetAccountId = accountId || (clientId?.startsWith("acct_") ? clientId : null) || (dbConfig as any)?.accountId || (dbConfig as any)?.clientId;
 
         if (!stripeKey) {
           return reply.code(400).send({
             ok: false,
-            message: "No STRIPE_API_KEY found in server environment",
+            message: "No Stripe Secret Key found in request, database, or environment",
           } as ApiResponse);
         }
 
         if (stripeKey === "sk_live_xxx" || stripeKey === "sk_test_xxx") {
           return reply.code(400).send({
             ok: false,
-            message: `Invalid API Key provided: ${stripeKey}. Please update your .env with a real Stripe Secret Key.`,
+            message: `Invalid API Key provided: ${stripeKey}. Please update your configuration with a real Stripe Secret Key.`,
           } as ApiResponse);
         }
 
         const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" as any });
 
-        // If a clientId is provided, try to retrieve that specific account
-        if (clientId && clientId.startsWith("acct_")) {
+        // If a targetAccountId is provided, try to retrieve that specific account
+        if (targetAccountId && targetAccountId.startsWith("acct_")) {
           try {
-            const account = await stripe.accounts.retrieve(clientId);
+            const account = await stripe.accounts.retrieve(targetAccountId);
             return reply.send({
               ok: true,
               data: {
@@ -1232,12 +1240,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Connected Account",
                 email: account.email
               },
-              message: `Successfully verified Stripe Account: ${clientId}`,
+              message: `Successfully verified Stripe Account: ${targetAccountId}`,
             } as ApiResponse);
           } catch (accountErr: any) {
              return reply.code(400).send({
               ok: false,
-              message: `Failed to verify Stripe Account ID (${clientId}): ${accountErr.message}`,
+              message: `Failed to verify Stripe Account ID (${targetAccountId}): ${accountErr.message}`,
             } as ApiResponse);
           }
         }

@@ -293,6 +293,22 @@ class StripeClient {
     }
     return this.stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
   }
+
+  /**
+   * Get a StripeClient initialized with platform-wide settings from the database
+   */
+  static async getPlatformClient(prisma: any, env: any): Promise<StripeClient> {
+    const config = await prisma.stripeConnectConfig.findUnique({
+      where: { id: "global" },
+    });
+
+    const apiKey = config?.secretKey || env.STRIPE_API_KEY;
+    
+    return new StripeClient({
+      apiKey: apiKey || "",
+      webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    });
+  }
 }
 
 export { StripeClient };

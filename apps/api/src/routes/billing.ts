@@ -26,9 +26,6 @@ const CheckoutSchema = z.object({
 });
 
 async function billingRoutes(fastify: FastifyInstance) {
-  const stripe = new StripeClient({
-    apiKey: env.STRIPE_API_KEY || "",
-  });
 
   // Get available tiers
   fastify.get(
@@ -98,6 +95,8 @@ async function billingRoutes(fastify: FastifyInstance) {
       const { tenantId } = request.user as any;
       let { email } = request.user as any;
       const { tier, successUrl, cancelUrl } = CheckoutSchema.parse(request.body);
+
+      const stripe = await StripeClient.getPlatformClient(prisma, env);
 
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
@@ -262,6 +261,7 @@ async function billingRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       const { tenantId } = request.user as any;
       const { returnUrl } = request.body as { returnUrl: string };
+      const stripe = await StripeClient.getPlatformClient(prisma, env);
 
       if (!returnUrl) {
         return reply.status(400).send({ error: "returnUrl is required" });

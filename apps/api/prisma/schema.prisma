@@ -216,12 +216,15 @@ model SystemEmailConfig {
 }
 
 model StripeConnectConfig {
-  id            String   @id @default("global")
-  clientId      String?
-  enabled       Boolean  @default(false)
-  minimumPayout Float    @default(100)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default("global")
+  accountId      String?
+  publishableKey String?
+  secretKey      String?
+  clientId       String? // Deprecated in favor of accountId/secretKey
+  enabled        Boolean  @default(false)
+  minimumPayout  Float    @default(100)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model TenantGoogleConfig {
