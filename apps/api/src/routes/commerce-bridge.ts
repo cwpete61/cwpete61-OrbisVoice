@@ -16,13 +16,20 @@ export async function commerceBridgeRoutes(fastify: FastifyInstance) {
 
     if (type === 'credit_purchase') {
       const { amount } = payload;
-      // Add credits to account
-      await prisma.user.update({
+      // Add credits to account via the user's tenant
+      const user = await prisma.user.findUnique({
         where: { id: userId },
-        data: {
-          creditBalance: { increment: amount }
-        }
+        select: { tenantId: true }
       });
+      
+      if (user) {
+        await prisma.tenant.update({
+          where: { id: user.tenantId },
+          data: {
+            creditBalance: { increment: amount }
+          }
+        });
+      }
       return { success: true };
     }
 
