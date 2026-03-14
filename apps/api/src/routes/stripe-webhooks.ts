@@ -189,6 +189,32 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         // Process commission
                         await referralManager.processCommission(user.id, amountTotal, sessionId);
 
+                        // ─── FULFILL PACKAGE PURCHASE ──────────────────────────
+                        if (session.metadata?.type === "package") {
+                            const packageId = session.metadata.packageId;
+                            const creditsToAdd = parseInt(session.metadata.credits || "0", 10);
+                            const tenantId = session.metadata.tenantId || tenant.id;
+
+                            if (creditsToAdd > 0) {
+                                await prisma.tenant.update({
+                                    where: { id: tenantId },
+                                    data: {
+                                        bonusCredits: { increment: creditsToAdd } as any
+                                    } as any,
+                                });
+                                logger.info({ tenantId, packageId, creditsToAdd }, "Bonus credits added via package purchase");
+                                
+                                await createNotification({
+                                    userId: user.id,
+                                    type: NotifType.SYSTEM_ANNOUNCEMENT,
+                                    title: "Credits Added!",
+                                    body: `Your purchase was successful. ${creditsToAdd.toLocaleString()} credits have been added to your balance and will roll over monthly.`,
+                                    data: { packageId, creditsAdded: creditsToAdd }
+                                });
+                            }
+                            break;
+                        }
+
                         // Update the tenant's subscription tier and usage limits
                         if (tier) {
                             const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });

@@ -280,6 +280,10 @@ function SettingsContent() {
     globalEmailEnabled: true,
   });
 
+  const [packages, setPackages] = useState<any[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [packagesSaving, setPackagesSaving] = useState(false);
+
   const tokenLoaded = useTokenFromUrl();
 
   const isAdmin =
@@ -322,6 +326,7 @@ function SettingsContent() {
       checkGmailConnection();
       fetchGmailCredentials();
       fetchTenantGoogleConfig();
+      fetchPackages();
       
       if (activeTab === "role-settings" || activeTab === "system-roles") {
         fetchUsers();
@@ -444,6 +449,48 @@ function SettingsContent() {
       }
     } catch (err) {
       console.error("Failed to update role:", err);
+    }
+  };
+
+  const fetchPackages = async () => {
+    try {
+      setPackagesLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/packages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPackages(data.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch packages:", err);
+    } finally {
+      setPackagesLoading(false);
+    }
+  };
+
+  const handlePackageUpdate = async (id: string, updates: any) => {
+    try {
+      setPackagesSaving(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/packages/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        setNotifMsg("Package updated successfully");
+        setTimeout(() => setNotifMsg(null), 3000);
+        fetchPackages();
+      }
+    } catch (err) {
+      console.error("Failed to update package:", err);
+    } finally {
+      setPackagesSaving(false);
     }
   };
 
@@ -1653,6 +1700,89 @@ function SettingsContent() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Conversation Packages Management */}
+        {activeTab === "stripe-connect" && isAdmin && (
+          <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
+              Conversation Packages
+            </h2>
+            <p className="mb-5 text-sm text-[rgba(240,244,250,0.45)]">
+              Manage purchasable credit bundles. These credits roll over month-to-month.
+            </p>
+
+            {packagesLoading ? (
+              <div className="py-10 text-center text-sm text-white/30 italic">Loading packages...</div>
+            ) : (
+              <div className="space-y-4">
+                {packages.map((pkg) => (
+                  <div key={pkg.id} className="rounded-xl border border-white/[0.06] bg-[#05080f] p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <div>
+                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">Name</label>
+                        <input
+                          type="text"
+                          value={pkg.name}
+                          onChange={(e) => {
+                            const newPkgs = packages.map(p => p.id === pkg.id ? { ...p, name: e.target.value } : p);
+                            setPackages(newPkgs);
+                          }}
+                          className="w-full rounded border border-white/10 bg-black/20 px-3 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">Credits</label>
+                        <input
+                          type="number"
+                          value={pkg.credits}
+                          onChange={(e) => {
+                            const newPkgs = packages.map(p => p.id === pkg.id ? { ...p, credits: parseInt(e.target.value) || 0 } : p);
+                            setPackages(newPkgs);
+                          }}
+                          className="w-full rounded border border-white/10 bg-black/20 px-3 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">Price ($)</label>
+                        <input
+                          type="number"
+                          value={pkg.price}
+                          onChange={(e) => {
+                            const newPkgs = packages.map(p => p.id === pkg.id ? { ...p, price: parseFloat(e.target.value) || 0 } : p);
+                            setPackages(newPkgs);
+                          }}
+                          className="w-full rounded border border-white/10 bg-black/20 px-3 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/50"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handlePackageUpdate(pkg.id, { name: pkg.name, credits: pkg.credits, price: pkg.price, active: pkg.active })}
+                          disabled={packagesSaving}
+                          className="flex-1 rounded bg-[#14b8a6] py-1.5 text-xs font-bold text-[#05080f] hover:bg-[#0d9488] transition"
+                        >
+                          {packagesSaving ? '...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newActive = !pkg.active;
+                            handlePackageUpdate(pkg.id, { active: newActive });
+                          }}
+                          className={`rounded px-3 py-1.5 text-xs font-bold transition ${pkg.active ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
+                        >
+                          {pkg.active ? 'Disable' : 'Enable'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {packages.length === 0 && (
+                  <p className="text-center text-xs text-white/20 py-4">No packages found.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

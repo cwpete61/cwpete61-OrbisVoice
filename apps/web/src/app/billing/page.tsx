@@ -24,6 +24,7 @@ interface SubscriptionData {
   usagePercent: number;
   shouldReset: boolean;
   creditBalance: number;
+  bonusCredits: number;
   tierInfo: {
     conversations: number;
     price: number;
@@ -231,7 +232,7 @@ function BillingContent() {
 
   const currentTier: AllTierName = subscription.subscriptionTier as AllTierName;
   const usagePercent = subscription.usagePercent;
-  const isOverLimit = usagePercent >= 100 && subscription.creditBalance <= 0;
+  const isOverLimit = usagePercent >= 100 && (subscription.creditBalance + (subscription.bonusCredits || 0)) <= 0;
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
@@ -286,9 +287,9 @@ function BillingContent() {
             <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
               <div className="flex justify-between items-start mb-4">
                 <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
-                {subscription.creditBalance > 0 && (
+                {(subscription.creditBalance > 0 || subscription.bonusCredits > 0) && (
                   <span className="bg-[#14b8a6]/20 text-[#14b8a6] text-[9px] px-2 py-0.5 rounded-full border border-[#14b8a6]/30 font-black">
-                     +{subscription.creditBalance} RESERVE
+                     +{subscription.creditBalance + (subscription.bonusCredits || 0)} RESERVE
                   </span>
                 )}
               </div>

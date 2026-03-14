@@ -21,6 +21,7 @@ model Tenant {
   usageLimit           Int                 @default(100)
   usageCount           Int                 @default(0)
   usageResetAt         DateTime            @default(now())
+  bonusCredits         Int                 @default(0)
   creditBalance        Float               @default(0)
   billingEmail         String?
   agents               Agent[]

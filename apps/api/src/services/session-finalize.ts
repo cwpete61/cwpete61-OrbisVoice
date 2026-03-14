@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { sessionManager, ConversationMessage } from "./session";
+import { UsageService } from "./usage-service";
 
 export async function finalizeSession(sessionId: string): Promise<void> {
   try {
@@ -48,6 +49,9 @@ export async function finalizeSession(sessionId: string): Promise<void> {
       { sessionId, transcriptId: transcript.id, agentId: session.agentId },
       "Session finalized and transcript created"
     );
+    
+    // Record usage (credits)
+    await UsageService.recordUsage(session.tenantId);
 
     // Delete session from Redis
     await sessionManager.deleteSession(sessionId);

@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { StripeClient } from "../integrations/stripe";
 import { env } from "../env";
 import { logger } from "../logger";
+import { UsageService } from "../services/usage-service";
 
 // Price ID mapping - fallback to placeholders if not in env
 // Price ID helper function
@@ -13,11 +14,11 @@ const getPriceIdsFromConfig = async () => {
   const stripeConfig = await prisma.stripeConnectConfig.findUnique({ where: { id: "global" } });
   
   const ids = {
-    starter: stripeConfig?.priceStarter || env.STRIPE_PRICE_STARTER,
-    professional: stripeConfig?.priceProfessional || env.STRIPE_PRICE_PROFESSIONAL,
-    enterprise: stripeConfig?.priceEnterprise || env.STRIPE_PRICE_ENTERPRISE,
-    "ai-revenue-infrastructure": stripeConfig?.priceAiInfra || env.STRIPE_PRICE_AI_INFRA,
-    ltd: stripeConfig?.priceLtd || env.STRIPE_PRICE_LTD,
+    starter: (stripeConfig as any)?.priceStarter || env.STRIPE_PRICE_STARTER,
+    professional: (stripeConfig as any)?.priceProfessional || env.STRIPE_PRICE_PROFESSIONAL,
+    enterprise: (stripeConfig as any)?.priceEnterprise || env.STRIPE_PRICE_ENTERPRISE,
+    "ai-revenue-infrastructure": (stripeConfig as any)?.priceAiInfra || env.STRIPE_PRICE_AI_INFRA,
+    ltd: (stripeConfig as any)?.priceLtd || env.STRIPE_PRICE_LTD,
   };
 
   logger.info({ 
@@ -69,9 +70,7 @@ async function billingRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       const { tenantId } = request.user as any;
 
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-      });
+      const tenant = await UsageService.getEffectiveUsage(tenantId);
 
       if (!tenant) {
         return reply.status(404).send({ error: "Tenant not found" });
@@ -265,6 +264,92 @@ async function billingRoutes(fastify: FastifyInstance) {
       } catch (err) {
         logger.error({ err, tenantId }, "Failed to cancel subscription");
         return reply.status(500).send({ error: "Subscription cancellation failed" });
+      }
+    }
+  );
+
+  // Purchase a conversation package (one-time credit top-up)
+  fastify.post(
+    "/billing/purchase-package",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      const { tenantId } = request.user as any;
+      let { email } = request.user as any;
+      const { packageId } = request.body as { packageId: string };
+
+      if (!packageId) {
+        return reply.status(400).send({ error: "packageId is required" });
+      }
+
+      const pkg = await prisma.conversationPackage.findUnique({ where: { id: packageId } });
+      if (!pkg || !pkg.active) {
+        return reply.status(404).send({ error: "Package not found or inactive" });
+      }
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant) {
+        return reply.status(404).send({ error: "Tenant not found" });
+      }
+
+      if (!email) {
+        const dbUser = await prisma.user.findFirst({
+          where: { tenantId, isAdmin: true },
+          select: { email: true },
+        });
+        email = dbUser?.email;
+      }
+
+      const stripe = await StripeClient.getPlatformClient(prisma, env);
+
+      let customerId = tenant.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.createCustomer({ email, name: tenant.name, metadata: { tenantId } });
+        customerId = customer.id;
+        await prisma.tenant.update({ where: { id: tenantId }, data: { stripeCustomerId: customerId } });
+      }
+
+      try {
+        // Use raw Stripe API to support dynamic price_data (price not pre-created in Stripe)
+        const priceInCents = Math.round(pkg.price * 100);
+        const params = new URLSearchParams({
+          customer: customerId!,
+          mode: "payment",
+          success_url: `${env.WEB_URL}/billing?package_success=true`,
+          cancel_url: `${env.WEB_URL}/billing?canceled=true`,
+          "line_items[0][price_data][currency]": "usd",
+          "line_items[0][price_data][unit_amount]": String(priceInCents),
+          "line_items[0][price_data][product_data][name]": pkg.name,
+          "line_items[0][price_data][product_data][description]": `${pkg.credits.toLocaleString()} conversation credits (rolls over monthly)`,
+          "line_items[0][quantity]": "1",
+          "metadata[tenantId]": tenantId,
+          "metadata[type]": "package",
+          "metadata[packageId]": pkg.id,
+          "metadata[credits]": String(pkg.credits),
+        });
+
+        const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.STRIPE_API_KEY}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+
+        if (!stripeRes.ok) {
+          const errBody = await stripeRes.text();
+          logger.error({ tenantId, packageId, errBody }, "Stripe session creation failed for package");
+          return reply.status(500).send({ error: "Checkout session creation failed" });
+        }
+
+        const session = await stripeRes.json() as any;
+        return { ok: true, url: session.url, sessionId: session.id };
+      } catch (err: any) {
+        logger.error({ err: err.message, tenantId, packageId }, "Failed to create package checkout session");
+        return reply.status(500).send({
+          error: "Checkout session creation failed",
+          details: process.env.NODE_ENV === "development" ? err.message : undefined,
+        });
       }
     }
   );

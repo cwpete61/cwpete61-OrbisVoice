@@ -82,7 +82,7 @@ export default function PricingTable({
   const tiers = Object.keys(TIER_CONFIGS) as AllTierName[];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {tiers.map((tier) => {
         const config = TIER_CONFIGS[tier];
         const info = availableTiers[tier];
