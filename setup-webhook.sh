@@ -101,13 +101,16 @@ fi
 echo ""
 echo "=== Next Step: Configure GitHub Webhook ==="
 echo "1. Go to: https://github.com/cwpete61/cwpete61-OrbisVoice/settings/hooks/new"
-IP=$(curl -s ifconfig.me)
-if [[ $IP =~ ":" ]]; then
-  # IPv6 address detected, wrap in square brackets
-  PAYLOAD_URL="http://[$IP]:9000/webhook"
+# GitHub does not support IPv6 for webhooks, so we must find the IPv4 address
+IP=$(curl -s -4 ifconfig.me || curl -s -4 icanhazip.com || echo "YOUR_VPS_IP")
+
+if [ "$IP" = "YOUR_VPS_IP" ]; then
+  echo "⚠️  Could not automatically detect IPv4 address. Please use your server's public IPv4."
+  PAYLOAD_URL="http://YOUR_VPS_IP:9000/webhook"
 else
   PAYLOAD_URL="http://$IP:9000/webhook"
 fi
+
 echo "2. Payload URL: $PAYLOAD_URL"
 echo "3. Content type: application/json"
 echo "4. Secret: (the WEBHOOK_SECRET value from your .env)"
