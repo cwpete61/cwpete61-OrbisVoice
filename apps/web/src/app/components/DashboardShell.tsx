@@ -434,10 +434,10 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
                     ? path === item.href
                     : path === item.href || (path.startsWith(item.href + '/') && item.href !== '/');
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
+                    return (
+                      <Link
+                        key={`${item.label}-${item.href}`}
+                        href={item.href}
                       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition duration-300 ${active
                         ? "nav-active-glow"
                         : "text-[rgba(240,244,250,0.5)] hover:bg-white/[0.04] hover:text-[#f0f4fa]"
