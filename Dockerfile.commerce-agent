@@ -51,7 +51,9 @@ RUN npm install --omit=dev --workspace=apps/commerce-agent --legacy-peer-deps
 # Copy built assets and necessary runtime files from builder
 COPY --from=builder /app/apps/commerce-agent/dist ./apps/commerce-agent/dist
 COPY --from=builder /app/apps/commerce-agent/prisma ./apps/commerce-agent/prisma
-COPY --from=builder /app/apps/commerce-agent/src/generated ./apps/commerce-agent/src/generated
+
+# Generate Prisma client for production runtime
+RUN npx prisma generate --schema=apps/commerce-agent/prisma/schema.prisma
 
 # Expose Commerce Agent port
 EXPOSE 4005
