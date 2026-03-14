@@ -65,7 +65,11 @@ docker exec orbisvoice-commerce-agent-prod \
 log "Cleaning up unused images..."
 docker system prune -f --filter "until=24h" >> "$LOG_FILE" 2>&1 || true
 
-# 6. Final status
+# 6. Final Nginx restart to ensure all upstreams are fresh
+log "Restarting Nginx to clear any stale upstream DNS..."
+docker restart orbisvoice-nginx-prod >> "$LOG_FILE" 2>&1 || true
+
+# 7. Final status
 log "Container status:"
 docker compose -f "$COMPOSE_FILE" ps | tee -a "$LOG_FILE"
 log "=== Deploy Complete ==="
