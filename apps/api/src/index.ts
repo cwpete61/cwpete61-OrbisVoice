@@ -246,3 +246,4 @@ const start = async () => {
 };
 
 start();
+// Restart triggered for schema sync

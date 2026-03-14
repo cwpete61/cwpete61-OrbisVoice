@@ -19,11 +19,13 @@ async function applySettings() {
                 payoutMinimum: 100,
                 payoutCycleDelayMonths: 1,
                 refundHoldDays: 14,
-                starterLimit: 500,
-                professionalLimit: 1000,
-                enterpriseLimit: 2000,
-                ltdLimit: 500,
-                aiInfraLimit: 3000
+                starterLimit: 1000,
+                professionalLimit: 10000,
+                enterpriseLimit: 100000,
+                ltdLimit: 1000,
+                aiInfraLimit: 250000,
+                emailVerificationEnabled: true,
+                globalEmailEnabled: true
             },
             create: {
                 id: 'global',
@@ -35,17 +37,34 @@ async function applySettings() {
                 payoutMinimum: 100,
                 refundHoldDays: 14,
                 payoutCycleDelayMonths: 1,
-                transactionFeePercent: 3.4,
-                starterLimit: 500,
-                professionalLimit: 1000,
-                enterpriseLimit: 2000,
-                ltdLimit: 500,
-                aiInfraLimit: 3000
+                // transactionFeePercent: 3.4, // Temporarily disabled if causing sync issues
+                starterLimit: 1000,
+                professionalLimit: 10000,
+                enterpriseLimit: 100000,
+                ltdLimit: 1000,
+                aiInfraLimit: 250000,
+                emailVerificationEnabled: true,
+                globalEmailEnabled: true
             }
         });
         console.log('Global settings updated successfully.');
 
-        // 2. Update all users to HIGH commission level
+        // 2. Update StripeConnectConfig
+        const stripeConfig = await prisma.stripeConnectConfig.upsert({
+            where: { id: 'global' },
+            update: {
+                enabled: true,
+                priceLtd: "price_ltd_placeholder"
+            },
+            create: {
+                id: 'global',
+                enabled: true,
+                priceLtd: "price_ltd_placeholder"
+            }
+        });
+        console.log('Stripe configuration updated successfully.');
+
+        // 3. Update all users to HIGH commission level
         const userUpdate = await prisma.user.updateMany({
             data: {
                 commissionLevel: 'HIGH'
