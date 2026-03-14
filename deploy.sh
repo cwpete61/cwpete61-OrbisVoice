@@ -52,6 +52,9 @@ done
 [ $WAITED -lt $MAX_WAIT ] && log "API is healthy (took ${WAITED}s)"
 
 # 4. Run database migrations
+log "Running manual schema recovery fix..."
+docker exec orbisvoice-api-prod node manual_schema_fix.js 2>&1 | tee -a "$LOG_FILE" || true
+
 log "Syncing Primary API DB schema..."
 docker exec orbisvoice-api-prod npx prisma db push --accept-data-loss 2>&1 | tee -a "$LOG_FILE" || \
   log "WARNING: API DB sync failed (non-fatal)"

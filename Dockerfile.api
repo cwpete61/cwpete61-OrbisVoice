@@ -51,6 +51,7 @@ RUN npm install --omit=dev --workspace=apps/api --legacy-peer-deps
 # Copy built assets and necessary runtime files from builder
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY apps/api/manual_schema_fix.js ./apps/api/manual_schema_fix.js
 
 # Generate Prisma client for production runtime
 # Critical: this must happen in the same stage as the code execution
