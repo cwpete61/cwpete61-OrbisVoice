@@ -43,14 +43,6 @@ const getGoogleConfig = async (tenantId?: string) => {
       enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
     };
 
-    console.log("DEBUG: Final Google Config:", {
-      clientId: finalConfig.clientId,
-      redirectUri: finalConfig.redirectUri,
-      envRedirect: env.GOOGLE_REDIRECT_URI,
-      envWebUrl: env.WEB_URL,
-      id: config?.id || "not-in-db"
-    });
-
     return finalConfig;
   } catch (error) {
     console.error("getGoogleConfig error:", error);

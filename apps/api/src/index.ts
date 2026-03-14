@@ -180,14 +180,8 @@ const start = async () => {
           });
           logger.info("Admin user created");
         } else {
-          // Ensure existing admin has correct roles and a password if missing
+          // Ensure existing admin has correct roles (never reset password)
           const updateData: any = { isAdmin: true, role: "SYSTEM_ADMIN" };
-          
-          if (!adminExist.passwordHash) {
-            const salt = await bcrypt.genSalt(10);
-            updateData.passwordHash = await bcrypt.hash("admin123", salt);
-            logger.info("Admin password reset to 'admin123'");
-          }
 
           await prisma.user.update({
             where: { id: adminExist.id },

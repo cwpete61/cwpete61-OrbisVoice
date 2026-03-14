@@ -213,7 +213,8 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         }
 
                         // For LTD: auto-create the $20/month recurring subscription
-                        if (tier === "ltd" && env.STRIPE_API_KEY) {
+                        const ltdHostingPrice = env.STRIPE_PRICE_LTD_HOSTING;
+                        if (tier === "ltd" && env.STRIPE_API_KEY && ltdHostingPrice && !ltdHostingPrice.includes("placeholder")) {
                             try {
                                 const subRes = await fetch("https://api.stripe.com/v1/subscriptions", {
                                     method: "POST",
@@ -223,7 +224,7 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                                     },
                                     body: new URLSearchParams({
                                         customer: customerId,
-                                        "items[0][price]": env.STRIPE_PRICE_LTD_HOSTING || "price_ltd_hosting_placeholder",
+                                        "items[0][price]": ltdHostingPrice,
                                         "trial_period_days": "30",
                                         "metadata[tier]": "ltd",
                                         "metadata[tenantId]": tenant.id,

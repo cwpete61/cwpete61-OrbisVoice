@@ -221,7 +221,9 @@ export async function apiFetch<T = unknown>(
         );
     }
 
-    if (res.status === 401 || res.status === 404) {
+    // Auto-redirect to login on 401/404, but NOT for auth endpoints (to avoid redirect loops)
+    const isAuthEndpoint = path.startsWith("/auth/");
+    if ((res.status === 401 || res.status === 404) && !isAuthEndpoint) {
         if (typeof window !== "undefined") {
             localStorage.removeItem("token");
             window.location.href = "/login";
