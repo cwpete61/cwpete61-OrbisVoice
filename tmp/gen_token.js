@@ -1,20 +1,28 @@
-
-const { prisma } = require('./apps/api/dist/db');
+const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const { env } = require('./apps/api/dist/env');
+
+const p = new PrismaClient();
 
 async function main() {
-  const admin = await prisma.user.findFirst({
-    where: { email: 'admin@orbisvoice.app' }
-  });
-  if (!admin) {
-    console.log('Admin not found');
-    return;
-  }
-  const token = jwt.sign(
-    { id: admin.id, email: admin.email, tenantId: admin.tenantId, role: admin.role },
-    env.JWT_SECRET || 'dev-secret-key-change-in-production'
-  );
-  console.log('TOKEN:' + token);
+    const admin = await p.user.findFirst({
+        where: { isAdmin: true }
+    });
+
+    if (!admin) {
+        console.error("Admin not found!");
+        return;
+    }
+
+    const token = jwt.sign(
+        { userId: admin.id, tenantId: admin.tenantId, email: admin.email },
+        process.env.JWT_SECRET || "dev-secret-key-change-in-production",
+        { expiresIn: "1h" }
+    );
+
+    console.log("==============");
+    console.log("TOKEN_LOG_START" + token + "TOKEN_LOG_END");
+    console.log("==============");
+    console.log("Admin:", admin.email);
 }
-main();
+
+main().catch(console.error).finally(() => p.$disconnect());
