@@ -70,6 +70,7 @@ if (parsed.NODE_ENV === "production") {
   if (!parsed.STRIPE_PRICE_PROFESSIONAL) missingKeys.push("STRIPE_PRICE_PROFESSIONAL");
   if (!parsed.STRIPE_PRICE_ENTERPRISE) missingKeys.push("STRIPE_PRICE_ENTERPRISE");
   if (!parsed.STRIPE_PRICE_AI_INFRA) missingKeys.push("STRIPE_PRICE_AI_INFRA");
+  if (!parsed.STRIPE_PRICE_LTD) missingKeys.push("STRIPE_PRICE_LTD");
   if (!parsed.GOOGLE_CLIENT_ID) missingKeys.push("GOOGLE_CLIENT_ID");
   if (!parsed.GOOGLE_CLIENT_SECRET) missingKeys.push("GOOGLE_CLIENT_SECRET");
   if (!parsed.OPENAI_API_KEY) missingKeys.push("OPENAI_API_KEY");

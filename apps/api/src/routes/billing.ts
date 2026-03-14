@@ -12,13 +12,24 @@ import { logger } from "../logger";
 const getPriceIdsFromConfig = async () => {
   const stripeConfig = await prisma.stripeConnectConfig.findUnique({ where: { id: "global" } });
   
-  return {
+  const ids = {
     starter: stripeConfig?.priceStarter || env.STRIPE_PRICE_STARTER,
     professional: stripeConfig?.priceProfessional || env.STRIPE_PRICE_PROFESSIONAL,
     enterprise: stripeConfig?.priceEnterprise || env.STRIPE_PRICE_ENTERPRISE,
     "ai-revenue-infrastructure": stripeConfig?.priceAiInfra || env.STRIPE_PRICE_AI_INFRA,
     ltd: stripeConfig?.priceLtd || env.STRIPE_PRICE_LTD,
   };
+
+  logger.info({ 
+    hasGlobalConfig: !!stripeConfig,
+    starter: ids.starter ? "SET" : "MISSING",
+    professional: ids.professional ? "SET" : "MISSING",
+    enterprise: ids.enterprise ? "SET" : "MISSING",
+    aiInfra: ids["ai-revenue-infrastructure"] ? "SET" : "MISSING",
+    ltd: ids.ltd ? "SET" : "MISSING"
+  }, "Resolved Price IDs from DB/Env");
+
+  return ids;
 };
 
 const CheckoutSchema = z.object({
