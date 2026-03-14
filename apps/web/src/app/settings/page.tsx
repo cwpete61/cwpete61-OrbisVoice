@@ -1472,7 +1472,7 @@ function SettingsContent() {
             <form onSubmit={saveStripeConnectConfig} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
-                  Client ID
+                  Stripe Secret Key (SK_)
                 </label>
                 <input
                   type="text"
@@ -1481,10 +1481,10 @@ function SettingsContent() {
                     setStripeConnectConfig({ ...stripeConnectConfig, clientId: e.target.value })
                   }
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-                  placeholder="ca_1234567890abcdef"
+                  placeholder="sk_live_... or sk_test_..."
                 />
                 <p className="mt-1.5 text-[11px] text-[rgba(240,244,250,0.4)]">
-                  Found in your Stripe Dashboard under Settings {"->"} Connect settings.
+                  Enter your Stripe Secret Key. This allows you to test connections even if the platform key is not yet configured.
                 </p>
               </div>
 

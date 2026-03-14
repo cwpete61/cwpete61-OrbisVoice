@@ -1196,10 +1196,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const stripeModule = await import("stripe");
         const Stripe = stripeModule.default;
+        // Use the centralized env configuration
+        let stripeKey = env.STRIPE_API_KEY;
         const { clientId } = request.body || {};
 
-        // Use the centralized env configuration
-        const stripeKey = env.STRIPE_API_KEY;
+        // If clientId is a secret key (sk_...), use it for the test
+        if (clientId && clientId.startsWith("sk_")) {
+          stripeKey = clientId;
+        }
+
         if (!stripeKey) {
           return reply.code(400).send({
             ok: false,
