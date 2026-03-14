@@ -1189,13 +1189,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: test Stripe Connect connection
-  fastify.post(
+  fastify.post<{ Body: { clientId?: string } }>(
     "/admin/stripe-connect/test",
     { onRequest: [requireAdmin] },
     async (request, reply) => {
       try {
         const stripeModule = await import("stripe");
         const Stripe = stripeModule.default;
+        const { clientId } = request.body || {};
 
         // Use the centralized env configuration
         const stripeKey = env.STRIPE_API_KEY;
@@ -1206,19 +1207,47 @@ export default async function userRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
+        if (stripeKey === "sk_live_xxx" || stripeKey === "sk_test_xxx") {
+          return reply.code(400).send({
+            ok: false,
+            message: `Invalid API Key provided: ${stripeKey}. Please update your .env with a real Stripe Secret Key.`,
+          } as ApiResponse);
+        }
 
-        // Attempt to fetch the account details to verify the key works
+        const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" as any });
+
+        // If a clientId is provided, try to retrieve that specific account
+        if (clientId && clientId.startsWith("acct_")) {
+          try {
+            const account = await stripe.accounts.retrieve(clientId);
+            return reply.send({
+              ok: true,
+              data: {
+                id: account.id,
+                name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Connected Account",
+                email: account.email
+              },
+              message: `Successfully verified Stripe Account: ${clientId}`,
+            } as ApiResponse);
+          } catch (accountErr: any) {
+             return reply.code(400).send({
+              ok: false,
+              message: `Failed to verify Stripe Account ID (${clientId}): ${accountErr.message}`,
+            } as ApiResponse);
+          }
+        }
+
+        // Default to retrieving the platform account if no valid clientId provided
         const account = await stripe.accounts.retrieve();
 
         return reply.send({
           ok: true,
           data: {
             id: account.id,
-            name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Unknown Account Name",
+            name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Platform Account",
             email: account.email
           },
-          message: "Successfully connected to Stripe!",
+          message: "Successfully connected to your Stripe Platform account!",
         } as ApiResponse);
       } catch (err: any) {
         console.error("Failed to test Stripe Connect connection:", err);
