@@ -301,55 +301,55 @@ function BillingContent() {
         </section>
 
         {/* Current Subscription */}
-        <section className="rounded-3xl border border-white/[0.07] bg-[#0c111d] p-8 mb-12 shadow-2xl relative overflow-hidden">
+        <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-4 mb-6 shadow-2xl relative overflow-hidden">
            {/* Abstract Gradient Background for Section */}
            <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#14b8a6]/10 to-transparent pointer-events-none" />
 
-          <h2 className="text-lg font-bold text-white mb-8 flex items-center gap-2">
+          <h2 className="text-xs font-bold text-white mb-4 flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-[#14b8a6]" />
             Subscription Overview
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Active Infrastructure</p>
-              <p className="text-3xl font-black text-white capitalize">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <p className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] mb-2">Active Infrastructure</p>
+              <p className="text-xl font-black text-white capitalize">
                 {currentTier}
               </p>
-              <div className="mt-4 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-xs text-gray-400 font-medium">Standard Operations</span>
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mb-4">Lifecycle Status</p>
-              <p className="text-xl font-bold text-white capitalize">
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <p className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] mb-2">Lifecycle Status</p>
+              <p className="text-sm font-bold text-white capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
               {subscription.subscriptionEnds && (
-                <p className="text-xs text-gray-400 mt-2 font-medium">
+                <p className="text-[9px] text-gray-400 mt-1 font-medium">
                   Next snapshot: {new Date(subscription.subscriptionEnds).toLocaleDateString()}
                 </p>
               )}
             </div>
 
-            <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <div className="flex justify-between items-start mb-4">
-                <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
                 {(subscription.creditBalance > 0 || subscription.bonusCredits > 0) && (
                   <span className="bg-[#14b8a6]/20 text-[#14b8a6] text-[9px] px-2 py-0.5 rounded-full border border-[#14b8a6]/30 font-black">
                      +{subscription.creditBalance + (subscription.bonusCredits || 0)} RESERVE
                   </span>
                 )}
               </div>
-              <div className="flex justify-between text-sm mb-4">
+              <div className="flex justify-between text-[11px] mb-2">
                 <span className="text-gray-400">Monthly Conversations</span>
                 <span className={isOverLimit ? "text-red-400 font-black" : "font-black text-white"}>
                   {subscription.usageCount} / {subscription.usageLimit}
                 </span>
               </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
+              <div className="h-1.5 bg-black/40 rounded-full overflow-hidden mb-2">
                 <div
                   className={`h-full transition-all duration-1000 ${isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
                     }`}
@@ -375,7 +375,7 @@ function BillingContent() {
           )}
 
           {/* Manage Billing (Stripe Portal) */}
-          <div className="mt-10 pt-8 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="mt-6 pt-4 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="text-white font-bold text-sm">Revenue Management Portal</h3>
               <p className="text-xs text-gray-500 mt-1">Manage payment methods, jurisdictional details, and invoice history securely via Stripe.</p>
