@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PublicNav from "../../components/PublicNav";
+import PasswordInput from "../../components/PasswordInput";
 import { API_BASE } from "@/lib/api";
 
 export default function PartnerApplication() {
@@ -131,7 +132,14 @@ export default function PartnerApplication() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.6)]">Password *</label>
-                            <input required type="password" name="password" value={formData.password} onChange={handleChange} className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-[#14b8a6]" placeholder="••••••••" />
+                            <PasswordInput 
+                                required 
+                                name="password" 
+                                value={formData.password} 
+                                onChange={handleChange} 
+                                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-[#14b8a6]" 
+                                placeholder="••••••••" 
+                            />
                         </div>
 
                         <button

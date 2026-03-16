@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 
 import PricingTable, { AllTierName, TIER_CONFIGS } from "../components/PricingTable";
 import UsageChart from "../components/UsageChart";
@@ -74,18 +74,20 @@ function BillingContent() {
     try {
       setSyncing(true);
       setSyncMessage("Synchronizing your subscription with Stripe...");
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/billing/sync`, {
+      const { res, data } = await apiFetch("/billing/sync", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
+
       if (res.ok) {
         setSyncMessage(data.message || "Subscription updated successfully.");
         await fetchSubscription(); 
+      } else {
+        console.error("Sync failed with status:", res.status, data);
+        setSyncMessage("Sync failed. Please contact support.");
       }
     } catch (err) {
       console.error("Sync failed:", err);
+      setSyncMessage("Cannot connect to sync service.");
     } finally {
       setSyncing(false);
       // Keep message for a few seconds
