@@ -82,7 +82,7 @@ export default function PricingTable({
   const tiers = Object.keys(TIER_CONFIGS) as AllTierName[];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
       {tiers.map((tier) => {
         const config = TIER_CONFIGS[tier];
         const info = availableTiers[tier];
@@ -96,74 +96,73 @@ export default function PricingTable({
         return (
           <div
             key={tier}
-            className={`relative group overflow-hidden rounded-3xl border transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl ${
+            className={`relative group overflow-hidden rounded-2xl border transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl flex flex-col ${
               isCurrent 
-                ? "border-[#14b8a6] bg-[#14b8a6]/[0.03] shadow-[#14b8a6]/10" 
-                : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                ? "border-[#14b8a6] bg-[#14b8a6]/[0.05] shadow-[#14b8a6]/10" 
+                : "border-white/5 bg-white/[0.01] hover:border-white/10"
             }`}
           >
             {/* Background Glow */}
             <div 
-              className="absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-[0.03] transition-opacity group-hover:opacity-[0.08]" 
+              className="absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-[0.03] transition-opacity group-hover:opacity-[0.08]" 
               style={{ backgroundColor: config.accent }}
             />
 
-            <div className="relative p-8 flex flex-col h-full">
+            <div className="relative p-5 flex flex-col h-full">
               {/* Badge */}
               {config.popular && (
-                <div className="absolute top-6 right-6">
-                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full bg-[#f97316]/20 text-[#f97316] border border-[#f97316]/30">
-                    Most Popular
+                <div className="mb-3">
+                  <span className="px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-full bg-[#f97316]/20 text-[#f97316] border border-[#f97316]/30">
+                    Popular
                   </span>
                 </div>
               )}
               {isCurrent && (
-                <div className="absolute top-6 right-6">
-                  <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full bg-[#14b8a6]/20 text-[#14b8a6] border border-[#14b8a6]/30">
-                    Current Plan
+                <div className="mb-3">
+                  <span className="px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-full bg-[#14b8a6]/20 text-[#14b8a6] border border-[#14b8a6]/30">
+                    Active
                   </span>
                 </div>
               )}
 
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-white mb-2">{config.name}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed min-h-[40px]">
+              <div className="mb-4">
+                <h3 className="text-base font-bold text-white mb-1">{config.name}</h3>
+                <p className="text-[11px] text-gray-500 leading-tight min-h-[32px]">
                   {config.description}
                 </p>
               </div>
 
-              <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-white">$</span>
-                  <span className="text-5xl font-black text-white tracking-tight">
+              <div className="mb-5">
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-xl font-black text-white">$</span>
+                  <span className="text-3xl font-black text-white tracking-tight">
                     {displayInfo.price}
                   </span>
-                  <span className="text-gray-500 font-medium">
+                  <span className="text-[10px] text-gray-500 font-medium">
                     /{config.frequencyText || "mo"}
                   </span>
                 </div>
                 {config.secondaryPrice && (
-                  <p className="text-xs text-red-400 mt-2 font-semibold">
+                  <p className="text-[9px] text-red-400 mt-1 font-semibold leading-none">
                     + {config.secondaryPrice}
                   </p>
                 )}
               </div>
 
-              <div className="flex-1 space-y-4 mb-8">
-                <div className="pb-4 border-b border-white/5">
-                  <p className="text-sm font-bold text-white uppercase tracking-wider">
-                    {displayInfo.conversations.toLocaleString()} Conversations
+              <div className="flex-1 space-y-2.5 mb-6">
+                <div className="pb-2 border-b border-white/5">
+                  <p className="text-[11px] font-bold text-white uppercase tracking-wider">
+                    {displayInfo.conversations.toLocaleString()} Convs
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Renewed monthly</p>
                 </div>
                 {config.features.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="h-5 w-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                      <svg width="12" height="12" fill="none" stroke={config.accent} strokeWidth="3" viewBox="0 0 24 24">
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="h-3.5 w-3.5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                      <svg width="8" height="8" fill="none" stroke={config.accent} strokeWidth="3" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <span className="text-sm text-gray-300">{feature}</span>
+                    <span className="text-[10px] text-gray-400 line-clamp-1">{feature}</span>
                   </div>
                 ))}
               </div>
@@ -172,22 +171,22 @@ export default function PricingTable({
                 {isCurrent && subscriptionStatus === "active" ? (
                   <button
                     onClick={onCancel}
-                    className="w-full py-4 rounded-2xl font-bold text-sm bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all duration-300"
+                    className="w-full py-2.5 rounded-xl font-bold text-[10px] uppercase bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all duration-300"
                   >
-                    Cancel Subscription
+                    Cancel
                   </button>
                 ) : (
                   <button
                     onClick={() => onSelect(tier)}
                     style={{ 
                       backgroundColor: isUpgrade ? config.accent : 'transparent',
-                      borderColor: isUpgrade ? 'transparent' : 'rgba(255,255,255,0.1)'
+                      borderColor: isUpgrade ? 'transparent' : 'rgba(255,255,255,0.05)'
                     }}
-                    className={`w-full py-4 rounded-2xl font-bold text-sm text-white border transition-all duration-300 ${
+                    className={`w-full py-2.5 rounded-xl font-bold text-[10px] uppercase text-white border transition-all duration-300 ${
                       !isUpgrade ? "hover:bg-white/5 active:scale-[0.98]" : "hover:brightness-110 shadow-lg active:scale-[0.98]"
                     }`}
                   >
-                    {isCurrent ? "Reactivate Plan" : isUpgrade ? "Upgrade Now" : "Switch Plan"}
+                    {isCurrent ? "Reactivate" : isUpgrade ? "Upgrade" : "Switch"}
                   </button>
                 )}
               </div>

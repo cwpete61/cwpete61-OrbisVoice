@@ -432,24 +432,24 @@ function BillingContent() {
             <h2 className="text-xl font-bold text-white mb-2">Operation Reserves</h2>
             <p className="text-sm text-gray-500 mb-8">Purchase one-time conversation packages for extra bandwidth with no expiration.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
               {packages.map((pkg) => (
-                <div key={pkg.id} className="rounded-3xl border border-white/5 bg-[#0c111d] p-8 transition-all hover:border-white/10 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-[#14b8a6]/5 rounded-bl-3xl" />
-                  <h3 className="text-lg font-bold text-white group-hover:text-[#14b8a6] transition-colors">{pkg.name}</h3>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-black tracking-widest">Reserve Package</p>
-                  <div className="my-6">
-                    <p className="text-4xl font-black text-white">${pkg.price}</p>
+                <div key={pkg.id} className="rounded-2xl border border-white/5 bg-[#0c111d] p-5 transition-all hover:border-white/10 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-10 h-10 bg-[#14b8a6]/5 rounded-bl-2xl" />
+                  <h3 className="text-sm font-bold text-white group-hover:text-[#14b8a6] transition-colors">{pkg.name}</h3>
+                  <p className="text-[8px] text-gray-500 mt-0.5 uppercase font-black tracking-widest">Reserve Package</p>
+                  <div className="my-4">
+                    <p className="text-2xl font-black text-white">${pkg.price}</p>
                   </div>
-                  <div className="mb-8 pb-6 border-b border-white/5">
-                    <p className="text-sm font-bold text-gray-300">+{pkg.credits.toLocaleString()} Conversations</p>
+                  <div className="mb-4 pb-4 border-b border-white/5">
+                    <p className="text-[11px] font-bold text-gray-300">+{pkg.credits.toLocaleString()} Convs</p>
                   </div>
                   <button
                     onClick={() => handleBuyPackage(pkg)}
                     disabled={purchasingPackage === pkg.id}
-                    className="px-4 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-[#14b8a6] hover:border-transparent border border-white/10 w-full disabled:opacity-50"
+                    className="px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-[#14b8a6] hover:border-transparent border border-white/10 w-full disabled:opacity-50"
                   >
-                    {purchasingPackage === pkg.id ? "Verifying..." : "Acquire Credits"}
+                    {purchasingPackage === pkg.id ? "..." : "Acquire"}
                   </button>
                 </div>
               ))}
