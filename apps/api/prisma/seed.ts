@@ -30,7 +30,7 @@ async function main() {
 
     // Create or update admin user
     const adminUser = await prisma.user.upsert({
-      where: { id: "admin-user-001" },
+      where: { email: "admin@orbisvoice.app" },
       update: {
         email: "admin@orbisvoice.app",
         name: "Admin",
