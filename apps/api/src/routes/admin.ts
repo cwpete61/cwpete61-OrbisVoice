@@ -139,7 +139,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
      * GET /admin/settings
      * Get platform-wide settings
      */
-    fastify.get("/admin/settings", async (request, reply) => {
+    fastify.get("/admin/settings", { onRequest: [requireAdmin] }, async (request, reply) => {
         try {
             let settings = await prisma.platformSettings.findFirst();
 
@@ -164,7 +164,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
      * PATCH /admin/settings
      * Update platform-wide settings
      */
-    fastify.patch("/admin/settings", { onRequest: [requireSystemAdmin] }, async (request, reply) => {
+    fastify.patch("/admin/settings", { onRequest: [requireAdmin] }, async (request, reply) => {
         try {
             const body = request.body as any;
 

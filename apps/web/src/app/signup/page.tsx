@@ -17,6 +17,7 @@ function SignupContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [verfiedOnSignup, setVerifiedOnSignup] = useState(false);
   // const [captchaToken, setCaptchaToken] = useState("");
   // const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,7 +31,7 @@ function SignupContent() {
 
     try {
       const affiliateSlug = localStorage.getItem("affiliate_slug") || "";
-      const { res, data } = await apiFetch("/auth/signup", {
+      const { res, data } = await apiFetch<{ verificationRequired: boolean }>("/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -44,6 +45,11 @@ function SignupContent() {
         }),
       });
       if (res.ok) {
+        // Explicitly check for verification required status
+        const vReq = data.data?.verificationRequired;
+        if (vReq === false || vReq === undefined) {
+          setVerifiedOnSignup(true);
+        }
         setSuccess(true);
       } else {
         setError(data.message || "Signup failed");
@@ -94,13 +100,18 @@ function SignupContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-bold text-[#f0f4fa]">Check your email</h2>
+                <h2 className="text-xl font-bold text-[#f0f4fa]">
+                  {verfiedOnSignup ? "Account Created!" : "Check your email"}
+                </h2>
                 <p className="text-sm text-[rgba(240,244,250,0.6)]">
-                  We&apos;ve sent a verification link to <span className="text-[#f0f4fa] font-medium">{email}</span>. Please click the link to verify your account.
+                  {verfiedOnSignup 
+                    ? "Welcome to OrbisVoice! Your account has been successfully created. You can now access your workspace."
+                    : <>We&apos;ve sent a verification link to <span className="text-[#f0f4fa] font-medium">{email}</span>. Please click the link to verify your account.</>
+                  }
                 </p>
                 <div className="pt-4">
                   <Link href="/login" className="btn-primary block w-full py-2.5">
-                    Continue to Login
+                    {verfiedOnSignup ? "Go to Dashboard" : "Continue to Login"}
                   </Link>
                 </div>
                 <button 

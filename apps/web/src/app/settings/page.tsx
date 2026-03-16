@@ -17,8 +17,6 @@ function NotificationPrefsPanel({
   notifMsg,
   onSave,
   setNotifPrefs,
-  emailVerificationEnabled,
-  onToggleVerification,
 }: any) {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -31,7 +29,7 @@ function NotificationPrefsPanel({
       .then((d) => {
         const p = d.data;
         if (p) {
-          setMasterEmail(p.emailEnabled ?? true);
+          setMasterEmail(p.emailNotifications ?? true);
           setNotifPrefs({
             commissions: p.commissions ?? true,
             payouts: p.payouts ?? true,
@@ -67,19 +65,6 @@ function NotificationPrefsPanel({
     <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 space-y-6">
       <h2 className="text-sm font-semibold text-[#f0f4fa]">🔔 Notification Preferences</h2>
 
-      {/* Global Email Verification Toggle */}
-      {onToggleVerification && (
-        <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#14b8a6]/5 px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-[#14b8a6]">System Email Verification</p>
-            <p className="text-xs text-[rgba(20,184,166,0.6)] mt-0.5">
-              Forces all users to verify their email addresses system-wide.
-            </p>
-          </div>
-          <Toggle value={emailVerificationEnabled} onChange={onToggleVerification} />
-        </div>
-      )}
-
       {/* Master toggle */}
       <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
         <div>
@@ -88,7 +73,14 @@ function NotificationPrefsPanel({
             Master toggle — turn off to disable all notification emails
           </p>
         </div>
-        <Toggle value={masterEmail} onChange={() => setMasterEmail((v: boolean) => !v)} />
+        <Toggle
+          value={masterEmail}
+          onChange={() => {
+            const newVal = !masterEmail;
+            setMasterEmail(newVal);
+            onSave(newVal, notifPrefs);
+          }}
+        />
       </div>
 
       {/* Per-type toggles */}
@@ -104,25 +96,20 @@ function NotificationPrefsPanel({
                 <p className="text-xs text-[rgba(240,244,250,0.4)]">{p.desc}</p>
               </div>
               <Toggle
-                value={masterEmail && (notifPrefs?.[p.key] ?? true)}
-                onChange={() =>
-                  masterEmail &&
-                  setNotifPrefs((prev: any) => ({ ...prev, [p.key]: !(prev?.[p.key] ?? true) }))
-                }
+                value={notifPrefs?.[p.key] ?? true}
+                onChange={() => {
+                  const newVal = !(notifPrefs?.[p.key] ?? true);
+                  const updated = { ...notifPrefs, [p.key]: newVal };
+                  setNotifPrefs(updated);
+                  onSave(masterEmail, updated);
+                }}
               />
             </div>
           ))}
         </div>
       </div>
 
-      {notifMsg && <p className="text-sm text-green-400">✅ {notifMsg}</p>}
-      <button
-        onClick={onSave}
-        disabled={savingNotif}
-        className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50"
-      >
-        {savingNotif ? "Saving…" : "Save Preferences"}
-      </button>
+      {notifMsg && <p className="text-xs text-green-400 font-medium">✓ {notifMsg}</p>}
     </div>
   );
 }
@@ -276,7 +263,7 @@ function SettingsContent() {
     enterpriseLimit: 100000,
     ltdLimit: 1000,
     aiInfraLimit: 250000,
-    emailVerificationEnabled: true,
+    emailVerificationEnabled: false,
     globalEmailEnabled: true,
   });
 
@@ -376,7 +363,7 @@ function SettingsContent() {
             enterpriseLimit: data.data.enterpriseLimit,
             ltdLimit: data.data.ltdLimit,
             aiInfraLimit: data.data.aiInfraLimit,
-            emailVerificationEnabled: data.data.emailVerificationEnabled ?? true,
+            emailVerificationEnabled: data.data.emailVerificationEnabled ?? false,
             globalEmailEnabled: data.data.globalEmailEnabled ?? true,
           });
         }
@@ -1438,32 +1425,23 @@ function SettingsContent() {
             setMasterEmail={setMasterEmail}
             savingNotif={savingNotif}
             notifMsg={notifMsg}
-            emailVerificationEnabled={settingsForm.emailVerificationEnabled}
-            onToggleVerification={isAdmin ? () => {
-              const newVal = !settingsForm.emailVerificationEnabled;
-              setSettingsForm(prev => ({ ...prev, emailVerificationEnabled: newVal }));
-              const token = localStorage.getItem("token");
-              fetch(`${API_BASE}/admin/settings`, {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ emailVerificationEnabled: newVal }),
-              });
-            } : null}
-            onSave={async () => {
+            onSave={async (updatedEmail: boolean, updatedPrefs: any) => {
               setSavingNotif(true);
               setNotifMsg(null);
-              const token = localStorage.getItem("token");
-              await fetch(`${API_BASE}/notifications/preferences`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ emailEnabled: masterEmail, ...(notifPrefs || {}) }),
-              });
-              setSavingNotif(false);
-              setNotifMsg("Notification preferences saved.");
-              setTimeout(() => setNotifMsg(null), 3000);
+              try {
+                const token = localStorage.getItem("token");
+                await fetch(`${API_BASE}/notifications/preferences`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ emailNotifications: updatedEmail, ...(updatedPrefs || {}) }),
+                });
+                setNotifMsg("Saved");
+                setTimeout(() => setNotifMsg(null), 2000);
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setSavingNotif(false);
+              }
             }}
             setNotifPrefs={setNotifPrefs}
           />
@@ -1634,12 +1612,29 @@ function SettingsContent() {
                     <span className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Onboarding Enabled</span>
                     <Toggle
                       value={stripeConnectConfig.enabled}
-                      onChange={() =>
-                        setStripeConnectConfig({
-                          ...stripeConnectConfig,
-                          enabled: !stripeConnectConfig.enabled,
-                        })
-                      }
+                      onChange={async () => {
+                        const newVal = !stripeConnectConfig.enabled;
+                        const updated = { ...stripeConnectConfig, enabled: newVal };
+                        setStripeConnectConfig(updated);
+                        
+                        // Immediate save
+                        try {
+                          const token = localStorage.getItem("token");
+                          await fetch(`${API_BASE}/admin/stripe-connect`, {
+                            method: "PUT",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                              ...updated,
+                              minimumPayout: Number(updated.minimumPayout) || 100,
+                            }),
+                          });
+                        } catch (err) {
+                          console.error("Failed to auto-save Stripe Connect status:", err);
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -1839,18 +1834,35 @@ function SettingsContent() {
                   placeholder="https://app.yourdomain.com/auth/google/callback"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm text-[rgba(240,244,250,0.65)]">
-                <input
-                  type="checkbox"
-                  checked={googleConfig.enabled}
-                  onChange={(e) => {
-                    setGoogleConfig({ ...googleConfig, enabled: e.target.checked });
+              <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                <span className="text-sm text-[rgba(240,244,250,0.65)]">Enable Google Auth</span>
+                <Toggle
+                  value={googleConfig.enabled}
+                  onChange={async () => {
+                    const newVal = !googleConfig.enabled;
+                    const updated = { ...googleConfig, enabled: newVal };
+                    setGoogleConfig(updated);
                     setGoogleSaveSuccess(false);
+
+                    // Immediate save
+                    try {
+                      const token = localStorage.getItem("token");
+                      await fetch(`${API_BASE}/admin/google-auth/config`, {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(updated),
+                      });
+                      setGoogleSaveSuccess(true);
+                      setTimeout(() => setGoogleSaveSuccess(false), 2000);
+                    } catch (err) {
+                      console.error("Failed to auto-save Google config:", err);
+                    }
                   }}
-                  className="h-4 w-4 rounded border-white/[0.2] bg-[#05080f]"
                 />
-                Enable Google Auth
-              </label>
+              </div>
 
               {googleSaveSuccess && (
                 <div className="rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/10 px-4 py-3 text-sm text-[#14b8a6]">
@@ -2475,6 +2487,81 @@ function SettingsContent() {
               </p>
             </div>
 
+            {/* System Controls - Beta Testing Feature Overlay */}
+            {isAdmin && (
+              <div className="mb-8 rounded-xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-6 shadow-lg shadow-[#14b8a6]/5">
+                <div className="flex items-center justify-between border-b border-[#14b8a6]/10 pb-4 mb-4">
+                  <h3 className="text-sm font-bold text-[#14b8a6] uppercase tracking-wider flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    Beta Testing Platform Controls
+                  </h3>
+                  <span className="rounded-full bg-[#14b8a6]/20 px-2 py-0.5 text-[10px] font-bold text-[#14b8a6]">ADMIN ONLY</span>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Email Verification Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-[#f0f4fa]">System Email Verification</p>
+                      <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
+                        Forces all users to verify their email addresses system-wide.
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Toggle 
+                        value={settingsForm.emailVerificationEnabled} 
+                        onChange={async () => {
+                          const newVal = !settingsForm.emailVerificationEnabled;
+                          setSettingsForm(prev => ({ ...prev, emailVerificationEnabled: newVal }));
+                          try {
+                            const token = localStorage.getItem("token");
+                            await fetch(`${API_BASE}/admin/settings`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ emailVerificationEnabled: newVal }),
+                            });
+                            // Use notification message for feedback
+                            setNotifMsg("Saved");
+                            setTimeout(() => setNotifMsg(null), 2000);
+                          } catch (err) { console.error(err); }
+                        }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Global Email Enabled Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-[#f0f4fa]">System-wide Email Outbox</p>
+                      <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
+                        Master switch to kill all outgoing transactional emails from the platform.
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Toggle 
+                        value={settingsForm.globalEmailEnabled} 
+                        onChange={async () => {
+                          const newVal = !settingsForm.globalEmailEnabled;
+                          setSettingsForm(prev => ({ ...prev, globalEmailEnabled: newVal }));
+                          try {
+                            const token = localStorage.getItem("token");
+                            await fetch(`${API_BASE}/admin/settings`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ globalEmailEnabled: newVal }),
+                            });
+                            // Use notification message for feedback
+                            setNotifMsg("Saved");
+                            setTimeout(() => setNotifMsg(null), 2000);
+                          } catch (err) { console.error(err); }
+                        }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={saveSystemEmailConfig} className="space-y-6">
               {/* Account Information */}
               <div>
@@ -3079,34 +3166,7 @@ function SettingsContent() {
                         <option value="MED">MED</option>
                         <option value="HIGH">HIGH</option>
                       </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
-                  <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
-                    System Control
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-[#f0f4fa]">System-wide Email</p>
-                        <p className="text-xs text-[rgba(240,244,250,0.4)]">Enable or disable all outgoing emails platform-wide</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSettingsForm({ ...settingsForm, globalEmailEnabled: !settingsForm.globalEmailEnabled })}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                          settingsForm.globalEmailEnabled ? 'bg-[#14b8a6]' : 'bg-gray-700'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            settingsForm.globalEmailEnabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
+                        </div>
                   </div>
                 </div>
               </div>

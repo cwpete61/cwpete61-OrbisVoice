@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
+import { createNotification, NotifType } from "./notification";
 
 export class UsageService {
   /**
@@ -77,5 +78,53 @@ export class UsageService {
   static async canStartSession(tenantId: string): Promise<boolean> {
     const tenant = (await this.getEffectiveUsage(tenantId)) as any;
     return tenant.usageCount < tenant.usageLimit || tenant.bonusCredits > 0;
+  }
+
+  /**
+   * Update tenant's subscription tier and usage limits
+   */
+  static async updateSubscriptionTier(tenantId: string, tier: string, stripeSubscriptionId?: string) {
+    const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+    let newUsageLimit = 100;
+
+    if (tier === 'ltd') newUsageLimit = settings?.ltdLimit ?? 1000;
+    else if (tier === 'starter') newUsageLimit = settings?.starterLimit ?? 1000;
+    else if (tier === 'professional') newUsageLimit = settings?.professionalLimit ?? 10000;
+    else if (tier === 'enterprise') newUsageLimit = settings?.enterpriseLimit ?? 100000;
+    else if (tier === 'ai-revenue-infrastructure') newUsageLimit = settings?.aiInfraLimit ?? 250000;
+
+    const data: any = {
+      subscriptionTier: tier,
+      subscriptionStatus: "active",
+      usageLimit: newUsageLimit,
+    };
+
+    if (stripeSubscriptionId) {
+      data.stripeSubscriptionId = stripeSubscriptionId;
+    }
+
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data,
+    });
+
+    logger.info({ tenantId, tier, newUsageLimit }, "Tenant subscription tier updated");
+
+    // Create notification for the admin
+    try {
+      const admin = await prisma.user.findFirst({ where: { tenantId, isAdmin: true } });
+      if (admin) {
+        await createNotification({
+          userId: admin.id,
+          title: "Infrastructure Scaling Complete",
+          body: `Your system has been successfully upgraded to the ${tier.toUpperCase()} tier.`,
+          type: NotifType.SYSTEM_ANNOUNCEMENT,
+        });
+      }
+    } catch (err) {
+      logger.error({ err, tenantId }, "Failed to create upgrade notification");
+    }
+
+    return updated;
   }
 }

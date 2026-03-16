@@ -6,6 +6,7 @@ import { StripeClient } from "../integrations/stripe";
 import { env } from "../env";
 import { logger } from "../logger";
 import { UsageService } from "../services/usage-service";
+import { referralManager } from "../services/referral";
 
 // Price ID mapping - fallback to placeholders if not in env
 // Price ID helper function
@@ -388,6 +389,71 @@ async function billingRoutes(fastify: FastifyInstance) {
       } catch (err) {
         logger.error({ err, tenantId }, "Failed to create portal session");
         return reply.status(500).send({ error: "Portal session creation failed" });
+      }
+    }
+  );
+  
+  // Sync subscription status with Stripe
+  fastify.post(
+    "/billing/sync",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      const { tenantId } = request.user as any;
+      const stripe = await StripeClient.getPlatformClient(prisma, env);
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      if (!tenant || !tenant.stripeCustomerId) {
+        return reply.status(400).send({ error: "No billing account to sync" });
+      }
+
+      try {
+        // 1. Check for active subscriptions
+        const subscriptions = await stripe.listSubscriptions(tenant.stripeCustomerId);
+        
+        if (subscriptions.length > 0) {
+          const sub = subscriptions[0];
+          const tier = sub.metadata.tier || (sub as any).plan?.metadata?.tier;
+          
+          if (tier) {
+            await UsageService.updateSubscriptionTier(tenantId, tier, sub.id);
+            
+            // Try to process commission if missed
+            const admin = await prisma.user.findFirst({ where: { tenantId, isAdmin: true } });
+            if (admin) {
+              await referralManager.processCommission(admin.id, (sub as any).plan?.amount / 100 || 0, sub.id);
+            }
+            
+            return { ok: true, message: `Synced: Updated to ${tier}`, tier };
+          }
+        }
+
+        // 2. Check for recent successful LTD checkout sessions if no subscription found
+        const sessions = await stripe.listCheckoutSessions(tenant.stripeCustomerId);
+        const successfulLtdSession = sessions.find(s => 
+          s.payment_status === 'paid' && 
+          s.status === 'complete' && 
+          s.metadata?.tier === 'ltd'
+        );
+
+        if (successfulLtdSession) {
+          await UsageService.updateSubscriptionTier(tenantId, 'ltd');
+          
+          // Try to process commission if missed
+          const admin = await prisma.user.findFirst({ where: { tenantId, isAdmin: true } });
+          if (admin) {
+            await referralManager.processCommission(admin.id, successfulLtdSession.amount_total! / 100, successfulLtdSession.id);
+          }
+          
+          return { ok: true, message: "Synced: Updated to LTD", tier: 'ltd' };
+        }
+
+        return { ok: true, message: "Sync completed: No changes needed", tier: tenant.subscriptionTier };
+      } catch (err: any) {
+        logger.error({ err: err.message, tenantId }, "Failed to sync billing state");
+        return reply.status(500).send({ error: "Sync failed", details: err.message });
       }
     }
   );

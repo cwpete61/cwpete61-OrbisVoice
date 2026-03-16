@@ -41,15 +41,26 @@ function BillingContent() {
   const [packages, setPackages] = useState<any[]>([]);
   const [purchasingPackage, setPurchasingPackage] = useState<string | null>(null);
   const [billingEmail, setBillingEmail] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
 
   // Extract token from URL if present (from OAuth callback)
   const tokenLoaded = useTokenFromUrl();
 
   useEffect(() => {
     if (tokenLoaded) {
-      fetchSubscription();
-      fetchAvailableTiers();
-      fetchPackages();
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("success") === "true") {
+        syncBilling().then(() => {
+          fetchSubscription();
+          fetchAvailableTiers();
+          fetchPackages();
+        });
+      } else {
+        fetchSubscription();
+        fetchAvailableTiers();
+        fetchPackages();
+      }
     }
   }, [tokenLoaded]);
 
@@ -57,6 +68,29 @@ function BillingContent() {
     fetchSubscription();
     fetchAvailableTiers();
     fetchPackages();
+  };
+
+  const syncBilling = async () => {
+    try {
+      setSyncing(true);
+      setSyncMessage("Synchronizing your subscription with Stripe...");
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/billing/sync`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSyncMessage(data.message || "Subscription updated successfully.");
+        await fetchSubscription(); 
+      }
+    } catch (err) {
+      console.error("Sync failed:", err);
+    } finally {
+      setSyncing(false);
+      // Keep message for a few seconds
+      setTimeout(() => setSyncMessage(""), 5000);
+    }
   };
 
   const fetchSubscription = async () => {
@@ -244,6 +278,20 @@ function BillingContent() {
             Monitor your revenue operations and scale your AI workforce
           </p>
         </div>
+
+        {/* Sync Success Message / Banner */}
+        {syncMessage && (
+          <div className="mb-8 p-4 rounded-xl bg-[#14b8a6]/10 border border-[#14b8a6]/30 flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+            <div className="h-8 w-8 rounded-full bg-[#14b8a6]/20 flex items-center justify-center text-[#14b8a6]">
+              {syncing ? (
+                <div className="h-4 w-4 border-2 border-[#14b8a6] border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+              )}
+            </div>
+            <p className="text-sm font-bold text-[#14b8a6]">{syncMessage}</p>
+          </div>
+        )}
 
         {/* Usage Analytics Trend */}
         <section className="mb-12">

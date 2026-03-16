@@ -90,7 +90,7 @@ export class AffiliateManager {
 
             return {
                 ...affiliate,
-                shareUrl: `${process.env.WEB_URL || "http://localhost:3000"}/a/${affiliate.slug}`,
+                shareUrl: `${env.WEB_URL}/a/${affiliate.slug}`,
                 clicks: 0, // Clicks tracking to be implemented later 
                 sales: referralStats.transactions.length,
                 revenue: referralStats.totalRewards,

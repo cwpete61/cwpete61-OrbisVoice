@@ -1532,7 +1532,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const client = new OAuth2Client(
           env.GOOGLE_CLIENT_ID,
           env.GOOGLE_CLIENT_SECRET,
-          `${env.GOOGLE_REDIRECT_URI?.replace("/auth/google/callback", "") || "http://localhost:3000"}/auth/gmail/callback`
+          `${env.GOOGLE_REDIRECT_URI?.replace("/auth/google/callback", "").replace("/auth/google/calendar/callback", "") || env.WEB_URL}/auth/gmail/callback`
         );
 
         const url = client.generateAuthUrl({
@@ -1582,7 +1582,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const client = new OAuth2Client(
           env.GOOGLE_CLIENT_ID,
           env.GOOGLE_CLIENT_SECRET,
-          `${env.GOOGLE_REDIRECT_URI?.replace("/auth/google/callback", "") || "http://localhost:3000"}/auth/gmail/callback`
+          `${env.GOOGLE_REDIRECT_URI?.replace("/auth/google/callback", "").replace("/auth/google/calendar/callback", "") || env.WEB_URL}/auth/gmail/callback`
         );
 
         // Exchange code for tokens

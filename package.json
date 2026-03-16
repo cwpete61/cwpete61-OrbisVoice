@@ -1,0 +1,16 @@
+{
+  "name": "orbisvoice",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "apps/voice-gateway",
+    "apps/referrals",
+    "apps/commerce-agent"
+  ],
+  "devDependencies": {
+    "prettier": "^3.5.2",
+    "typescript": "^5.7.3"
+  }
+}

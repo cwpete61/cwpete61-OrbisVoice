@@ -16,15 +16,12 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
 COPY apps/referrals/package.json ./apps/referrals/
 COPY apps/commerce-agent/package.json ./apps/commerce-agent/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/config/package.json ./packages/config/
 
 # Install dependencies from root
 RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY apps/commerce-agent ./apps/commerce-agent
-COPY packages ./packages
 
 # Generate Prisma client and build the app
 WORKDIR /app/apps/commerce-agent
@@ -40,10 +37,9 @@ RUN apt-get update && apt-get install -y openssl libssl-dev curl && rm -rf /var/
 
 ENV NODE_ENV=production
 
-# Copy mandatory package files for the workspace and shared packages
+# Copy mandatory package files for the workspace
 COPY package*.json ./
 COPY apps/commerce-agent/package*.json ./apps/commerce-agent/
-COPY packages ./packages
 
 # Install ONLY production dependencies for the commerce-agent workspace
 RUN npm install --omit=dev --workspace=apps/commerce-agent --legacy-peer-deps

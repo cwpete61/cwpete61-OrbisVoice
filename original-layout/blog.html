@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — MyOrbisVoice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0a0d10;
+  --bg2:       #0d1118;
+  --card-bg:   #101720;
+  --card-bg2:  #111a24;
+  --border:    #1c2530;
+  --teal:      #00d4b8;
+  --teal-dim:  #00b89e;
+  --orange:    #f5a623;
+  --purple:    #8b5cf6;
+  --white:     #ffffff;
+  --gray:      #7a8a9a;
+  --font:      'Inter', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+
+/* ─── NAV ─── */
+nav {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(10,13,16,0.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  height: 54px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 36px;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 600;
+}
+.nav-logo-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #0a0d10;
+}
+.nav-links {
+  display: flex; align-items: center; gap: 30px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 13.5px; font-weight: 400;
+  color: rgba(255,255,255,0.62);
+  transition: color .2s;
+}
+.nav-links a:hover { color: var(--white); }
+.nav-links a.active { color: var(--white); }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.btn-signin {
+  font-size: 13px; color: rgba(255,255,255,0.62);
+  padding: 6px 14px; transition: color .2s;
+}
+.btn-signin:hover { color: var(--white); }
+.btn-getstarted {
+  font-size: 13px; font-weight: 600;
+  background: var(--teal); color: #0a0d10;
+  padding: 8px 18px; border-radius: 7px;
+  transition: background .2s;
+}
+.btn-getstarted:hover { background: var(--teal-dim); }
+
+/* ─── PAGE HEADER ─── */
+.page-header {
+  padding: 44px 36px 52px;
+  max-width: 1060px; margin: 0 auto;
+}
+.breadcrumb {
+  font-size: 13px; color: rgba(255,255,255,0.38);
+  margin-bottom: 14px;
+}
+.page-title {
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--white);
+  max-width: 600px;
+}
+
+/* ─── BLOG GRID ─── */
+.blog-section {
+  padding: 0 36px 72px;
+  max-width: 1060px; margin: 0 auto;
+}
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.blog-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: border-color .2s;
+  cursor: pointer;
+}
+.blog-card:hover { border-color: rgba(255,255,255,0.15); }
+
+/* thumbnail placeholder */
+.blog-thumb {
+  height: 190px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card-bg2);
+  border-bottom: 1px solid var(--border);
+}
+.thumb-icon {
+  width: 64px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+}
+/* SVG image placeholder icon – each card has a different accent color */
+.thumb-icon svg { width: 64px; height: 64px; }
+
+.card-body {
+  padding: 22px 22px 26px;
+  display: flex; flex-direction: column; flex: 1;
+}
+
+.card-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.read-time {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.read-time.teal   { color: var(--teal); }
+.read-time.orange { color: var(--orange); }
+.read-time.purple { color: var(--purple); }
+
+.meta-dot { font-size: 11px; color: rgba(255,255,255,0.22); }
+.meta-date { font-size: 12px; color: rgba(255,255,255,0.38); }
+
+.card-title {
+  font-size: 17px; font-weight: 700;
+  color: var(--white);
+  line-height: 1.3;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.card-excerpt {
+  font-size: 13px; color: rgba(255,255,255,0.45);
+  line-height: 1.68;
+  flex: 1;
+  margin-bottom: 20px;
+}
+.card-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 500;
+  transition: gap .2s;
+}
+.card-link.teal   { color: var(--teal); }
+.card-link.orange { color: var(--orange); }
+.card-link.purple { color: var(--purple); }
+.card-link:hover { gap: 10px; }
+.card-link .arrow { font-size: 14px; }
+
+/* ─── COMING SOON BANNER ─── */
+.coming-soon {
+  max-width: 1060px; margin: 0 auto 0;
+  padding: 0 36px 72px;
+}
+.coming-inner {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 52px 36px;
+  text-align: center;
+}
+.coming-title {
+  font-size: 22px; font-weight: 700;
+  color: var(--white); margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.coming-sub {
+  font-size: 14px; color: rgba(255,255,255,0.42);
+  margin-bottom: 28px; line-height: 1.6;
+}
+.btn-subscribe {
+  background: var(--teal); color: #0a0d10;
+  font-size: 14px; font-weight: 600;
+  padding: 13px 36px; border-radius: 8px;
+  border: none; cursor: pointer;
+  transition: background .2s;
+}
+.btn-subscribe:hover { background: var(--teal-dim); }
+
+/* ─── FOOTER ─── */
+footer {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.01);
+  padding: 52px 60px 28px;
+}
+.footer-grid {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1.4fr;
+  gap: 48px; margin-bottom: 40px;
+}
+.footer-logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 600; margin-bottom: 14px;
+}
+.footer-logo-icon {
+  width: 27px; height: 27px; border-radius: 7px;
+  background: var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #0a0d10;
+}
+.footer-desc {
+  font-size: 12.5px; color: rgba(255,255,255,0.32);
+  line-height: 1.72; max-width: 210px;
+}
+.footer-col h4 {
+  font-size: 13px; font-weight: 600;
+  color: var(--white); margin-bottom: 16px;
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+.footer-col ul li a {
+  font-size: 13px; color: rgba(255,255,255,0.45);
+  transition: color .2s;
+}
+.footer-col ul li a:hover { color: var(--white); }
+.footer-contact p {
+  font-size: 13px; color: rgba(255,255,255,0.45);
+  line-height: 1.85;
+}
+.footer-contact a { color: rgba(255,255,255,0.45); transition: color .2s; }
+.footer-contact a:hover { color: var(--teal); }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 22px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer-copy { font-size: 12px; color: rgba(255,255,255,0.2); }
+.footer-social { display: flex; gap: 22px; }
+.footer-social a { font-size: 12px; color: rgba(255,255,255,0.3); transition: color .2s; }
+.footer-social a:hover { color: var(--white); }
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">M</div>
+    MyOrbisVoice
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Features</a></li>
+    <li><a href="#">How it Works</a></li>
+    <li><a href="#">Pricing</a></li>
+    <li><a href="#">Partner Program</a></li>
+    <li><a href="#" class="active">Blog</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="#" class="btn-signin">Sign In</a>
+    <a href="#" class="btn-getstarted">Get Started</a>
+  </div>
+</nav>
+
+<!-- ── PAGE HEADER ── -->
+<div class="page-header">
+  <div class="breadcrumb">Blog</div>
+  <h1 class="page-title">Insights on voice AI and local business automation</h1>
+</div>
+
+<!-- ── BLOG GRID ── -->
+<div class="blog-section">
+  <div class="blog-grid">
+
+    <!-- Card 1 – teal accent -->
+    <div class="blog-card">
+      <div class="blog-thumb">
+        <div class="thumb-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="12" width="48" height="36" rx="4" stroke="#00d4b8" stroke-width="2.2"/>
+            <circle cx="22" cy="26" r="5" stroke="#00d4b8" stroke-width="2.2"/>
+            <path d="M8 38l12-10 10 8 10-12 16 14" stroke="#00d4b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="read-time teal">5 MIN READ</span>
+          <span class="meta-dot">·</span>
+          <span class="meta-date">Feb 10, 2026</span>
+        </div>
+        <div class="card-title">How Voice Agents Transform Local Businesses</div>
+        <p class="card-excerpt">Discover how AI voice agents are helping plumbers, dentists, and HVAC companies close more calls and recover lost revenue.</p>
+        <a href="#" class="card-link teal">Read article <span class="arrow">→</span></a>
+      </div>
+    </div>
+
+    <!-- Card 2 – orange accent -->
+    <div class="blog-card">
+      <div class="blog-thumb">
+        <div class="thumb-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="12" width="48" height="36" rx="4" stroke="#f5a623" stroke-width="2.2"/>
+            <circle cx="22" cy="26" r="5" stroke="#f5a623" stroke-width="2.2"/>
+            <path d="M8 38l12-10 10 8 10-12 16 14" stroke="#f5a623" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="read-time orange">7 MIN READ</span>
+          <span class="meta-dot">·</span>
+          <span class="meta-date">Feb 5, 2026</span>
+        </div>
+        <div class="card-title">Real-Time Voice AI: Inside Google Gemini Live</div>
+        <p class="card-excerpt">Explore how the Gemini Live API enables true conversational AI by streaming audio without the latency of traditional systems.</p>
+        <a href="#" class="card-link orange">Read article <span class="arrow">→</span></a>
+      </div>
+    </div>
+
+    <!-- Card 3 – purple accent -->
+    <div class="blog-card">
+      <div class="blog-thumb">
+        <div class="thumb-icon">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="12" width="48" height="36" rx="4" stroke="#8b5cf6" stroke-width="2.2"/>
+            <circle cx="22" cy="26" r="5" stroke="#8b5cf6" stroke-width="2.2"/>
+            <path d="M8 38l12-10 10 8 10-12 16 14" stroke="#8b5cf6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="read-time purple">6 MIN READ</span>
+          <span class="meta-dot">·</span>
+          <span class="meta-date">Jan 28, 2026</span>
+        </div>
+        <div class="card-title">The Intent Gap: Why Callers Hang Up (And How to Fix It)</div>
+        <p class="card-excerpt">Learn how MyOrbisVoice detects intent gaps in real time and helps teams improve their voice agent performance before it costs you a booking.</p>
+        <a href="#" class="card-link purple">Read article <span class="arrow">→</span></a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── COMING SOON BANNER ── -->
+<div class="coming-soon">
+  <div class="coming-inner">
+    <div class="coming-title">More articles coming soon</div>
+    <p class="coming-sub">Subscribe to our newsletter to get the latest updates on voice AI and automation strategies.</p>
+    <button class="btn-subscribe">Subscribe</button>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-logo">
+        <div class="footer-logo-icon">M</div>
+        MyOrbisVoice
+      </div>
+      <p class="footer-desc">AI voice agents that listen, execute tools, and close intent for local businesses.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Service</a></li>
+        <li><a href="#">Cookie Policy</a></li>
+        <li><a href="#">Compliance</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Resources</h4>
+      <ul>
+        <li><a href="#">Blog</a></li>
+        <li><a href="#">Documentation</a></li>
+        <li><a href="#">API Reference</a></li>
+        <li><a href="#">Support Center</a></li>
+      </ul>
+    </div>
+    <div class="footer-col footer-contact">
+      <h4>Contact</h4>
+      <p>
+        <a href="mailto:hello@myorbisvoice.com">hello@myorbisvoice.com</a><br><br>
+        +1 (555) ORBIS-AI<br><br>
+        123 Voice Street<br>
+        San Francisco, CA 94105<br>
+        United States
+      </p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span class="footer-copy">© 2026 MyOrbisVoice, Inc. All rights reserved.</span>
+    <div class="footer-social">
+      <a href="#">Twitter</a>
+      <a href="#">LinkedIn</a>
+      <a href="#">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

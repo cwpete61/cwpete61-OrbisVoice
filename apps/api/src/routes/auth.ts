@@ -134,7 +134,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         // Send verification email (if enabled)
         try {
           if (settings?.emailVerificationEnabled) {
-            const webUrl = process.env.WEB_URL || "http://localhost:3000";
+            const webUrl = env.WEB_URL;
             const verifyUrl = `${webUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(body.email)}`;
             const { createNotification, NotifType } = await import("../services/notification");
             
@@ -181,13 +181,17 @@ export async function authRoutes(fastify: FastifyInstance) {
         // Or we decide to let them in but with a "limited" state. 
         // Given the request "get email confirmation," it usually implies it's required.
         
-        return reply.code(201).send({
-          ok: true,
-          message: settings?.emailVerificationEnabled 
-            ? "Signup successful! Please check your email to verify your account."
-            : "Signup successful!",
-          data: { user: { id: user.id, email: user.email, name: user.name, username: (user as any).username } },
-        } as ApiResponse);
+                logger.info({ email: user.email, verificationRequired: !!settings?.emailVerificationEnabled }, "Signup complete");
+                return reply.code(201).send({
+                    ok: true,
+                    message: settings?.emailVerificationEnabled 
+                        ? "Signup successful! Please check your email to verify your account."
+                        : "Signup successful!",
+                    data: { 
+                        user: { id: user.id, email: user.email, name: user.name, username: (user as any).username },
+                        verificationRequired: !!settings?.emailVerificationEnabled
+                    },
+                } as ApiResponse);
       } catch (err) {
         if (err instanceof z.ZodError) {
           logger.warn({ err: err.errors }, "Signup validation error");
@@ -453,7 +457,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           },
         });
 
-        const webUrl = process.env.WEB_URL || "http://localhost:3000";
+        const webUrl = env.WEB_URL;
         const verifyUrl = `${webUrl}/verify-email?token=${token}&email=${encodeURIComponent(user.email)}`;
         const { createNotification, NotifType } = await import("../services/notification");
 
@@ -514,7 +518,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
 
         // Use the notification service to send email
-        const webUrl = process.env.WEB_URL || "http://localhost:3000";
+        const webUrl = env.WEB_URL;
         const resetUrl = `${webUrl}/reset-password?token=${token}`;
         
         // We'll use createNotification which handles email sending

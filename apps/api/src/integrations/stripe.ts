@@ -264,6 +264,41 @@ class StripeClient {
   }
 
   /**
+   * List active subscriptions for a customer
+   */
+  async listSubscriptions(customerId: string): Promise<Stripe.Subscription[]> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
+    try {
+      const subscriptions = await this.stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 5,
+      });
+      return subscriptions.data;
+    } catch (err: any) {
+      logger.error({ err: err.message, customerId }, "Failed to list Stripe subscriptions");
+      return [];
+    }
+  }
+
+  /**
+   * List recent checkout sessions for a customer
+   */
+  async listCheckoutSessions(customerId: string): Promise<Stripe.Checkout.Session[]> {
+    if (!this.stripe) throw new Error("Stripe is not configured");
+    try {
+      const sessions = await this.stripe.checkout.sessions.list({
+        customer: customerId,
+        limit: 5,
+      });
+      return sessions.data;
+    } catch (err: any) {
+      logger.error({ err: err.message, customerId }, "Failed to list Stripe checkout sessions");
+      return [];
+    }
+  }
+
+  /**
    * Create a transfer
    */
   async createTransfer(transfer: StripeTransfer): Promise<Stripe.Transfer> {

@@ -16,15 +16,13 @@ COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
 COPY apps/referrals/package.json ./apps/referrals/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/config/package.json ./packages/config/
+COPY apps/commerce-agent/package.json ./apps/commerce-agent/
 
 # Install dependencies from root
 RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY apps/api ./apps/api
-COPY packages ./packages
 
 # Generate Prisma client and build the app
 WORKDIR /app/apps/api
@@ -40,11 +38,10 @@ RUN apt-get update && apt-get install -y openssl libssl-dev curl && rm -rf /var/
 
 ENV NODE_ENV=production
 
-# Copy mandatory package files for the workspace and shared packages
+# Copy mandatory package files for the workspace
 COPY package*.json ./
 COPY version.json ./
 COPY apps/api/package*.json ./apps/api/
-COPY packages ./packages
 
 # Install ONLY production dependencies for the API workspace
 # This ensures all modules are present and correctly linked

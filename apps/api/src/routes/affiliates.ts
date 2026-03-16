@@ -107,6 +107,10 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                 }
                 let user = await prisma.user.findUnique({ where: { email: body.email } });
 
+                // Check if email verification is required
+                const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+                const verificationRequired = !!settings?.emailVerificationEnabled;
+
                 if (user) {
                     if (!body.password) {
                         return reply.code(400).send({ ok: false, message: "Please provide your password to verify your account" });
@@ -115,7 +119,7 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                         return reply.code(401).send({ ok: false, message: "Invalid email or password" });
                     }
 
-                    // Update existing user's billing info
+                    // Update existing user names
                     user = await prisma.user.update({
                         where: { id: user.id },
                         data: {
@@ -130,7 +134,6 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                     // Create new user
                     const hashedPassword = await bcrypt.hash(body.password, 10);
                     const tenant = await prisma.tenant.create({ data: { name: `${body.firstName}'s Workspace` } });
-                    const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
 
                     user = await prisma.user.create({
                         data: {
@@ -142,32 +145,54 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
                             firstName: body.firstName,
                             lastName: body.lastName,
                             commissionLevel: settings?.defaultCommissionLevel || "LOW",
+                            emailVerified: verificationRequired ? null : new Date(),
                         } as any,
                     });
-                }
 
-                // Auto-approve as ACTIVE affiliate — no manual admin step required
-                const result = await affiliateManager.applyForAffiliate(user.id, "ACTIVE");
-                if (!result.success) {
-                    // If already an affiliate (existing user re-applying), that's fine — just log them in
-                    if (!result.message?.includes("Already")) {
-                        return reply.code(400).send({ ok: false, message: result.message });
+                    // Send verification email if required
+                    if (verificationRequired) {
+                        try {
+                            const verificationToken = Math.random().toString(36).substring(2, 15);
+                            await prisma.user.update({
+                                where: { id: user.id },
+                                data: { emailVerificationToken: verificationToken }
+                            });
+                        } catch (sendErr) {
+                            fastify.log.error(sendErr, "Failed to initiate verification for affiliate");
+                        }
                     }
-                } else {
-                    // Ensure isAffiliate flag is set (applyForAffiliate handles this for ACTIVE, but be explicit)
-                    await prisma.user.update({
-                        where: { id: user.id },
-                        data: { isAffiliate: true },
-                    });
                 }
 
-                // Generate Auth JWT so they are logged in seamlessly
-                const token = fastify.jwt.sign(
-                    { userId: user.id, tenantId: user.tenantId, email: user.email },
-                    { expiresIn: "7d" }
-                );
+                // Auto-approve as ACTIVE affiliate
+                const result = await affiliateManager.applyForAffiliate(user.id, "ACTIVE");
+                if (!result.success && !result.message?.includes("Already")) {
+                    return reply.code(400).send({ ok: false, message: result.message });
+                }
 
-                return reply.send({ ok: true, message: "Welcome to the OrbisVoice Partner Program!", data: { token } } as ApiResponse);
+                // Ensure isAffiliate flag is set
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { isAffiliate: true },
+                });
+
+                // Generate Auth JWT ONLY if verification is not required
+                // If required, we might still want to let them in but with limited access, 
+                // but standard app behavior is to block login until verified.
+                // For "seamless" experience, if verification is disabled, we give token.
+                
+                let token = null;
+                if (!verificationRequired || user.emailVerified || user.isAdmin) {
+                    token = fastify.jwt.sign(
+                        { userId: user.id, tenantId: user.tenantId, email: user.email },
+                        { expiresIn: "7d" }
+                    );
+                }
+
+                return reply.send({ 
+                    ok: true, 
+                    message: verificationRequired ? "Application received! Please verify your email." : "Welcome to the OrbisVoice Partner Program!", 
+                    data: { token, verificationRequired } 
+                } as ApiResponse);
             } catch (err) {
                 if (err instanceof z.ZodError) {
                     return reply.code(400).send({ ok: false, message: "Invalid application data: " + err.errors[0].message });

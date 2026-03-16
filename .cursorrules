@@ -1,3 +1,12 @@
+# Startup & Global Workflow
+
+At the start of every session or when "loading", the agent MUST:
+1. Initialize by following the Global Workflow: `/global-workflow`
+2. Read `ARCHITECTURE.md` and `DIRECTIVES.md` to ensure operational compliance.
+3. Check the current focused Task in `.gsd/ROADMAP.md`.
+
+---
+
 # Global Deploy Rule
 
 Whenever asked to "Deploy" or "Push to Live", execute the following steps to trigger the CI/CD pipeline:

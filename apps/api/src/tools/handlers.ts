@@ -18,7 +18,7 @@ function getGmailClient(): GmailClient {
     gmailClient = new GmailClient({
       clientId: env.GMAIL_CLIENT_ID || "",
       clientSecret: env.GMAIL_CLIENT_SECRET || "",
-      redirectUri: env.GMAIL_REDIRECT_URI || "http://localhost:3000/api/oauth/gmail/callback",
+      redirectUri: env.GMAIL_REDIRECT_URI || `${env.WEB_URL}/api/oauth/gmail/callback`,
     });
   }
   return gmailClient;
@@ -29,7 +29,7 @@ function getCalendarClient(): GoogleCalendarClient {
     calendarClient = new GoogleCalendarClient({
       clientId: env.GOOGLE_CALENDAR_CLIENT_ID || "",
       clientSecret: env.GOOGLE_CALENDAR_CLIENT_SECRET || "",
-      redirectUri: env.GOOGLE_CALENDAR_REDIRECT_URI || "http://localhost:3000/api/oauth/calendar/callback",
+      redirectUri: env.GOOGLE_CALENDAR_REDIRECT_URI || `${env.WEB_URL}/api/oauth/calendar/callback`,
     });
   }
   return calendarClient;

@@ -27,11 +27,15 @@ else
   log "WARNING: .env not found — secrets may be missing"
 fi
 
-# 1. Pull latest code
-log "Pulling latest code from $BRANCH..."
-git fetch origin
-git reset --hard origin/$BRANCH
-log "Code updated to $(git log -1 --format='%h %s')"
+# 1. Pull latest code (if git repository)
+if [ -d ".git" ]; then
+  log "Pulling latest code from $BRANCH..."
+  git fetch origin
+  git reset --hard origin/$BRANCH
+  log "Code updated to $(git log -1 --format='%h %s')"
+else
+  log "Skipping git update (not a git repository)"
+fi
 
 # 2. Build and restart all services
 log "Building and restarting containers..."

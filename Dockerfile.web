@@ -14,15 +14,13 @@ COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY apps/voice-gateway/package.json ./apps/voice-gateway/
 COPY apps/referrals/package.json ./apps/referrals/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/config/package.json ./packages/config/
+COPY apps/commerce-agent/package.json ./apps/commerce-agent/
 
 # Install dependencies from root
 RUN npm install --legacy-peer-deps
 
 # Copy config and source
 COPY tsconfig.base.json ./
-COPY packages ./packages
 COPY apps/web ./apps/web
 
 # Build-time environment variables
@@ -63,13 +61,13 @@ ENV PORT=3000
 
 # Copy standalone build and assets
 # Standalone mode puts everything needed in .next/standalone
-COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/.next/static ./.next/static
 
 # Expose Next.js default port
 EXPOSE 3000
 
 # Start the application using node directly on the standalone server
-# In standalone mode, the entrypoint is apps/web/server.js
-CMD ["node", "apps/web/server.js"]
+# In standalone mode, the entrypoint is server.js
+CMD ["node", "server.js"]

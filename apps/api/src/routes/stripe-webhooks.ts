@@ -5,6 +5,7 @@ import { env } from "../env";
 import { logger } from "../logger";
 import crypto from "crypto";
 import { createNotification, NotifType } from "../services/notification";
+import { UsageService } from "../services/usage-service";
 
 /**
  * Stripe Webhook Handler
@@ -217,25 +218,11 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
 
                         // Update the tenant's subscription tier and usage limits
                         if (tier) {
-                            const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-                            let newUsageLimit = 100; // default
-
-                            if (tier === 'ltd') newUsageLimit = settings?.ltdLimit ?? 1000;
-                            else if (tier === 'starter') newUsageLimit = settings?.starterLimit ?? 1000;
-                            else if (tier === 'professional') newUsageLimit = settings?.professionalLimit ?? 10000;
-                            else if (tier === 'enterprise') newUsageLimit = settings?.enterpriseLimit ?? 100000;
-                            else if (tier === 'ai-revenue-infrastructure') newUsageLimit = settings?.aiInfraLimit ?? 250000;
-
-                            await prisma.tenant.update({
-                                where: { id: tenant.id },
-                                data: {
-                                    subscriptionTier: tier,
-                                    subscriptionStatus: "active",
-                                    usageLimit: newUsageLimit,
-                                    stripeSubscriptionId: session.subscription ? String(session.subscription) : undefined
-                                },
-                            });
-                            logger.info({ tenantId: tenant.id, tier, newUsageLimit, subId: session.subscription }, "Tenant upgraded via checkout");
+                            await UsageService.updateSubscriptionTier(
+                                tenant.id,
+                                tier,
+                                session.subscription ? String(session.subscription) : undefined
+                            );
                         }
 
                         // For LTD: auto-create the $20/month recurring subscription

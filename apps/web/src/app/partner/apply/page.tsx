@@ -21,6 +21,9 @@ export default function PartnerApplication() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const [success, setSuccess] = useState(false);
+    const [verificationRequired, setVerificationRequired] = useState(false);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -44,18 +47,47 @@ export default function PartnerApplication() {
                 throw new Error(data.message || "Something went wrong creating application.");
             }
 
-            // If success, user token is returned
-            if (data.data?.token) {
-                localStorage.setItem("token", data.data.token);
+            // Handle success
+            if (data.data?.verificationRequired) {
+                setVerificationRequired(true);
+                setSuccess(true);
+            } else {
+                // If success and no verification needed, user token is returned
+                if (data.data?.token) {
+                    localStorage.setItem("token", data.data.token);
+                }
+                router.push("/affiliates?welcome=true");
             }
-
-            router.push("/affiliates?welcome=true");
         } catch (err: any) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
     };
+
+    if (success && verificationRequired) {
+        return (
+            <div className="flex min-h-screen flex-col bg-[#05080f] text-[#f0f4fa]">
+                <PublicNav />
+                <main className="flex-1 flex items-center justify-center p-6">
+                    <div className="w-full max-w-md bg-[#080c16] border border-[#14b8a6]/30 rounded-2xl p-10 shadow-2xl text-center">
+                        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#14b8a6]/10 text-[#14b8a6]">
+                            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Check your email</h2>
+                        <p className="text-[rgba(240,244,250,0.6)] mb-8">
+                            We've sent a verification link to <span className="text-white font-medium">{formData.email}</span>. Please verify your account to continue.
+                        </p>
+                        <Link href="/login" className="inline-block w-full rounded-lg bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#05080f] transition hover:bg-[#0d9488]">
+                            Return to Login
+                        </Link>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen flex-col bg-[#05080f] text-[#f0f4fa]">
