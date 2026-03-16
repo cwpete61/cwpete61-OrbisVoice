@@ -305,58 +305,58 @@ function BillingContent() {
            {/* Abstract Gradient Background for Section */}
            <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#14b8a6]/10 to-transparent pointer-events-none" />
 
-          <h2 className="text-xs font-bold text-white mb-4 flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-[#14b8a6]" />
+          <h2 className="text-sm font-bold text-white mb-6 flex items-center gap-3">
+            <div className="h-2.5 w-2.5 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.3)]" />
             Subscription Overview
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <p className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] mb-2">Active Infrastructure</p>
-              <p className="text-xl font-black text-white capitalize">
+            <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em] mb-3">Active Infrastructure</p>
+              <p className="text-2xl font-black text-white capitalize">
                 {currentTier}
               </p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs text-gray-400 font-medium">Standard Operations</span>
+              <div className="mt-2.5 flex items-center gap-2.5">
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-sm text-gray-400 font-medium">Standard Operations</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <p className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em] mb-2">Lifecycle Status</p>
-              <p className="text-sm font-bold text-white capitalize">
+            <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em] mb-3">Lifecycle Status</p>
+              <p className="text-lg font-bold text-white capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
               {subscription.subscriptionEnds && (
-                <p className="text-[9px] text-gray-400 mt-1 font-medium">
+                <p className="text-[10px] text-gray-400 mt-1.5 font-medium">
                   Next snapshot: {new Date(subscription.subscriptionEnds).toLocaleDateString()}
                 </p>
               )}
             </div>
 
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-[8px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
+            <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
+              <div className="flex justify-between items-start mb-3">
+                <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
                 {(subscription.creditBalance > 0 || subscription.bonusCredits > 0) && (
-                  <span className="bg-[#14b8a6]/20 text-[#14b8a6] text-[9px] px-2 py-0.5 rounded-full border border-[#14b8a6]/30 font-black">
+                  <span className="bg-[#14b8a6]/20 text-[#14b8a6] text-[10px] px-2.5 py-1 rounded-full border border-[#14b8a6]/30 font-black">
                      +{subscription.creditBalance + (subscription.bonusCredits || 0)} RESERVE
                   </span>
                 )}
               </div>
-              <div className="flex justify-between text-[11px] mb-2">
-                <span className="text-gray-400">Monthly Conversations</span>
+              <div className="flex justify-between text-[12.5px] mb-3">
+                <span className="text-gray-400 font-medium">Monthly Conversations</span>
                 <span className={isOverLimit ? "text-red-400 font-black" : "font-black text-white"}>
                   {subscription.usageCount} / {subscription.usageLimit}
                 </span>
               </div>
-              <div className="h-1.5 bg-black/40 rounded-full overflow-hidden mb-2">
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
                 <div
                   className={`h-full transition-all duration-1000 ${isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
                     }`}
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
-              <p className="text-[10px] text-gray-600 font-medium">
+              <p className="text-[11px] text-gray-600 font-bold">
                 Cycle resets on {new Date(subscription.usageResetAt).toLocaleDateString()}
               </p>
             </div>
@@ -434,20 +434,20 @@ function BillingContent() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
               {packages.map((pkg) => (
-                <div key={pkg.id} className="rounded-2xl border border-white/5 bg-[#0c111d] p-5 transition-all hover:border-white/10 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-10 h-10 bg-[#14b8a6]/5 rounded-bl-2xl" />
-                  <h3 className="text-sm font-bold text-white group-hover:text-[#14b8a6] transition-colors">{pkg.name}</h3>
-                  <p className="text-[8px] text-gray-500 mt-0.5 uppercase font-black tracking-widest">Reserve Package</p>
-                  <div className="my-4">
-                    <p className="text-2xl font-black text-white">${pkg.price}</p>
+                <div key={pkg.id} className="rounded-2xl border border-white/5 bg-[#0c111d] p-6 transition-all hover:border-white/10 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-[#14b8a6]/5 rounded-bl-2xl" />
+                  <h3 className="text-base font-bold text-white group-hover:text-[#14b8a6] transition-colors line-clamp-1">{pkg.name}</h3>
+                  <p className="text-[9px] text-gray-500 mt-1 uppercase font-black tracking-widest">Reserve Package</p>
+                  <div className="my-5">
+                    <p className="text-3xl font-black text-white">${pkg.price}</p>
                   </div>
-                  <div className="mb-4 pb-4 border-b border-white/5">
-                    <p className="text-[11px] font-bold text-gray-300">+{pkg.credits.toLocaleString()} Convs</p>
+                  <div className="mb-5 pb-5 border-b border-white/5">
+                    <p className="text-[12.5px] font-extrabold text-gray-300">+{pkg.credits.toLocaleString()} Convs</p>
                   </div>
                   <button
                     onClick={() => handleBuyPackage(pkg)}
                     disabled={purchasingPackage === pkg.id}
-                    className="px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-[#14b8a6] hover:border-transparent border border-white/10 w-full disabled:opacity-50"
+                    className="px-3 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-[#14b8a6] hover:border-transparent border border-white/10 w-full disabled:opacity-50"
                   >
                     {purchasingPackage === pkg.id ? "..." : "Acquire"}
                   </button>
