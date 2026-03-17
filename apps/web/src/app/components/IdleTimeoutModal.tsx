@@ -21,15 +21,16 @@ export default function IdleTimeoutModal({
     };
 
     const resetTimer = () => {
-        if (isAdmin) return;
-
+        // We now monitor all users including admins as per request to stop logouts on upgrade 
+        // and enforce security for everyone.
+        
         setShowPrompt(false);
         setTimeLeft(60);
 
         if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
 
-        // 10 minutes idle timeout
+        // 30 minutes idle timeout
         idleTimeoutRef.current = setTimeout(() => {
             setShowPrompt(true);
 
@@ -44,16 +45,10 @@ export default function IdleTimeoutModal({
                 });
             }, 1000);
 
-        }, 600000); // 10 minutes
+        }, 1800000); // 30 minutes
     };
 
     useEffect(() => {
-        if (isAdmin) {
-            if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-            return;
-        }
-
         const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
         const handleEvent = () => {
             if (!showPrompt) {

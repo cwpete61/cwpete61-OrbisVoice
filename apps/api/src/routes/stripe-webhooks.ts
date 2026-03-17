@@ -276,15 +276,25 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         });
                         if (!tenant) break;
 
-                        await prisma.tenant.update({
-                            where: { id: tenant.id },
-                            data: {
-                                subscriptionStatus: status,
-                                stripeSubscriptionId: subscription.id,
-                                ...(tier ? { subscriptionTier: tier } : {}),
-                            },
-                        });
-                        logger.info({ tenantId: tenant.id, status, tier, subId: subscription.id }, "Tenant subscription updated");
+                        // Use UsageService to handle smart tier updates (prevents downgrades)
+                        if (tier) {
+                            await UsageService.updateSubscriptionTier(
+                                tenant.id,
+                                tier,
+                                subscription.id
+                            );
+                        } else {
+                            // Status only update if no tier in metadata
+                            await prisma.tenant.update({
+                                where: { id: tenant.id },
+                                data: {
+                                    subscriptionStatus: status,
+                                    stripeSubscriptionId: subscription.id,
+                                },
+                            });
+                        }
+                        
+                        logger.info({ tenantId: tenant.id, status, tier, subId: subscription.id }, "Tenant subscription updated via webhook");
                         break;
                     }
 

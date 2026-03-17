@@ -208,11 +208,22 @@ export async function apiFetch<T = unknown>(
 
     let res: Response;
     try {
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            ...((options?.headers as Record<string, string>) || {}),
+        };
+
+        // Automatically add Authorization header if not present
+        if (!headers["Authorization"]) {
+            const auth = authHeader();
+            if (auth.Authorization) {
+                headers["Authorization"] = auth.Authorization;
+            }
+        }
+
         res = await fetch(url, {
             ...options,
-            headers: {
-                ...options?.headers,
-            }
+            headers,
         });
     } catch (_err) {
         // Network-level failure: API down, wrong port, CORS, etc.

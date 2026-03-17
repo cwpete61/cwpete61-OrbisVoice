@@ -2,6 +2,15 @@ import { prisma } from "../db";
 import { logger } from "../logger";
 import { createNotification, NotifType } from "./notification";
 
+const TIER_PRIORITY: Record<string, number> = {
+  "free": 0,
+  "starter": 1,
+  "ltd": 2,
+  "professional": 3,
+  "enterprise": 4,
+  "ai-revenue-infrastructure": 5,
+};
+
 export class UsageService {
   /**
    * Check if a tenant has remaining credits and reset monthly usage if needed.
@@ -83,7 +92,32 @@ export class UsageService {
   /**
    * Update tenant's subscription tier and usage limits
    */
-  static async updateSubscriptionTier(tenantId: string, tier: string, stripeSubscriptionId?: string) {
+  static async updateSubscriptionTier(tenantId: string, tier: string, stripeSubscriptionId?: string, force: boolean = false) {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) return null;
+
+    // Downgrade protection: only update if higher priority or forced (manual sync)
+    const currentPriority = TIER_PRIORITY[tenant.subscriptionTier] || 0;
+    const newPriority = TIER_PRIORITY[tier] || 0;
+
+    if (!force && newPriority < currentPriority && tenant.subscriptionStatus === "active") {
+      logger.info({ 
+        tenantId, 
+        currentTier: tenant.subscriptionTier, 
+        rejectedTier: tier,
+        reason: "Downgrade protection active" 
+      }, "Skipping subscription update to lower tier");
+      
+      // Still update the status and sub ID if they match the current tier's sub
+      if(stripeSubscriptionId === tenant.stripeSubscriptionId) {
+          await prisma.tenant.update({
+              where: { id: tenantId },
+              data: { stripeSubscriptionId }
+          });
+      }
+      return tenant;
+    }
+
     const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
     let newUsageLimit = 100;
 

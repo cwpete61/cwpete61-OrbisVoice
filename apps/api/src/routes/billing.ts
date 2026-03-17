@@ -410,47 +410,67 @@ async function billingRoutes(fastify: FastifyInstance) {
       }
 
       try {
-        // 1. Check for active subscriptions
-        const subscriptions = await stripe.listSubscriptions(tenant.stripeCustomerId);
+        // 1. Check for active or trialing subscriptions
+        // Sort by created descending to get the newest first
+        const allSubscriptions = await (stripe as any).stripe.subscriptions.list({
+          customer: tenant.stripeCustomerId,
+          status: "all",
+          limit: 20
+        });
+
+        // Use a more intelligent selector: 
+        // - Priority 1: Non-LTD active/trialing subscriptions
+        // - Priority 2: LTD active/trialing subscriptions
+        // - Priority 3: Most recent successful session (for one-time payments)
         
-        if (subscriptions.length > 0) {
-          const sub = subscriptions[0];
-          const tier = sub.metadata.tier || (sub as any).plan?.metadata?.tier;
+        const activeSubs = allSubscriptions.data
+          .filter((s: any) => s.status === "active" || s.status === "trialing")
+          .sort((a: any, b: any) => b.created - a.created);
+
+        // Filter for subscriptions that specifically have a tier in metadata
+        const validTiers = activeSubs.filter((s: any) => s.metadata?.tier);
+        
+        // Find the "best" one: prefer non-ltd if both exist (unlikely but safe)
+        const bestSub = validTiers.find((s: any) => s.metadata.tier !== 'ltd') || validTiers[0];
+
+        if (bestSub) {
+          const tier = bestSub.metadata.tier || (bestSub as any).plan?.metadata?.tier;
           
           if (tier) {
-            await UsageService.updateSubscriptionTier(tenantId, tier, sub.id);
+            logger.info({ tenantId, tier, subId: bestSub.id }, "Sync: Found active subscription, updating tier");
+            await UsageService.updateSubscriptionTier(tenantId, tier, bestSub.id, true);
             
             // Try to process commission if missed
             const admin = await prisma.user.findFirst({ where: { tenantId, isAdmin: true } });
             if (admin) {
-              await referralManager.processCommission(admin.id, (sub as any).plan?.amount / 100 || 0, sub.id);
+              await referralManager.processCommission(admin.id, (bestSub as any).plan?.amount / 100 || 0, bestSub.id);
             }
             
-            return { ok: true, message: `Synced: Updated to ${tier}`, tier };
+            return { ok: true, message: `Synced ${tenant.name}: Updated to ${tier}`, tier };
           }
         }
 
-        // 2. Check for recent successful LTD checkout sessions if no subscription found
+        // 2. Fallback: Check for recent successful checkout sessions for ANY tier
         const sessions = await stripe.listCheckoutSessions(tenant.stripeCustomerId);
-        const successfulLtdSession = sessions.find(s => 
-          s.payment_status === 'paid' && 
-          s.status === 'complete' && 
-          s.metadata?.tier === 'ltd'
-        );
+        const successfulSession = sessions
+          .filter(s => s.payment_status === 'paid' && s.status === 'complete' && s.metadata?.tier)
+          .sort((a: any, b: any) => b.created - a.created)[0];
 
-        if (successfulLtdSession) {
-          await UsageService.updateSubscriptionTier(tenantId, 'ltd');
+        if (successfulSession) {
+          const tier = successfulSession.metadata!.tier as string;
+          logger.info({ tenantId, tier, sessionId: successfulSession.id }, "Sync: Found successful checkout session, updating tier");
+          await UsageService.updateSubscriptionTier(tenantId, tier, undefined, true);
           
           // Try to process commission if missed
           const admin = await prisma.user.findFirst({ where: { tenantId, isAdmin: true } });
           if (admin) {
-            await referralManager.processCommission(admin.id, successfulLtdSession.amount_total! / 100, successfulLtdSession.id);
+            await referralManager.processCommission(admin.id, successfulSession.amount_total! / 100, successfulSession.id);
           }
           
-          return { ok: true, message: "Synced: Updated to LTD", tier: 'ltd' };
+          return { ok: true, message: `Synced ${tenant.name}: Updated to ${tier} from recent payment`, tier };
         }
 
-        return { ok: true, message: "Sync completed: No changes needed", tier: tenant.subscriptionTier };
+        return { ok: true, message: `Sync completed for ${tenant.name}: Current tier is ${tenant.subscriptionTier}`, tier: tenant.subscriptionTier };
       } catch (err: any) {
         logger.error({ err: err.message, tenantId }, "Failed to sync billing state");
         return reply.status(500).send({ error: "Sync failed", details: err.message });
