@@ -185,6 +185,7 @@ export interface Tenant {
   subscriptionStatus: string | null;
   usageCount: number;
   usageLimit: number | null;
+  creditBalance: number;
   createdAt: string;
   _count?: {
     users: number;

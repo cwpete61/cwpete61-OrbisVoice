@@ -58,6 +58,7 @@ export default function TenantManagement() {
                                 <th className="px-6 py-4">ID</th>
                                 <th className="px-6 py-4">Plan</th>
                                 <th className="px-6 py-4">Usage</th>
+                                <th className="px-6 py-4">Balance</th>
                                 <th className="px-6 py-4">Users</th>
                                 <th className="px-6 py-4">Agents</th>
                                 <th className="px-6 py-4">Created</th>
@@ -108,6 +109,9 @@ export default function TenantManagement() {
                                             <td className="px-6 py-4">
                                                 <div className="text-xs text-[#f0f4fa] font-bold">{tenant.usageCount.toLocaleString()}</div>
                                                 <div className="text-[10px] text-[rgba(240,244,250,0.4)]">/ {tenant.usageLimit?.toLocaleString() || '∞'}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-xs text-emerald-400 font-bold">${tenant.creditBalance?.toLocaleString() || '0'}</div>
                                             </td>
                                             <td className="px-6 py-4 text-[rgba(240,244,250,0.6)]">{tenant._count?.users || 0}</td>
                                             <td className="px-6 py-4 text-[rgba(240,244,250,0.6)]">{tenant._count?.agents || 0}</td>
