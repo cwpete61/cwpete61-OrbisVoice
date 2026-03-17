@@ -5,10 +5,16 @@
 VPS_IP="147.93.183.4"
 PROJECT_DIR="/opt/orbisvoice"
 # Determine SSH key path (handle both Windows and Linux paths)
-if [ -f "$HOME/.ssh/orbis_deploy_key" ]; then
-    SSH_KEY="$HOME/.ssh/orbis_deploy_key"
+if [ -f "/mnt/c/Users/crawf/.ssh/orbis_deploy_key" ]; then
+    REAL_KEY="/mnt/c/Users/crawf/.ssh/orbis_deploy_key"
+    # Copy to /tmp to fix permissions (WSL doesn't allow chmod on /mnt/c files)
+    SSH_KEY="/tmp/orbis_deploy_key"
+    cp "$REAL_KEY" "$SSH_KEY"
+    chmod 600 "$SSH_KEY"
 elif [ -f "/c/Users/crawf/.ssh/orbis_deploy_key" ]; then
     SSH_KEY="/c/Users/crawf/.ssh/orbis_deploy_key"
+elif [ -f "$HOME/.ssh/orbis_deploy_key" ]; then
+    SSH_KEY="$HOME/.ssh/orbis_deploy_key"
 else
     SSH_KEY="~/.ssh/orbis_deploy_key"
 fi

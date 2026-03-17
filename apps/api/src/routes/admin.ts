@@ -282,6 +282,74 @@ export async function adminRoutes(fastify: FastifyInstance) {
             return reply.code(500).send({ ok: false, message: "Internal server error" });
         }
     });
+
+    /**
+     * POST /admin/billing/sync-all
+     * Force sync all tenants with Stripe
+     */
+    fastify.post("/admin/billing/sync-all", async (request, reply) => {
+        try {
+            const tenants = await prisma.tenant.findMany({
+                where: { stripeCustomerId: { not: null } },
+                select: { id: true, name: true, stripeCustomerId: true }
+            });
+
+            logger.info({ count: tenants.length }, "Starting global billing sync");
+
+            const results = [];
+            const { StripeClient } = await import("../integrations/stripe");
+            const { env } = await import("../env");
+            const { UsageService } = await import("../services/usage-service");
+            const { referralManager } = await import("../services/referral");
+            
+            const stripe = await StripeClient.getPlatformClient(prisma, env);
+
+            for (const tenant of tenants) {
+                try {
+                    // Check for active or trialing subscriptions
+                    const allSubscriptions = await (stripe as any).stripe.subscriptions.list({
+                        customer: tenant.stripeCustomerId,
+                        status: "active",
+                        limit: 3
+                    });
+
+                    if (allSubscriptions.data.length > 0) {
+                        const sub = allSubscriptions.data[0];
+                        const tier = sub.metadata?.tier || (sub as any).plan?.metadata?.tier;
+                        if (tier) {
+                            await UsageService.updateSubscriptionTier(tenant.id, tier, sub.id, true);
+                            results.push({ name: tenant.name, status: "success", tier });
+                            continue;
+                        }
+                    }
+
+                    // Fallback to checkout sessions
+                    const sessions = await stripe.listCheckoutSessions(tenant.stripeCustomerId!);
+                    const lastPaid = sessions.find(s => s.payment_status === 'paid' && s.status === 'complete' && s.metadata?.tier);
+                    
+                    if (lastPaid) {
+                        const tier = lastPaid.metadata!.tier as string;
+                        await UsageService.updateSubscriptionTier(tenant.id, tier, undefined, true);
+                        results.push({ name: tenant.name, status: "success", tier, type: "one-time" });
+                    } else {
+                        results.push({ name: tenant.name, status: "no_data" });
+                    }
+                } catch (err: any) {
+                    logger.error({ tenantId: tenant.id, err: err.message }, "Error syncing individual tenant");
+                    results.push({ name: tenant.name, status: "error", message: err.message });
+                }
+            }
+
+            return reply.send({
+                ok: true,
+                message: `Sync completed for ${tenants.length} workspaces`,
+                data: results
+            });
+        } catch (err) {
+            logger.error(err, "Failed to sync all billing");
+            return reply.code(500).send({ ok: false, message: "Internal server error" });
+        }
+    });
 }
 
 /**

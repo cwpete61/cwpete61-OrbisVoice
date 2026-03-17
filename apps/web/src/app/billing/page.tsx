@@ -380,31 +380,47 @@ function BillingContent() {
               <h3 className="text-white font-bold text-sm">Revenue Management Portal</h3>
               <p className="text-xs text-gray-500 mt-1">Manage payment methods, jurisdictional details, and invoice history securely via Stripe.</p>
             </div>
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch(`${API_BASE}/billing/portal`, {
-                    method: 'POST',
-                    headers: { 
-                      'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ returnUrl: window.location.href })
-                  });
-                  const data = await res.json();
-                  if (data.url) window.location.href = data.url;
-                  else alert(data.error || 'Failed to open billing portal');
-                } catch (err) {
-                  alert('Connection error');
-                }
-              }}
-              className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-white/10 border border-white/10 flex items-center gap-3 whitespace-nowrap shadow-xl"
-            >
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              Secure Management Portal
-            </button>
+            <div className="flex flex-wrap gap-4">
+              <button
+                onClick={syncBilling}
+                disabled={syncing}
+                className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition border flex items-center gap-3 whitespace-nowrap shadow-xl ${
+                  syncing 
+                    ? "bg-white/5 text-gray-500 border-white/5 cursor-not-allowed" 
+                    : "bg-[#14b8a6]/10 text-[#14b8a6] hover:bg-[#14b8a6]/20 border-[#14b8a6]/20"
+                }`}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={syncing ? "animate-spin" : ""}>
+                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {syncing ? "Syncing..." : "Sync Subscription"}
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/billing/portal`, {
+                      method: 'POST',
+                      headers: { 
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ returnUrl: window.location.href })
+                    });
+                    const data = await res.json();
+                    if (data.url) window.location.href = data.url;
+                    else alert(data.error || 'Failed to open billing portal');
+                  } catch (err) {
+                    alert('Connection error');
+                  }
+                }}
+                className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-white/10 border border-white/10 flex items-center gap-3 whitespace-nowrap shadow-xl"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Secure Management Portal
+              </button>
+            </div>
           </div>
         </section>
 

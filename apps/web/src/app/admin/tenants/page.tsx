@@ -41,6 +41,31 @@ export default function TenantManagement() {
                         <h1 className="text-3xl font-bold text-[#f0f4fa]">Workspace Management</h1>
                         <p className="mt-2 text-[rgba(240,244,250,0.5)]">Review and manage platform workspaces</p>
                     </div>
+                    <button
+                        onClick={async () => {
+                            if (!confirm("This will force-sync all workspaces with Stripe. Continue?")) return;
+                            setLoading(true);
+                            try {
+                                const res = await fetch(`${API_BASE}/admin/billing/sync-all`, {
+                                    method: 'POST',
+                                    headers: authHeader()
+                                });
+                                const data = await res.json();
+                                alert(data.message || "Sync complete");
+                                fetchTenants();
+                            } catch (err) {
+                                alert("Sync failed");
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        className="rounded-xl bg-[#14b8a6]/10 border border-[#14b8a6]/20 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-[#14b8a6] hover:bg-[#14b8a6]/20 transition flex items-center gap-2 shadow-lg shadow-[#14b8a6]/5"
+                    >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Sync All Billing
+                    </button>
                 </header>
 
                 {error && (
