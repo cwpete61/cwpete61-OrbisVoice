@@ -29,7 +29,7 @@ export interface StripeTransfer {
 }
 
 class StripeClient {
-  private stripe: Stripe | null;
+  public stripe: Stripe | null;
   private webhookSecret?: string;
 
   constructor(config: StripeConfig) {

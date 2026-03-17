@@ -308,15 +308,22 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
                         });
                         if (!tenant) break;
 
+                        // Only reset if this is the ACTIVE subscription we have on file
+                        // This prevents old trials or canceled subs from overwriting a new purchase
+                        if (tenant.stripeSubscriptionId && tenant.stripeSubscriptionId !== subscription.id) {
+                            logger.info({ tenantId: tenant.id, deletedSubId: subscription.id, currentSubId: tenant.stripeSubscriptionId }, "Ignoring deletion event for non-active subscription");
+                            break;
+                        }
+
                         await prisma.tenant.update({
                             where: { id: tenant.id },
                             data: {
                                 subscriptionStatus: "canceled",
                                 subscriptionTier: "free",
-                                usageLimit: 0 // No base monthly usage for free tier
+                                usageLimit: 0 
                             },
                         });
-                        logger.info({ tenantId: tenant.id }, "Tenant subscription deleted/canceled");
+                        logger.info({ tenantId: tenant.id, subId: subscription.id }, "Tenant subscription deleted/canceled");
                         break;
                     }
 

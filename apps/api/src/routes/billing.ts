@@ -410,40 +410,43 @@ async function billingRoutes(fastify: FastifyInstance) {
       }
 
       try {
+        if (!stripe.stripe) {
+          throw new Error("Stripe instance not properly initialized");
+        }
+
         // 1. Check for active or trialing subscriptions
         // Sort by created descending to get the newest first
-        const allSubscriptions = await (stripe as any).stripe.subscriptions.list({
+        const allSubscriptions = await stripe.stripe.subscriptions.list({
           customer: tenant.stripeCustomerId,
           status: "all",
           limit: 20
         });
 
-        // Use a more intelligent selector: 
-        // - Priority 1: Non-LTD active/trialing subscriptions
-        // - Priority 2: LTD active/trialing subscriptions
-        // - Priority 3: Most recent successful session (for one-time payments)
-        
+        logger.info({ tenantId, count: allSubscriptions.data.length }, "Sync: Found subscriptions for customer");
+
         const activeSubs = allSubscriptions.data
           .filter((s: any) => s.status === "active" || s.status === "trialing")
           .sort((a: any, b: any) => b.created - a.created);
 
-        // Filter for subscriptions that specifically have a tier in metadata
-        const validTiers = activeSubs.filter((s: any) => s.metadata?.tier);
-        
-        // Find the "best" one: prefer non-ltd if both exist (unlikely but safe)
-        const bestSub = validTiers.find((s: any) => s.metadata.tier !== 'ltd') || validTiers[0];
+        // Filter for subscriptions that specifically have a tier in metadata (either on sub or plan)
+        const activeSubWithTier = activeSubs.find((s: any) => {
+          const tier = s.metadata?.tier || s.plan?.metadata?.tier;
+          return !!tier;
+        });
 
-        if (bestSub) {
-          const tier = bestSub.metadata.tier || (bestSub as any).plan?.metadata?.tier;
+        if (activeSubWithTier) {
+          const sub = activeSubWithTier as any;
+          const tier = (sub.metadata?.tier || sub.plan?.metadata?.tier) as string;
           
           if (tier) {
-            logger.info({ tenantId, tier, subId: bestSub.id }, "Sync: Found active subscription, updating tier");
-            await UsageService.updateSubscriptionTier(tenantId, tier, bestSub.id, true);
+            logger.info({ tenantId, tier, subId: sub.id }, "Sync: Found active subscription, updating tier");
+            await UsageService.updateSubscriptionTier(tenantId, tier, sub.id, true);
             
             // Try to process commission if missed
             const admin = await prisma.user.findFirst({ where: { tenantId, isAdmin: true } });
             if (admin) {
-              await referralManager.processCommission(admin.id, (bestSub as any).plan?.amount / 100 || 0, bestSub.id);
+              const amount = sub.plan?.amount || 0;
+              await referralManager.processCommission(admin.id, amount / 100, sub.id);
             }
             
             return { ok: true, message: `Synced ${tenant.name}: Updated to ${tier}`, tier };

@@ -307,15 +307,17 @@ export async function adminRoutes(fastify: FastifyInstance) {
             for (const tenant of tenants) {
                 try {
                     // Check for active or trialing subscriptions
-                    const allSubscriptions = await (stripe as any).stripe.subscriptions.list({
-                        customer: tenant.stripeCustomerId,
+                    if (!stripe.stripe) continue;
+                    
+                    const allSubscriptions = await stripe.stripe.subscriptions.list({
+                        customer: tenant.stripeCustomerId!,
                         status: "active",
                         limit: 3
                     });
 
                     if (allSubscriptions.data.length > 0) {
-                        const sub = allSubscriptions.data[0];
-                        const tier = sub.metadata?.tier || (sub as any).plan?.metadata?.tier;
+                        const sub = allSubscriptions.data[0] as any;
+                        const tier = sub.metadata?.tier || sub.plan?.metadata?.tier;
                         if (tier) {
                             await UsageService.updateSubscriptionTier(tenant.id, tier, sub.id, true);
                             results.push({ name: tenant.name, status: "success", tier });
