@@ -183,6 +183,8 @@ export interface Tenant {
   billingEmail: string | null;
   subscriptionTier: string | null;
   subscriptionStatus: string | null;
+  usageCount: number;
+  usageLimit: number | null;
   createdAt: string;
   _count?: {
     users: number;

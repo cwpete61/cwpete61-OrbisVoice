@@ -273,7 +273,15 @@ const NAV = [
   },
 ];
 
-export default function DashboardShell({ children, tokenLoaded = true }: { children: React.ReactNode; tokenLoaded?: boolean }) {
+export default function DashboardShell({ 
+  children, 
+  tokenLoaded = true,
+  maxWidth = "max-w-7xl"
+}: { 
+  children: React.ReactNode; 
+  tokenLoaded?: boolean;
+  maxWidth?: string;
+}) {
   const path = usePathname();
   const router = useRouter();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -589,7 +597,7 @@ export default function DashboardShell({ children, tokenLoaded = true }: { child
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-8 md:px-8 custom-scrollbar">
-          <div className="mx-auto max-w-7xl">
+          <div className={`mx-auto ${maxWidth}`}>
             {children}
           </div>
         </main>
