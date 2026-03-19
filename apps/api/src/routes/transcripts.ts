@@ -4,6 +4,7 @@ import { logger } from "../logger";
 import { ApiResponse } from "../types";
 import { requireNotBlocked } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
+import { resolveAdminScopedTenantId } from "../services/admin-scope";
 
 export async function transcriptRoutes(fastify: FastifyInstance) {
   // Get conversation history for agent
@@ -14,12 +15,13 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
       try {
         const { agentId } = request.params as { agentId: string };
         const tenantId = (request as any).user.tenantId;
+        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
         const limit = parseInt((request.query as any).limit || "50");
         const offset = parseInt((request.query as any).offset || "0");
 
         // Verify agent belongs to tenant
         const agent = await prisma.agent.findFirst({
-          where: { id: agentId, tenantId },
+          where: { id: agentId, tenantId: effectiveTenantId },
         });
         if (!agent) {
           return reply.code(404).send({
@@ -68,6 +70,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
       try {
         const { transcriptId } = request.params as { transcriptId: string };
         const tenantId = (request as any).user.tenantId;
+        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
 
         // Get transcript with agent details
         const transcript = await prisma.transcript.findFirst({
@@ -81,7 +84,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
           },
         });
 
-        if (!transcript || transcript.agent.tenantId !== tenantId) {
+        if (!transcript || transcript.agent.tenantId !== effectiveTenantId) {
           return reply.code(404).send({
             ok: false,
             message: "Transcript not found",
@@ -111,11 +114,12 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
       try {
         const body = request.body as any;
         const tenantId = (request as any).user.tenantId;
+        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
         const userId = (request as any).user.userId;
 
         // Verify agent belongs to tenant
         const agent = await prisma.agent.findFirst({
-          where: { id: body.agentId, tenantId },
+          where: { id: body.agentId, tenantId: effectiveTenantId },
         });
         if (!agent) {
           return reply.code(404).send({
@@ -156,6 +160,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
       try {
         const { transcriptId } = request.params as { transcriptId: string };
         const tenantId = (request as any).user.tenantId;
+        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
 
         // Verify transcript belongs to tenant
         const transcript = await prisma.transcript.findFirst({
@@ -169,7 +174,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
           },
         });
 
-        if (!transcript || transcript.agent.tenantId !== tenantId) {
+        if (!transcript || transcript.agent.tenantId !== effectiveTenantId) {
           return reply.code(404).send({
             ok: false,
             message: "Transcript not found",
@@ -180,7 +185,7 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
           where: { id: transcriptId },
         });
 
-        logger.info({ transcriptId, tenantId }, "Transcript deleted");
+        logger.info({ transcriptId, tenantId: effectiveTenantId }, "Transcript deleted");
         return reply.code(200).send({
           ok: true,
           message: "Transcript deleted",

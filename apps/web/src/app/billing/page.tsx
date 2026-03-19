@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE, apiFetch } from "@/lib/api";
+import { retrySyncUntilPaid } from "./sync-utils";
 
 import PricingTable, { AllTierName, TIER_CONFIGS } from "../components/PricingTable";
 import UsageChart from "../components/UsageChart";
@@ -51,7 +52,7 @@ function BillingContent() {
     if (tokenLoaded) {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("success") === "true") {
-        syncBilling().then(() => {
+        retrySyncUntilPaid(syncBilling, { maxAttempts: 6, waitMs: 1500 }).then(() => {
           fetchSubscription();
           fetchAvailableTiers();
           fetchPackages();
@@ -70,7 +71,7 @@ function BillingContent() {
     fetchPackages();
   };
 
-  const syncBilling = async () => {
+  const syncBilling = async (): Promise<string | null> => {
     try {
       setSyncing(true);
       setSyncMessage("Synchronizing your subscription with Stripe...");
@@ -80,14 +81,18 @@ function BillingContent() {
 
       if (res.ok) {
         setSyncMessage(data.message || "Subscription updated successfully.");
-        await fetchSubscription(); 
+        await fetchSubscription();
+        const tier = (data as any).tier;
+        return typeof tier === "string" ? tier : null;
       } else {
         console.error("Sync failed with status:", res.status, data);
         setSyncMessage("Sync failed. Please contact support.");
+        return null;
       }
     } catch (err) {
       console.error("Sync failed:", err);
       setSyncMessage("Cannot connect to sync service.");
+      return null;
     } finally {
       setSyncing(false);
       // Keep message for a few seconds
@@ -243,7 +248,11 @@ function BillingContent() {
           <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-8 text-center">
             <p className="text-red-400 font-medium mb-4">{error}</p>
             <button
-              onClick={() => { setError(""); setLoading(true); fetchData(); }}
+              onClick={() => {
+                setError("");
+                setLoading(true);
+                fetchData();
+              }}
               className="text-xs font-bold uppercase tracking-widest text-[#14b8a6] hover:text-[#0ea5e9] transition"
             >
               Retry Connection
@@ -268,14 +277,17 @@ function BillingContent() {
 
   const currentTier: AllTierName = subscription.subscriptionTier as AllTierName;
   const usagePercent = subscription.usagePercent;
-  const isOverLimit = usagePercent >= 100 && (subscription.creditBalance + (subscription.bonusCredits || 0)) <= 0;
+  const isOverLimit =
+    usagePercent >= 100 && subscription.creditBalance + (subscription.bonusCredits || 0) <= 0;
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
       <div className="px-8 py-8">
         {/* Page header */}
         <div className="mb-8 text-center md:text-left">
-          <h1 className="text-3xl font-black text-white tracking-tight">Billing & Infrastructure</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight">
+            Billing & Infrastructure
+          </h1>
           <p className="mt-2 text-sm text-gray-500">
             Monitor your revenue operations and scale your AI workforce
           </p>
@@ -288,7 +300,16 @@ function BillingContent() {
               {syncing ? (
                 <div className="h-4 w-4 border-2 border-[#14b8a6] border-t-transparent rounded-full animate-spin" />
               ) : (
-                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
+                <svg
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
               )}
             </div>
             <p className="text-sm font-bold text-[#14b8a6]">{syncMessage}</p>
@@ -302,20 +323,20 @@ function BillingContent() {
 
         {/* Current Subscription */}
         <section className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-4 mb-6 shadow-2xl relative overflow-hidden">
-           {/* Abstract Gradient Background for Section */}
-           <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#14b8a6]/10 to-transparent pointer-events-none" />
+          {/* Abstract Gradient Background for Section */}
+          <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#14b8a6]/10 to-transparent pointer-events-none" />
 
           <h2 className="text-sm font-bold text-white mb-6 flex items-center gap-3">
             <div className="h-2.5 w-2.5 rounded-full bg-[#14b8a6] shadow-[0_0_10px_rgba(20,184,166,0.3)]" />
             Subscription Overview
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
             <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em] mb-3">Active Infrastructure</p>
-              <p className="text-2xl font-black text-white capitalize">
-                {currentTier}
+              <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em] mb-3">
+                Active Infrastructure
               </p>
+              <p className="text-2xl font-black text-white capitalize">{currentTier}</p>
               <div className="mt-2.5 flex items-center gap-2.5">
                 <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-sm text-gray-400 font-medium">Standard Operations</span>
@@ -323,7 +344,9 @@ function BillingContent() {
             </div>
 
             <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
-              <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em] mb-3">Lifecycle Status</p>
+              <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em] mb-3">
+                Lifecycle Status
+              </p>
               <p className="text-lg font-bold text-white capitalize">
                 {subscription.subscriptionStatus || "Active"}
               </p>
@@ -336,10 +359,12 @@ function BillingContent() {
 
             <div className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm">
               <div className="flex justify-between items-start mb-3">
-                <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em]">Usage Utilization</p>
+                <p className="text-[9.5px] text-gray-500 uppercase font-black tracking-[0.2em]">
+                  Usage Utilization
+                </p>
                 {(subscription.creditBalance > 0 || subscription.bonusCredits > 0) && (
                   <span className="bg-[#14b8a6]/20 text-[#14b8a6] text-[10px] px-2.5 py-1 rounded-full border border-[#14b8a6]/30 font-black">
-                     +{subscription.creditBalance + (subscription.bonusCredits || 0)} RESERVE
+                    +{subscription.creditBalance + (subscription.bonusCredits || 0)} RESERVE
                   </span>
                 )}
               </div>
@@ -351,8 +376,9 @@ function BillingContent() {
               </div>
               <div className="h-2 bg-black/40 rounded-full overflow-hidden mb-3">
                 <div
-                  className={`h-full transition-all duration-1000 ${isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
-                    }`}
+                  className={`h-full transition-all duration-1000 ${
+                    isOverLimit ? "bg-red-500" : "bg-[#14b8a6]"
+                  }`}
                   style={{ width: `${Math.min(usagePercent, 100)}%` }}
                 />
               </div>
@@ -364,13 +390,27 @@ function BillingContent() {
 
           {isOverLimit && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5 mt-8 flex items-center gap-4 animate-pulse">
-               <div className="h-10 w-10 flex items-center justify-center rounded-full bg-red-500/20 text-red-500 shrink-0">
-                  <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-               </div>
-               <div>
-                  <p className="text-red-400 font-bold text-sm">Critical: Infrastructure Limit Exceeded</p>
-                  <p className="text-xs text-red-400/70 mt-0.5">Automated operations have reached the monthly ceiling. Please scale your plan below.</p>
-               </div>
+              <div className="h-10 w-10 flex items-center justify-center rounded-full bg-red-500/20 text-red-500 shrink-0">
+                <svg
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-red-400 font-bold text-sm">
+                  Critical: Infrastructure Limit Exceeded
+                </p>
+                <p className="text-xs text-red-400/70 mt-0.5">
+                  Automated operations have reached the monthly ceiling. Please scale your plan
+                  below.
+                </p>
+              </div>
             </div>
           )}
 
@@ -378,20 +418,35 @@ function BillingContent() {
           <div className="mt-6 pt-4 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="text-white font-bold text-sm">Revenue Management Portal</h3>
-              <p className="text-xs text-gray-500 mt-1">Manage payment methods, jurisdictional details, and invoice history securely via Stripe.</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Manage payment methods, jurisdictional details, and invoice history securely via
+                Stripe.
+              </p>
             </div>
             <div className="flex flex-wrap gap-4">
               <button
                 onClick={syncBilling}
                 disabled={syncing}
                 className={`px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition border flex items-center gap-3 whitespace-nowrap shadow-xl ${
-                  syncing 
-                    ? "bg-white/5 text-gray-500 border-white/5 cursor-not-allowed" 
+                  syncing
+                    ? "bg-white/5 text-gray-500 border-white/5 cursor-not-allowed"
                     : "bg-[#14b8a6]/10 text-[#14b8a6] hover:bg-[#14b8a6]/20 border-[#14b8a6]/20"
                 }`}
               >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className={syncing ? "animate-spin" : ""}>
-                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                  className={syncing ? "animate-spin" : ""}
+                >
+                  <path
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 {syncing ? "Syncing..." : "Sync Subscription"}
               </button>
@@ -399,24 +454,35 @@ function BillingContent() {
                 onClick={async () => {
                   try {
                     const res = await fetch(`${API_BASE}/billing/portal`, {
-                      method: 'POST',
-                      headers: { 
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        "Content-Type": "application/json",
                       },
-                      body: JSON.stringify({ returnUrl: window.location.href })
+                      body: JSON.stringify({ returnUrl: window.location.href }),
                     });
                     const data = await res.json();
                     if (data.url) window.location.href = data.url;
-                    else alert(data.error || 'Failed to open billing portal');
+                    else alert(data.error || "Failed to open billing portal");
                   } catch (err) {
-                    alert('Connection error');
+                    alert("Connection error");
                   }
                 }}
                 className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition bg-white/5 text-white hover:bg-white/10 border border-white/10 flex items-center gap-3 whitespace-nowrap shadow-xl"
               >
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                  />
                 </svg>
                 Secure Management Portal
               </button>
@@ -428,12 +494,16 @@ function BillingContent() {
         <section className="mb-20">
           <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
             <div>
-               <h2 className="text-2xl font-black text-white tracking-tight">Infrastructure Tiers</h2>
-               <p className="text-sm text-gray-500 mt-2">Choose the operation capacity that matches your revenue goals.</p>
+              <h2 className="text-2xl font-black text-white tracking-tight">
+                Infrastructure Tiers
+              </h2>
+              <p className="text-sm text-gray-500 mt-2">
+                Choose the operation capacity that matches your revenue goals.
+              </p>
             </div>
           </div>
-          
-          <PricingTable 
+
+          <PricingTable
             currentTier={currentTier}
             availableTiers={availableTiers}
             onSelect={(tier) => setSelectedTier(tier)}
@@ -446,19 +516,30 @@ function BillingContent() {
         {packages.length > 0 && (
           <section className="mb-20">
             <h2 className="text-xl font-bold text-white mb-2">Operation Reserves</h2>
-            <p className="text-sm text-gray-500 mb-8">Purchase one-time conversation packages for extra bandwidth with no expiration.</p>
+            <p className="text-sm text-gray-500 mb-8">
+              Purchase one-time conversation packages for extra bandwidth with no expiration.
+            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
               {packages.map((pkg) => (
-                <div key={pkg.id} className="rounded-2xl border border-white/5 bg-[#0c111d] p-6 transition-all hover:border-white/10 relative overflow-hidden group">
+                <div
+                  key={pkg.id}
+                  className="rounded-2xl border border-white/5 bg-[#0c111d] p-6 transition-all hover:border-white/10 relative overflow-hidden group"
+                >
                   <div className="absolute top-0 right-0 w-12 h-12 bg-[#14b8a6]/5 rounded-bl-2xl" />
-                  <h3 className="text-base font-bold text-white group-hover:text-[#14b8a6] transition-colors line-clamp-1">{pkg.name}</h3>
-                  <p className="text-[9px] text-gray-500 mt-1 uppercase font-black tracking-widest">Reserve Package</p>
+                  <h3 className="text-base font-bold text-white group-hover:text-[#14b8a6] transition-colors line-clamp-1">
+                    {pkg.name}
+                  </h3>
+                  <p className="text-[9px] text-gray-500 mt-1 uppercase font-black tracking-widest">
+                    Reserve Package
+                  </p>
                   <div className="my-5">
                     <p className="text-3xl font-black text-white">${pkg.price}</p>
                   </div>
                   <div className="mb-5 pb-5 border-b border-white/5">
-                    <p className="text-[12.5px] font-extrabold text-gray-300">+{pkg.credits.toLocaleString()} Convs</p>
+                    <p className="text-[12.5px] font-extrabold text-gray-300">
+                      +{pkg.credits.toLocaleString()} Convs
+                    </p>
                   </div>
                   <button
                     onClick={() => handleBuyPackage(pkg)}
@@ -488,7 +569,10 @@ function BillingContent() {
                   <span className="text-sm text-[rgba(240,244,250,0.5)]">
                     {selectedTier === "ltd" ? "One-Time Payment" : "Monthly Price"}
                   </span>
-                  <span className="text-2xl font-bold" style={{ color: TIER_CONFIGS[selectedTier].accent }}>
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: TIER_CONFIGS[selectedTier].accent }}
+                  >
                     ${availableTiers[selectedTier]?.price || 0}
                   </span>
                 </div>
@@ -506,13 +590,11 @@ function BillingContent() {
                 </div>
               </div>
               <p className="text-xs text-[rgba(240,244,250,0.4)] mb-4">
-                You&apos;ll be redirected to Stripe&apos;s secure checkout to complete your purchase.
+                You&apos;ll be redirected to Stripe&apos;s secure checkout to complete your
+                purchase.
               </p>
               <div className="flex gap-3">
-                <button
-                  onClick={() => handleUpgrade(selectedTier)}
-                  className="btn-primary flex-1"
-                >
+                <button onClick={() => handleUpgrade(selectedTier)} className="btn-primary flex-1">
                   Proceed to Checkout →
                 </button>
                 <button

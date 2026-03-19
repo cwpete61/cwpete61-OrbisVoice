@@ -7,7 +7,13 @@ export interface TierInfo {
   price: number;
 }
 
-export type AllTierName = "free" | "ltd" | "starter" | "professional" | "enterprise" | "ai-revenue-infrastructure";
+export type AllTierName =
+  | "free"
+  | "ltd"
+  | "starter"
+  | "professional"
+  | "enterprise"
+  | "ai-revenue-infrastructure";
 
 export interface TierConfig {
   name: string;
@@ -54,14 +60,19 @@ export const TIER_CONFIGS: Record<AllTierName, TierConfig> = {
     name: "Enterprise",
     accent: "#38bdf8",
     description: "Multi-location revenue infrastructure",
-    features: ["100,000 Conversations", "Custom Integrations", "Dedicated Account Manager", "Unlimited Agents"],
+    features: [
+      "100,000 Conversations",
+      "Custom Integrations",
+      "Dedicated Account Manager",
+      "Unlimited Agents",
+    ],
   },
   "ai-revenue-infrastructure": {
     name: "Infrastructure",
     accent: "#a855f7",
     description: "AI operations command for revenue control",
     features: ["250,000 Conversations", "Whitelabel Options", "SLA Guarantee", "Full API Access"],
-  }
+  },
 };
 
 interface PricingTableProps {
@@ -82,12 +93,12 @@ export default function PricingTable({
   const tiers = Object.keys(TIER_CONFIGS) as AllTierName[];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {tiers.map((tier) => {
         const config = TIER_CONFIGS[tier];
         const info = availableTiers[tier];
-        if (!info && tier !== 'ltd') return null;
-        
+        if (!info && tier !== "ltd") return null;
+
         // Mock LTD info if missing from API
         const displayInfo = info || { price: 497, conversations: 1000 };
         const isCurrent = tier === currentTier;
@@ -97,14 +108,14 @@ export default function PricingTable({
           <div
             key={tier}
             className={`relative group overflow-hidden rounded-2xl border transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl flex flex-col ${
-              isCurrent 
-                ? "border-[#14b8a6] bg-[#14b8a6]/[0.05] shadow-[#14b8a6]/10" 
+              isCurrent
+                ? "border-[#14b8a6] bg-[#14b8a6]/[0.05] shadow-[#14b8a6]/10"
                 : "border-white/5 bg-white/[0.01] hover:border-white/10"
             }`}
           >
             {/* Background Glow */}
-            <div 
-              className="absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-[0.03] transition-opacity group-hover:opacity-[0.08]" 
+            <div
+              className="absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-[0.03] transition-opacity group-hover:opacity-[0.08]"
               style={{ backgroundColor: config.accent }}
             />
 
@@ -158,11 +169,20 @@ export default function PricingTable({
                 {config.features.map((feature, i) => (
                   <div key={i} className="flex items-center gap-2.5">
                     <div className="h-4 w-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                      <svg width="9" height="9" fill="none" stroke={config.accent} strokeWidth="3" viewBox="0 0 24 24">
+                      <svg
+                        width="9"
+                        height="9"
+                        fill="none"
+                        stroke={config.accent}
+                        strokeWidth="3"
+                        viewBox="0 0 24 24"
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <span className="text-[11.5px] text-gray-400 font-medium line-clamp-1">{feature}</span>
+                    <span className="text-[11.5px] text-gray-400 font-medium line-clamp-1">
+                      {feature}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -178,12 +198,14 @@ export default function PricingTable({
                 ) : (
                   <button
                     onClick={() => onSelect(tier)}
-                    style={{ 
-                      backgroundColor: isUpgrade ? config.accent : 'transparent',
-                      borderColor: isUpgrade ? 'transparent' : 'rgba(255,255,255,0.05)'
+                    style={{
+                      backgroundColor: isUpgrade ? config.accent : "transparent",
+                      borderColor: isUpgrade ? "transparent" : "rgba(255,255,255,0.05)",
                     }}
                     className={`w-full py-3 rounded-xl font-bold text-[11px] uppercase text-white border transition-all duration-300 ${
-                      !isUpgrade ? "hover:bg-white/5 active:scale-[0.98]" : "hover:brightness-110 shadow-lg active:scale-[0.98]"
+                      !isUpgrade
+                        ? "hover:bg-white/5 active:scale-[0.98]"
+                        : "hover:brightness-110 shadow-lg active:scale-[0.98]"
                     }`}
                   >
                     {isCurrent ? "Reactivate" : isUpgrade ? "Upgrade" : "Switch"}
