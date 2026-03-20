@@ -136,6 +136,13 @@ class SessionManager {
     await this.client.del(key);
     logger.info({ sessionId }, "Session deleted");
   }
+
+  async ping(): Promise<string> {
+    if (!this.client || !this.initialized) {
+      throw new Error("Session manager not initialized");
+    }
+    return this.client.ping();
+  }
 }
 
 export const sessionManager = new SessionManager();

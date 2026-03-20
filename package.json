@@ -3,17 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "lint": "npm run lint --workspace=web"
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
   },
-  "workspaces": [
-    "apps/api",
-    "apps/web",
-    "apps/voice-gateway",
-    "apps/referrals",
-    "apps/commerce-agent"
-  ],
   "devDependencies": {
+    "globals": "^17.4.0",
     "prettier": "^3.5.2",
     "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1"
   }
 }

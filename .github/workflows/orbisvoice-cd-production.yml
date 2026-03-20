@@ -1,0 +1,64 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Confirm staging control exists
+        run: |
+          test -f "control.production.md"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Select production control file
+        run: |
+          chmod +x scripts/select-control-file.sh
+          ./scripts/select-control-file.sh production
+
+      - name: Preflight checks
+        run: |
+          chmod +x scripts/preflight-check.sh
+          ./scripts/preflight-check.sh production
+
+      - name: Full validation gate
+        run: |
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm run test --if-present
+          npm run test:integration --if-present
+          npm run test:runtime --if-present
+          npm run test:finance --if-present
+          npm run test:load --if-present
+          npm run build --if-present
+
+      - name: Build Docker images
+        run: docker compose -f docker-compose.yml build
+
+      - name: Deploy production
+        env:
+          DEPLOY_ENV: production
+        run: |
+          echo "Deploy production here"
+          # Example:
+          # docker context use production
+          # docker compose -f docker-compose.yml up -d
+
+      - name: Post-deploy validation
+        run: |
+          chmod +x scripts/postdeploy-check.sh
+          ./scripts/postdeploy-check.sh production

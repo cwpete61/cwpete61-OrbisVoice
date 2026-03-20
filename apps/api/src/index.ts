@@ -65,7 +65,7 @@ fastify.register(helmet, {
 
 // Register Rate Limiting
 fastify.register(rateLimit, {
-  max: 100,
+  max: 1000,
   timeWindow: "1 minute",
   // Route-specific overrides
   addHeaders: {

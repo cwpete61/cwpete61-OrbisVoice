@@ -1,0 +1,58 @@
+name: OrbisVoice CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - staging
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify required control files
+        run: |
+          test -f "_00 READ.md"
+          test -f "control.md"
+          test -f "control.staging.md"
+          test -f "control.production.md"
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Typecheck
+        run: npm run typecheck --if-present
+
+      - name: Unit tests
+        run: npm run test --if-present
+
+      - name: Integration tests
+        run: npm run test:integration --if-present
+
+      - name: Runtime scenario tests
+        run: npm run test:runtime --if-present
+
+      - name: Financial tests
+        run: npm run test:finance --if-present
+
+      - name: Build
+        run: npm run build --if-present

@@ -1,0 +1,62 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Select staging control file
+        run: |
+          chmod +x scripts/select-control-file.sh
+          ./scripts/select-control-file.sh staging
+
+      - name: Preflight checks
+        run: |
+          chmod +x scripts/preflight-check.sh
+          ./scripts/preflight-check.sh staging
+
+      - name: Test
+        run: |
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm run test --if-present
+          npm run test:integration --if-present
+          npm run test:runtime --if-present
+          npm run test:finance --if-present
+          npm run build --if-present
+
+      - name: Build Docker images
+        run: docker compose -f docker-compose.yml build
+
+      - name: Deploy to staging
+        env:
+          DEPLOY_ENV: staging
+        run: |
+          echo "Deploy staging here"
+          # Example:
+          # docker context use staging
+          # docker compose -f docker-compose.yml up -d
+
+      - name: Post-deploy validation
+        run: |
+          chmod +x scripts/postdeploy-check.sh
+          ./scripts/postdeploy-check.sh staging

@@ -1,0 +1,27 @@
+name: Phase Governance
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - staging
+      - main
+
+jobs:
+  phase-governance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify phase files exist
+        run: |
+          test -f phase-runner.md
+          test -f phase-status.md
+
+      - name: Run phase consistency check
+        run: |
+          chmod +x scripts/phase-check.sh
+          ./scripts/phase-check.sh

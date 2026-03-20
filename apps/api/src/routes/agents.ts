@@ -139,28 +139,36 @@ export async function agentRoutes(fastify: FastifyInstance) {
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
         const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
 
+        // Explicitly build update data to avoid passing undefined properties that Prisma might reject
+        const updateData: any = {};
+        if (body.name !== undefined) updateData.name = body.name;
+        if (body.systemPrompt !== undefined) updateData.systemPrompt = body.systemPrompt;
+        if (body.voiceModel !== undefined) updateData.voiceId = body.voiceModel;
+        if (body.isActive !== undefined) updateData.isActive = body.isActive;
+
+        logger.debug({ agentId: id, updateData, tenantId: effectiveTenantId }, "Updating agent");
+
         const agent = await prisma.agent.updateMany({
           where: { id, tenantId: effectiveTenantId },
-          data: {
-            ...body,
-            isActive: body.isActive !== undefined ? body.isActive : undefined,
-          },
+          data: updateData,
         });
+
         if (agent.count === 0) {
+          logger.warn({ agentId: id, tenantId: effectiveTenantId }, "Agent not found for update");
           return reply.code(404).send({
             ok: false,
-            message: "Agent not found",
+            message: "Agent not found or unauthorized",
           } as ApiResponse);
         }
 
         const updated = await prisma.agent.findUnique({ where: { id } });
-        logger.info({ agentId: id, tenantId: effectiveTenantId }, "Agent updated");
+        logger.info({ agentId: id, tenantId: effectiveTenantId }, "Agent updated successfully");
         return reply.code(200).send({
           ok: true,
           message: "Agent updated",
           data: updated,
         } as ApiResponse);
-      } catch (err) {
+      } catch (err: any) {
         if (err instanceof z.ZodError) {
           return reply.code(400).send({
             ok: false,
@@ -168,10 +176,23 @@ export async function agentRoutes(fastify: FastifyInstance) {
             data: err.errors,
           } as ApiResponse);
         }
-        logger.error(err, "Failed to update agent");
+        
+        // Log detailed error for server-side debugging
+        logger.error({ 
+          err: {
+            message: err.message,
+            stack: err.stack,
+            code: err.code,
+            meta: err.meta
+          }, 
+          agentId: request.params ? (request.params as any).id : "unknown" 
+        }, "Failed to update agent");
+
+        // Return error details to help understand terminal failures
         return reply.code(500).send({
           ok: false,
-          message: "Internal server error",
+          message: `Internal server error: ${err.message}`,
+          details: process.env.NODE_ENV === "development" ? err.stack : undefined
         } as ApiResponse);
       }
     }

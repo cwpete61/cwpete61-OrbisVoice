@@ -10,7 +10,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   REDIS_URL: z.string(),
   JWT_SECRET: z.string().default("dev-secret-change-in-prod"),
-  CORS_ORIGINS: z.string().default("http://localhost:3001"),
+  CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001"),
   GEMINI_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   // Gmail API

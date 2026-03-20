@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
 import { API_BASE } from "@/lib/api";
+import { readApiBody } from "@/lib/response-utils";
 import type { LiveServerMessage } from "@google/genai";
 import { AudioRecorder, AudioPlayer } from "@/lib/audio-utils";
 import { arrayBufferToBase64, base64ToArrayBuffer } from "@/lib/base64-utils";
@@ -147,17 +148,19 @@ export default function AgentBuilderForm({
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ name: currentName, systemPrompt: prompt, voiceModel: voice }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Failed to create draft");
+        const data = await readApiBody<{ id?: string }>(res);
+        if (!res.ok) throw new Error(data.message || `Failed to create draft (HTTP ${res.status})`);
+        if (!data.data?.id) throw new Error("Draft created but no agent id returned");
         setAgentId(data.data.id);
       } else {
         // Update PUT
         const res = await fetch(`${API_BASE}/agents/${agentId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: currentName, systemPrompt: prompt, voiceId: voice }),
+          body: JSON.stringify({ name: currentName, systemPrompt: prompt, voiceModel: voice }),
         });
-        if (!res.ok) throw new Error("Failed to auto-save");
+        const data = await readApiBody(res);
+        if (!res.ok) throw new Error(data.message || `Failed to auto-save (HTTP ${res.status})`);
       }
       setAutoSaveStatus("saved");
       return true;
@@ -314,10 +317,10 @@ export default function AgentBuilderForm({
       // 3. Connect to Gemini Live
       // Map our UI voice selection to Gemini voice names
       const voiceMapping: Record<string, string> = {
-        zephyr: "Zephyr",
-        alloy: "Alloy",
-        echo: "Echo",
-        shimmer: "Shimmer",
+        default: "Zephyr",
+        professional: "Alloy",
+        friendly: "Echo",
+        concise: "Shimmer",
       };
       const geminiVoice = voiceMapping[selectedVoice] || "Zephyr";
 

@@ -35,7 +35,8 @@ export default function SystemSettings() {
                 setSettings(settingsData.data);
                 setStats(statsData.data);
             } else {
-                setError("Failed to load system data");
+                const statusText = `(Code ${settingsRes.status}/${statsRes.status})`;
+                setError(`Failed to load system data ${statusText}`);
             }
         } catch (err) {
             setError("Failed to connect to API");
@@ -102,7 +103,12 @@ export default function SystemSettings() {
             <div className="p-8 max-w-none mx-auto">
                 <header className="mb-10">
                     <h1 className="text-3xl font-bold text-[#f0f4fa]">System Configuration</h1>
-                    <p className="mt-2 text-[rgba(240,244,250,0.5)]">Manage global platform settings and monitor infrastructure health</p>
+                    <p className="mt-2 text-[rgba(240,244,250,0.5)] flex items-center justify-between">
+                        <span>Manage global platform settings and monitor infrastructure health</span>
+                        <span className="text-[11px]">
+                            Last updated: {stats?.lastUpdated ? new Date(stats.lastUpdated).toLocaleTimeString() : "Never"}
+                        </span>
+                    </p>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

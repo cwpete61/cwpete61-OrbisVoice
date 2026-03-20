@@ -3,6 +3,7 @@ import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
 import { requireAdmin, requireSystemAdmin } from "../middleware/auth";
+import { sessionManager } from "../services/session";
 import { pickWorkspacePrimaryUser } from "../services/workspace-management";
 
 export async function adminRoutes(fastify: FastifyInstance) {
@@ -22,8 +23,15 @@ export async function adminRoutes(fastify: FastifyInstance) {
       try {
         await prisma.$queryRaw`SELECT 1`;
       } catch (err) {
-        dbHealth = "down";
+        dbHealth = "outage";
         logger.error({ err }, "Database health check failed");
+      }
+
+      try {
+        await sessionManager.ping();
+      } catch (err) {
+        redisHealth = "outage";
+        logger.error({ err }, "Redis health check failed");
       }
 
       const [

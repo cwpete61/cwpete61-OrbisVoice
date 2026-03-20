@@ -1,14 +1,16 @@
-require('dotenv').config();
-const { PrismaClient } = require('@prisma/client');
+
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-async function main() {
-  const tenants = await prisma.tenant.findMany({ select: { id: true, bonusCredits: true } });
-  console.log('Successfully found bonusCredits:', tenants.length > 0 ? 'Yes' : 'No tenants');
+async function check() {
+  const id = 'cmmyznplr0005cv64wtbyjiat';
+  const agent = await prisma.agent.findUnique({ where: { id } });
+  console.log('Agent:', agent);
+  
+  const allAgents = await prisma.agent.findMany({ take: 5 });
+  console.log('Sample agents:', allAgents.map(a => a.id));
+  
   await prisma.$disconnect();
 }
 
-main().catch(e => {
-  console.error('ERROR!', e.message);
-  process.exit(1);
-});
+check().catch(console.error);
