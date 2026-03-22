@@ -28,7 +28,14 @@ export const COMMERCE_BASE = (() => {
     : "http://localhost:4005";
 })();
 
-export const VOICE_GATEWAY_URL = process.env.NEXT_PUBLIC_VOICE_GATEWAY_URL || "ws://localhost:4010";
+export const VOICE_GATEWAY_URL = (() => {
+  if (process.env.NEXT_PUBLIC_VOICE_GATEWAY_URL) return process.env.NEXT_PUBLIC_VOICE_GATEWAY_URL;
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/voice/`;
+  }
+  return "ws://localhost:4010";
+})();
 
 export interface User {
   id: string;
