@@ -120,6 +120,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-orbis-secret-change-me}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      PORT: 4001
     depends_on:
       postgres:
         condition: service_healthy
