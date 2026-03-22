@@ -19,6 +19,8 @@
     position: fixed;
     ${position === "bottom-right" ? "right: 20px; bottom: 20px;" : ""}
     ${position === "bottom-left" ? "left: 20px; bottom: 20px;" : ""}
+    ${position === "top-right" ? "right: 20px; top: 20px;" : ""}
+    ${position === "top-left" ? "left: 20px; top: 20px;" : ""}
     width: 64px;
     height: 64px;
     border-radius: 50%;
@@ -90,8 +92,37 @@
       const json = await resp.json();
       if (json.ok) {
         agentConfig = json.data;
+        
+        // Apply visibility
+        if (agentConfig.widgetIsVisible === false) {
+          widgetContainer.style.display = "none";
+          return;
+        }
+
+        // Apply position
+        const pos = agentConfig.widgetPosition || position;
+        widgetContainer.style.right = "auto";
+        widgetContainer.style.left = "auto";
+        widgetContainer.style.top = "auto";
+        widgetContainer.style.bottom = "auto";
+        if (pos === "bottom-right") { widgetContainer.style.right = "20px"; widgetContainer.style.bottom = "20px"; }
+        else if (pos === "bottom-left") { widgetContainer.style.left = "20px"; widgetContainer.style.bottom = "20px"; }
+        else if (pos === "top-right") { widgetContainer.style.right = "20px"; widgetContainer.style.top = "20px"; }
+        else if (pos === "top-left") { widgetContainer.style.left = "20px"; widgetContainer.style.top = "20px"; }
+
+        // Apply theme color
+        if (agentConfig.widgetPrimaryColor) {
+           widgetContainer.style.boxShadow = `0 4px 20px ${agentConfig.widgetPrimaryColor}4d`;
+           widgetContainer.style.borderColor = `${agentConfig.widgetPrimaryColor}66`;
+        }
+
         if (agentConfig.avatarUrl) {
           innerContent.innerHTML = `<img src="${agentConfig.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s;" />`;
+        }
+
+        // Initial state
+        if (agentConfig.widgetDefaultOpen) {
+          openWidget();
         }
       }
     } catch (e) {
@@ -133,7 +164,9 @@
     widgetContainer.style.height = "64px";
     widgetContainer.style.borderRadius = "50%";
     widgetContainer.style.background = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)";
-    widgetContainer.style.border = "2px solid rgba(20, 184, 166, 0.4)";
+    const color = agentConfig?.widgetPrimaryColor || "#14b8a6";
+    widgetContainer.style.boxShadow = `0 4px 20px ${color}4d`;
+    widgetContainer.style.border = `2px solid ${color}66`;
     
     if (agentConfig?.avatarUrl) {
       innerContent.innerHTML = `<img src="${agentConfig.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`;
@@ -165,7 +198,7 @@
             Ready to help with your voice requests.
           </div>
 
-          <button id="main-action-btn" style="width: 100%; padding: 14px; border-radius: 14px; border: none; background: #14b8a6; color: white; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);">
+          <button id="main-action-btn" style="width: 100%; padding: 14px; border-radius: 14px; border: none; background: ${agentConfig?.widgetPrimaryColor || "#14b8a6"}; color: white; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);">
             ${agentConfig?.autoStart ? "Connecting..." : "Start Conversation"}
           </button>
         </div>

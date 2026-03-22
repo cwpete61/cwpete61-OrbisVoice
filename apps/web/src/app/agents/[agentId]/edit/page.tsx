@@ -41,7 +41,11 @@ export default function EditAgentPage() {
                         type: data.data.type,
                         voiceGender: data.data.voiceGender,
                         avatarUrl: data.data.avatarUrl,
-                        autoStart: data.data.autoStart
+                        autoStart: data.data.autoStart,
+                        widgetIsVisible: data.data.widgetIsVisible,
+                        widgetPosition: data.data.widgetPosition,
+                        widgetPrimaryColor: data.data.widgetPrimaryColor,
+                        widgetDefaultOpen: data.data.widgetDefaultOpen,
                     });
                 }
             } catch (e: any) {

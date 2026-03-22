@@ -118,6 +118,10 @@ model Agent {
   type         AgentType            @default(WIDGET)
   voiceGender  VoiceGender?
   userId       String?
+  widgetPosition         String               @default("bottom-right")
+  widgetPrimaryColor    String               @default("#3b82f6")
+  widgetDefaultOpen     Boolean              @default(false)
+  widgetIsVisible       Boolean              @default(true)
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator      User?                @relation(fields: [userId], references: [id])
   leads        Lead[]

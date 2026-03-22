@@ -228,6 +228,10 @@ export interface AgentData {
   voiceGender?: "MALE" | "FEMALE";
   avatarUrl?: string | null;
   autoStart?: boolean;
+  widgetIsVisible?: boolean;
+  widgetPosition?: string;
+  widgetPrimaryColor?: string;
+  widgetDefaultOpen?: boolean;
 }
 
 export default function AgentBuilderForm({
@@ -248,6 +252,10 @@ export default function AgentBuilderForm({
   const [voiceGender, setVoiceGender] = useState<"MALE" | "FEMALE">(initialData?.voiceGender || "FEMALE");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatarUrl || (initialData?.voiceGender === "MALE" ? "/avatars/male1.png" : "/avatars/female1.png"));
   const [autoStart, setAutoStart] = useState<boolean>(initialData?.autoStart ?? true);
+  const [widgetIsVisible, setWidgetIsVisible] = useState<boolean>(initialData?.widgetIsVisible ?? true);
+  const [widgetPosition, setWidgetPosition] = useState<string>(initialData?.widgetPosition || "bottom-right");
+  const [widgetPrimaryColor, setWidgetPrimaryColor] = useState<string>(initialData?.widgetPrimaryColor || "#14b8a6");
+  const [widgetDefaultOpen, setWidgetDefaultOpen] = useState<boolean>(initialData?.widgetDefaultOpen ?? false);
   const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
   const [isPlayingSample, setIsPlayingSample] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -278,6 +286,7 @@ export default function AgentBuilderForm({
   const steps = [
     { n: 1, label: "Identity" },
     { n: 2, label: "Persona" },
+    { n: 3, label: "Widget & Embed" },
   ];
 
   // Background auto-save triggered when inputs change
@@ -302,7 +311,11 @@ export default function AgentBuilderForm({
         type: type,
         voiceGender: gender,
         avatarUrl: avatar,
-        autoStart: autostart
+        autoStart: autostart,
+        widgetIsVisible: widgetIsVisible,
+        widgetPosition: widgetPosition,
+        widgetPrimaryColor: widgetPrimaryColor,
+        widgetDefaultOpen: widgetDefaultOpen
       };
       
       if (!agentId) {
@@ -426,6 +439,10 @@ export default function AgentBuilderForm({
     if (!agentId) {
       triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
     }
+  };
+
+  const handleStep2Continue = () => {
+    setActiveStep(3);
   };
 
   const handleLaunch = () => {
@@ -863,12 +880,163 @@ export default function AgentBuilderForm({
                       </div>
 
                       <button
-                        onClick={handleStep1Continue}
-                        className="mt-6 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
+                        onClick={handleStep2Continue}
+                        className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
                         suppressHydrationWarning
                       >
-                        Continue to Persona →
+                        Continue to Widget Settings →
                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 3: Widget & Embed */}
+              <div
+                className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 3 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
+              >
+                <button
+                  onClick={() => { if (isStepComplete(1) && isStepComplete(2)) setActiveStep(3); }}
+                  suppressHydrationWarning
+                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      activeStep === 3
+                        ? "bg-[#14b8a6] text-white"
+                        : isStepComplete(3)
+                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                          : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
+                    }`}
+                  >
+                    3
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-semibold text-white">Widget & Embed</div>
+                    <div className="text-xs text-[rgba(240,244,250,0.35)]">
+                      Embed the voice agent on your website
+                    </div>
+                  </div>
+                </button>
+
+                {activeStep === 3 && (
+                  <div className="px-6 pb-6 fade-slide-up">
+                    <div className="border-t border-white/[0.05] pt-5 space-y-6">
+                      {/* Embed Code Section */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-3">
+                          Website Embed Code
+                        </label>
+                        <div className="relative group/copy">
+                          <pre className="bg-[#0a0e1a] border border-white/[0.08] rounded-xl p-4 text-[11px] text-[#14b8a6] font-mono overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+                            {`<script 
+  src="${typeof window !== 'undefined' ? window.location.origin : 'https://myorbisvoice.com'}/widget.js" 
+  data-agent-id="${agentId || 'save-to-generate'}" 
+  defer
+></script>`}
+                          </pre>
+                          <button
+                            onClick={() => {
+                              const code = `<script src="${window.location.origin}/widget.js" data-agent-id="${agentId}" defer></script>`;
+                              navigator.clipboard.writeText(code);
+                              const btn = document.getElementById('copy-btn');
+                              if (btn) btn.innerText = 'Copied!';
+                              setTimeout(() => { if (btn) btn.innerText = 'Copy Code'; }, 2000);
+                            }}
+                            id="copy-btn"
+                            className="absolute top-2 right-2 px-3 py-1.5 bg-[#14b8a6]/20 hover:bg-[#14b8a6]/30 text-[#14b8a6] text-[10px] font-bold rounded-lg transition-all opacity-0 group-hover/copy:opacity-100"
+                          >
+                            Copy Code
+                          </button>
+                        </div>
+                        <p className="mt-2.5 text-[10px] text-[rgba(240,244,250,0.3)] leading-relaxed">
+                          Paste this code right before the closing <code className="bg-white/5 px-1 rounded">{"</body>"}</code> tag of your website.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Position */}
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
+                            Position
+                          </label>
+                          <select 
+                            value={widgetPosition}
+                            onChange={(e) => {
+                              setWidgetPosition(e.target.value);
+                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                            }}
+                            className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#14b8a6]/50"
+                          >
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="top-left">Top Left</option>
+                          </select>
+                        </div>
+
+                        {/* Theme Color */}
+                        <div>
+                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
+                            Theme Color
+                          </label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="color"
+                              value={widgetPrimaryColor}
+                              onChange={(e) => {
+                                setWidgetPrimaryColor(e.target.value);
+                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                              }}
+                              className="w-10 h-10 bg-transparent border-0 rounded cursor-pointer"
+                            />
+                            <input 
+                              type="text"
+                              value={widgetPrimaryColor}
+                              onChange={(e) => setWidgetPrimaryColor(e.target.value)}
+                              onBlur={() => triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart)}
+                              className="flex-1 bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 text-xs text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Toggles */}
+                      <div className="space-y-4 pt-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-white">Visible on site</div>
+                            <div className="text-[10px] text-white/30">Instantly show or hide the widget icon</div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const val = !widgetIsVisible;
+                              setWidgetIsVisible(val);
+                               triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                            }}
+                            className={`w-11 h-6 rounded-full transition-colors relative ${widgetIsVisible ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetIsVisible ? 'left-6' : 'left-1'}`} />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-white">Default Opened</div>
+                            <div className="text-[10px] text-white/30">Start with the chat window already open</div>
+                          </div>
+                          <button
+                           onClick={() => {
+                              const val = !widgetDefaultOpen;
+                              setWidgetDefaultOpen(val);
+                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                            }}
+                            className={`w-11 h-6 rounded-full transition-colors relative ${widgetDefaultOpen ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
+                          >
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetDefaultOpen ? 'left-6' : 'left-1'}`} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

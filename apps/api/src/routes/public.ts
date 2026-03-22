@@ -16,6 +16,10 @@ export async function publicRoutes(fastify: FastifyInstance) {
           avatarUrl: true,
           autoStart: true,
           voiceId: true,
+          widgetIsVisible: true,
+          widgetPosition: true,
+          widgetPrimaryColor: true,
+          widgetDefaultOpen: true,
         },
       });
 

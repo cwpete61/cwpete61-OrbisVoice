@@ -14,6 +14,10 @@ const CreateAgentSchema = z.object({
   voiceGender: z.enum(["MALE", "FEMALE"]).optional().nullable(),
   avatarUrl: z.string().optional().nullable(),
   autoStart: z.boolean().optional(),
+  widgetIsVisible: z.boolean().optional(),
+  widgetPosition: z.string().optional(),
+  widgetPrimaryColor: z.string().optional(),
+  widgetDefaultOpen: z.boolean().optional(),
 });
 
 const UpdateAgentSchema = z.object({
@@ -25,6 +29,10 @@ const UpdateAgentSchema = z.object({
   avatarUrl: z.string().optional().nullable(),
   autoStart: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  widgetIsVisible: z.boolean().optional(),
+  widgetPosition: z.string().optional(),
+  widgetPrimaryColor: z.string().optional(),
+  widgetDefaultOpen: z.boolean().optional(),
 });
 
 export async function agentRoutes(fastify: FastifyInstance) {
@@ -86,6 +94,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
             avatarUrl: body.avatarUrl,
             autoStart: body.autoStart !== undefined ? body.autoStart : true,
             isActive: true,
+            widgetIsVisible: body.widgetIsVisible ?? true,
+            widgetPosition: body.widgetPosition || "bottom-right",
+            widgetPrimaryColor: body.widgetPrimaryColor || "#14b8a6",
+            widgetDefaultOpen: body.widgetDefaultOpen ?? false,
           },
         });
 
@@ -169,6 +181,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
         if (body.avatarUrl !== undefined) updateData.avatarUrl = body.avatarUrl;
         if (body.autoStart !== undefined) updateData.autoStart = body.autoStart;
         if (body.isActive !== undefined) updateData.isActive = body.isActive;
+        if (body.widgetIsVisible !== undefined) updateData.widgetIsVisible = body.widgetIsVisible;
+        if (body.widgetPosition !== undefined) updateData.widgetPosition = body.widgetPosition;
+        if (body.widgetPrimaryColor !== undefined) updateData.widgetPrimaryColor = body.widgetPrimaryColor;
+        if (body.widgetDefaultOpen !== undefined) updateData.widgetDefaultOpen = body.widgetDefaultOpen;
 
         logger.debug({ agentId: id, updateData, tenantId: effectiveTenantId }, "Updating agent");
 
