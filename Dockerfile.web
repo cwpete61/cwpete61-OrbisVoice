@@ -70,4 +70,4 @@ EXPOSE 3000
 
 # Start the application using node directly on the standalone server
 # In standalone mode, the entrypoint is server.js
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]
