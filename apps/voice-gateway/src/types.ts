@@ -10,7 +10,11 @@ export interface GatewayClient {
   userId: string;
   agentId: string;
   connectedAt: Date;
+  startTime: number;
+  transcript: string;
   apiKey?: string;
+  token?: string;
+  liveSession?: any; // Using any for now to avoid complex type exports from SDK
 }
 
 export interface GeminiResponse {

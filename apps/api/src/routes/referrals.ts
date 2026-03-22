@@ -1,56 +1,64 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { logger } from "../logger";
 import { ApiResponse, AuthPayload } from "../types";
 import { authenticate } from "../middleware/auth";
-import { FastifyRequest } from "fastify";
+
 import { referralManager } from "../services/referral";
 import { env } from "../env";
 
 export async function referralRoutes(fastify: FastifyInstance) {
   // Get referral code for user
-  fastify.get("/users/me/referral-code", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
-    try {
-      const userId = (request.user as AuthPayload).userId;
+  fastify.get(
+    "/users/me/referral-code",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request.user as AuthPayload).userId;
 
-      const code = await referralManager.getOrCreateCode(userId);
+        const code = await referralManager.getOrCreateCode(userId);
 
-      return reply.code(200).send({
-        ok: true,
-        message: "Referral code retrieved",
-        data: {
-          code,
-          shareUrl: `${env.WEB_URL}/signup?ref=${code}`,
-        },
-      } as ApiResponse);
-    } catch (err) {
-      logger.error(err, "Failed to get referral code");
-      return reply.code(500).send({
-        ok: false,
-        message: "Internal server error",
-      } as ApiResponse);
+        return reply.code(200).send({
+          ok: true,
+          message: "Referral code retrieved",
+          data: {
+            code,
+            shareUrl: `${env.WEB_URL}/signup?ref=${code}`,
+          },
+        } as ApiResponse);
+      } catch (err) {
+        logger.error(err, "Failed to get referral code");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
     }
-  });
+  );
 
   // Get referral stats
-  fastify.get("/users/me/referral-stats", { onRequest: [authenticate] }, async (request: FastifyRequest, reply) => {
-    try {
-      const userId = (request.user as AuthPayload).userId;
+  fastify.get(
+    "/users/me/referral-stats",
+    { onRequest: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const userId = (request.user as AuthPayload).userId;
 
-      const stats = await referralManager.getReferralStats(userId);
+        const stats = await referralManager.getReferralStats(userId);
 
-      return reply.code(200).send({
-        ok: true,
-        message: "Referral stats retrieved",
-        data: stats,
-      } as ApiResponse);
-    } catch (err) {
-      logger.error(err, "Failed to get referral stats");
-      return reply.code(500).send({
-        ok: false,
-        message: "Internal server error",
-      } as ApiResponse);
+        return reply.code(200).send({
+          ok: true,
+          message: "Referral stats retrieved",
+          data: stats,
+        } as ApiResponse);
+      } catch (err) {
+        logger.error(err, "Failed to get referral stats");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
     }
-  });
+  );
 
   // Redeem referral code (called during signup)
   fastify.post<{ Body: { referralCode: string } }>(
@@ -101,7 +109,7 @@ export async function referralRoutes(fastify: FastifyInstance) {
         return reply.code(200).send({
           ok: true,
           message: `Processed ${count} pending holds`,
-          data: { count }
+          data: { count },
         } as ApiResponse);
       } catch (err) {
         logger.error(err, "Failed to process holds");

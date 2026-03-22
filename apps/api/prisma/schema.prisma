@@ -21,15 +21,16 @@ model Tenant {
   usageLimit           Int                 @default(100)
   usageCount           Int                 @default(0)
   usageResetAt         DateTime            @default(now())
-  bonusCredits         Int                 @default(0)
-  creditBalance        Float               @default(0)
   billingEmail         String?
+  creditBalance        Float               @default(0)
+  bonusCredits         Int                 @default(0)
   agents               Agent[]
+  agentToolConfig      AgentToolConfig?
   apiKeys              ApiKey[]
+  leads                Lead[]
   googleConfig         TenantGoogleConfig?
   twilioConfig         TenantTwilioConfig?
   users                User[]
-  leads                Lead[]
 }
 
 model TenantTwilioConfig {
@@ -43,52 +44,62 @@ model TenantTwilioConfig {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+model AgentToolConfig {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  enabledTools String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
 model User {
-  id                     String                   @id @default(cuid())
+  id                     String                  @id @default(cuid())
   tenantId               String
-  email                  String                   @unique
+  email                  String                  @unique
   name                   String
-  firstName              String?
-  lastName               String?
-  businessName           String?
-  phone                  String?
-  address                String?
-  unit                   String?
-  city                   String?
-  state                  String?
-  zip                    String?
-  taxFormUrl             String?
-  tinSsn                 String?
   passwordHash           String?
   referralCodeUsed       String?
-  referralRewardTotal    Float                    @default(0)
-  emailVerified          DateTime?
-  emailNotifications     Boolean                  @default(true)
-  emailVerificationToken String?
-  isEmailVerifiedByAdmin Boolean                  @default(false)
-  resetPasswordToken     String?
-  resetPasswordExpires   DateTime?
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
-  isAdmin                Boolean                  @default(false)
+  referralRewardTotal    Float                   @default(0)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  isAdmin                Boolean                 @default(false)
   avatar                 String?
-  username               String?                  @unique
-  googleId               String?                  @unique
+  username               String?                 @unique
+  googleId               String?                 @unique
   googleEmail            String?
   googleName             String?
   googleProfilePicture   String?
   googleAuthProvider     String?
-  role                   UserRole                 @default(USER)
-  isBlocked              Boolean                  @default(false)
-  commissionLevel        CommissionLevel          @default(LOW)
-  isAffiliate            Boolean                  @default(false)
+  role                   UserRole                @default(USER)
+  isBlocked              Boolean                 @default(false)
+  address                String?
+  businessName           String?
+  city                   String?
+  commissionLevel        CommissionLevel         @default(LOW)
+  emailNotifications     Boolean                 @default(true)
+  emailVerificationToken String?
+  emailVerified          DateTime?
+  firstName              String?
+  isAffiliate            Boolean                 @default(false)
+  isEmailVerifiedByAdmin Boolean                 @default(false)
+  lastName               String?
+  phone                  String?
+  resetPasswordExpires   DateTime?
+  resetPasswordToken     String?
+  state                  String?
+  taxFormUrl             String?
+  tinSsn                 String?
+  unit                   String?
+  zip                    String?
   affiliate              Affiliate?
-  referralsCreated       Referral[]               @relation("referrer")
-  rewards                RewardTransaction[]      @relation("referrer_rewards")
-  rewardsReceived        RewardTransaction[]      @relation("referee_rewards")
+  agentsCreated          Agent[]
   notifications          Notification[]
   notifPreference        NotificationPreference?
-  tenant                 Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  referralsCreated       Referral[]              @relation("referrer")
+  rewardsReceived        RewardTransaction[]     @relation("referee_rewards")
+  rewards                RewardTransaction[]     @relation("referrer_rewards")
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, email])
 }
@@ -99,13 +110,19 @@ model Agent {
   name         String
   systemPrompt String
   voiceId      String               @default("default")
-  isActive     Boolean              @default(true)
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+  isActive     Boolean              @default(true)
+  autoStart    Boolean              @default(true)
+  avatarUrl    String?
+  type         AgentType            @default(WIDGET)
+  voiceGender  VoiceGender?
+  userId       String?
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator      User?                @relation(fields: [userId], references: [id])
+  leads        Lead[]
   toolAudits   ToolExecutionAudit[]
   transcripts  Transcript[]
-  leads        Lead[]
 }
 
 model ApiKey {
@@ -119,13 +136,14 @@ model ApiKey {
 }
 
 model Transcript {
-  id        String   @id @default(cuid())
-  agentId   String
-  userId    String?
-  content   String
-  duration  Int      @default(0)
-  createdAt DateTime @default(now())
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  agentId       String
+  userId        String?
+  content       String
+  duration      Int      @default(0)
+  createdAt     DateTime @default(now())
+  estimatedCost Float    @default(0)
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
 }
 
 model Referral {
@@ -152,8 +170,8 @@ model RewardTransaction {
   holdEndsAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  referrer        User      @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
   referee         User?     @relation("referee_rewards", fields: [refereeId], references: [id])
+  referrer        User      @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
 }
 
 model ToolExecutionAudit {
@@ -199,20 +217,20 @@ model SystemEmailConfig {
 
 model StripeConnectConfig {
   id                String   @id @default("global")
-  clientId          String?
   accountId         String?
   publishableKey    String?
   secretKey         String?
-  webhookSecret     String?
+  clientId          String?
+  enabled           Boolean  @default(false)
+  minimumPayout     Float    @default(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
   priceStarter      String?
   priceProfessional String?
   priceEnterprise   String?
   priceLtd          String?
   priceAiInfra      String?
-  enabled           Boolean  @default(false)
-  minimumPayout     Float    @default(100)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  webhookSecret     String?
 }
 
 model TenantGoogleConfig {
@@ -258,24 +276,40 @@ model GmailCredentials {
 }
 
 model PlatformSettings {
-  id                       String          @id @default("global")
-  lowCommission            Float           @default(10)
-  medCommission            Float           @default(20)
-  highCommission           Float           @default(30)
-  starterLimit             Int             @default(1000)
-  professionalLimit        Int             @default(10000)
-  enterpriseLimit          Int             @default(100000)
-  ltdLimit                 Int             @default(1000)
-  aiInfraLimit             Int             @default(250000)
-  emailVerificationEnabled Boolean         @default(false)
-  globalEmailEnabled       Boolean         @default(true)
-  transactionFeePercent    Float           @default(3.4)
-  updatedAt                DateTime        @updatedAt
-  commissionDurationMonths Int             @default(0)
-  payoutMinimum            Float           @default(100)
-  refundHoldDays           Int             @default(14)
-  defaultCommissionLevel   CommissionLevel @default(LOW)
-  payoutCycleDelayMonths   Int             @default(1)
+  id                                   String          @id @default("global")
+  lowCommission                        Float           @default(10)
+  medCommission                        Float           @default(20)
+  highCommission                       Float           @default(30)
+  commissionDurationMonths             Int             @default(0)
+  defaultCommissionLevel               CommissionLevel @default(LOW)
+  payoutMinimum                        Float           @default(100)
+  refundHoldDays                       Int             @default(14)
+  payoutCycleDelayMonths               Int             @default(1)
+  transactionFeePercent                Float           @default(3.4)
+  starterLimit                         Int             @default(1000)
+  professionalLimit                    Int             @default(10000)
+  enterpriseLimit                      Int             @default(100000)
+  ltdLimit                             Int             @default(1000)
+  aiInfraLimit                         Int             @default(250000)
+  emailVerificationEnabled             Boolean         @default(false)
+  globalEmailEnabled                   Boolean         @default(true)
+  updatedAt                            DateTime        @updatedAt
+  costPerMinute                        Float           @default(0.013)
+  freeTierLimit                        Int             @default(100)
+  freeToAiInfraEnabled                 Boolean         @default(false)
+  freeToEnterpriseEnabled              Boolean         @default(false)
+  freeToLtdEnabled                     Boolean         @default(false)
+  freeToProfessionalEnabled            Boolean         @default(false)
+  freeToStarterEnabled                 Boolean         @default(false)
+  freeToolAddToCartEnabled             Boolean         @default(true)
+  freeToolClearCartEnabled             Boolean         @default(true)
+  freeToolCreateCheckoutSessionEnabled Boolean         @default(true)
+  freeToolGetCartEnabled               Boolean         @default(true)
+  freeToolListProductsEnabled          Boolean         @default(true)
+  freeToolMakeCallEnabled              Boolean         @default(true)
+  freeToolRemoveFromCartEnabled        Boolean         @default(true)
+  freeToolSearchProductsEnabled        Boolean         @default(true)
+  freeToolSendSmsEnabled               Boolean         @default(true)
 }
 
 model Affiliate {
@@ -284,25 +318,25 @@ model Affiliate {
   status               AffiliateStatus     @default(PENDING)
   slug                 String              @unique
   paymentInfo          String?
-  totalEarnings        Float               @default(0)
-  totalPaid            Float               @default(0)
-  balance              Float               @default(0)
-  lockedCommissionRate Float?
-  customCommissionRate Float?
-  taxFormCompleted     Boolean             @default(false)
-  tax1099Uploaded      Boolean             @default(false)
-  payoutHeld           Boolean             @default(false)
-  payoutHoldReason     String?
-  payoutHoldLiftedAt   DateTime?
-  payoutHoldLiftedBy   String?
-  lastPayoutAt         DateTime?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  payoutEmail          String?
   payoutMethod         String?
+  payoutEmail          String?
   payoutPhone          String?
   stripeAccountId      String?             @unique
   stripeAccountStatus  String?
+  taxFormCompleted     Boolean             @default(false)
+  tax1099Uploaded      Boolean             @default(false)
+  lastPayoutAt         DateTime?
+  lockedCommissionRate Float?
+  customCommissionRate Float?
+  totalEarnings        Float               @default(0)
+  totalPaid            Float               @default(0)
+  balance              Float               @default(0)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  payoutHeld           Boolean             @default(false)
+  payoutHoldLiftedAt   DateTime?
+  payoutHoldLiftedBy   String?
+  payoutHoldReason     String?
   user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   payouts              AffiliatePayout[]
   referrals            AffiliateReferral[]
@@ -333,36 +367,6 @@ model AffiliatePayout {
   affiliate     Affiliate    @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
 }
 
-enum UserRole {
-  ADMIN
-  SYSTEM_ADMIN
-  USER
-}
-
-enum CommissionLevel {
-  LOW
-  MED
-  HIGH
-}
-
-enum AffiliateStatus {
-  PENDING
-  ACTIVE
-  REJECTED
-}
-
-enum AffiliateReferralStatus {
-  PENDING
-  CONVERTED
-  REJECTED
-}
-
-enum PayoutStatus {
-  PENDING
-  PAID
-  CANCELLED
-}
-
 model Lead {
   id        String   @id @default(cuid())
   tenantId  String
@@ -371,20 +375,20 @@ model Lead {
   phone     String
   email     String?
   summary   String?
-  metadata  String?
   isBooked  Boolean  @default(false)
+  metadata  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
   id        String   @id @default(cuid())
   userId    String
+  type      String
   title     String
   body      String
-  type      String
   data      Json?
   read      Boolean  @default(false)
   emailSent Boolean  @default(false)
@@ -409,23 +413,23 @@ model NotificationTemplate {
   subject   String
   bodyHtml  String
   enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 }
 
 model FaqEntry {
-  id          String        @id @default(cuid())
-  question    String
-  answer      String
-  category    String        @default("general")
-  source      String        @default("admin")
-  published   Boolean       @default(true)
-  helpful     Int           @default(0)
-  notHelpful  Int           @default(0)
-  embedding   Unsupported("vector(1536)")?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  questions   FaqQuestion[]
+  id         String                 @id @default(cuid())
+  question   String
+  answer     String
+  category   String                 @default("general")
+  helpful    Int                    @default(0)
+  notHelpful Int                    @default(0)
+  published  Boolean                @default(true)
+  source     String                 @default("admin")
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  embedding  Unsupported("vector")?
+  questions  FaqQuestion[]
 }
 
 model FaqQuestion {
@@ -447,4 +451,45 @@ model ConversationPackage {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum AgentType {
+  WIDGET
+  INBOUND_TWILIO
+  OUTBOUND_TWILIO
+}
+
+enum VoiceGender {
+  MALE
+  FEMALE
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  SYSTEM_ADMIN
+}
+
+enum CommissionLevel {
+  LOW
+  MED
+  HIGH
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum AffiliateReferralStatus {
+  PENDING
+  CONVERTED
+  REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
 }

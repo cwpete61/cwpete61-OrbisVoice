@@ -2,45 +2,184 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
-import { API_BASE } from "@/lib/api";
+import Link from "next/link";
+import { VOICE_GATEWAY_URL, API_BASE } from "@/lib/api";
 import { readApiBody } from "@/lib/response-utils";
-import type { LiveServerMessage } from "@google/genai";
 import { AudioRecorder, AudioPlayer } from "@/lib/audio-utils";
 import { arrayBufferToBase64, base64ToArrayBuffer } from "@/lib/base64-utils";
 
 const VOICE_MODELS = [
   {
-    id: "default",
-    name: "Neural Natural",
-    description: "Warm, conversational tone for general use",
-    badge: "Recommended",
-    waveform: [3, 5, 8, 6, 9, 7, 5, 8, 6, 4, 7, 9, 5, 7, 6],
+    id: "aoede",
+    name: "Aoede",
+    description: "Clear and rhythmic female voice, perfect for storytelling",
+    badge: "Versatile",
+    waveform: [4, 8, 3, 9, 5, 7, 4, 8, 6, 9, 3, 7, 5, 8, 4],
     color: "#14b8a6",
+    gender: "FEMALE",
   },
   {
-    id: "professional",
-    name: "Executive",
-    description: "Crisp, authoritative voice for business contexts",
-    badge: "Popular",
-    waveform: [4, 6, 5, 8, 6, 7, 9, 5, 6, 8, 5, 4, 7, 6, 8],
-    color: "#6366f1",
+    id: "autonoe",
+    name: "Autonoe",
+    description: "Precise and crystalline female voice for technical clarity",
+    badge: "Clear",
+    waveform: [5, 4, 7, 3, 8, 4, 6, 5, 8, 4, 7, 3, 5, 4, 6],
+    color: "#0d9488",
+    gender: "FEMALE",
   },
   {
-    id: "friendly",
-    name: "Friendly Guide",
-    description: "Upbeat, approachable tone for customer support",
-    badge: null,
-    waveform: [5, 7, 9, 6, 8, 5, 7, 9, 6, 8, 5, 7, 4, 6, 8],
-    color: "#f59e0b",
-  },
-  {
-    id: "concise",
-    name: "Swift Assist",
-    description: "Fast, direct responses for high-volume use cases",
-    badge: null,
-    waveform: [8, 5, 6, 9, 4, 7, 5, 8, 6, 3, 9, 6, 7, 5, 8],
+    id: "callirrhoe",
+    name: "Callirrhoe",
+    description: "Flowing and melodic female voice, ideal for creative work",
+    badge: "Creative",
+    waveform: [3, 6, 9, 4, 7, 3, 6, 9, 4, 7, 3, 6, 9, 4, 7],
     color: "#ec4899",
+    gender: "FEMALE",
   },
+  {
+    id: "kore",
+    name: "Kore",
+    description: "Calm and professional female voice for business assistants",
+    badge: "Balanced",
+    waveform: [3, 5, 4, 6, 3, 5, 4, 6, 3, 5, 4, 6, 3, 5, 4],
+    color: "#6366f1",
+    gender: "FEMALE",
+  },
+  {
+    id: "leda",
+    name: "Leda",
+    description: "Authoritative yet kind female voice for leadership",
+    badge: "Authority",
+    waveform: [2, 8, 4, 7, 3, 9, 4, 6, 2, 8, 5, 7, 3, 9, 4],
+    color: "#8b5cf6",
+    gender: "FEMALE",
+  },
+  {
+    id: "zephyr",
+    name: "Zephyr",
+    description: "Soft and airy female voice for wellness and meditation",
+    badge: "Breezy",
+    waveform: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    color: "#06b6d4",
+    gender: "FEMALE",
+  },
+  {
+    id: "charon",
+    name: "Charon",
+    description: "Deep and resonant male voice for an authoritative presence",
+    badge: "Premium",
+    waveform: [8, 9, 7, 8, 9, 7, 8, 9, 7, 8, 9, 7, 8, 9, 7],
+    color: "#3b82f6",
+    gender: "MALE",
+  },
+  {
+    id: "enceladus",
+    name: "Enceladus",
+    description: "Giant and booming male voice for maximum impact",
+    badge: "Powerful",
+    waveform: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+    color: "#f97316",
+    gender: "MALE",
+  },
+  {
+    id: "fenrir",
+    name: "Fenrir",
+    description: "Strong and energetic male voice with bold personality",
+    badge: "Dynamic",
+    waveform: [9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9],
+    color: "#ef4444",
+    gender: "MALE",
+  },
+  {
+    id: "lapetus",
+    name: "Lapetus",
+    description: "Steady and ancient male voice full of wisdom",
+    badge: "Wise",
+    waveform: [2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2],
+    color: "#71717a",
+    gender: "MALE",
+  },
+  {
+    id: "orus",
+    name: "Orus",
+    description: "Crisp and modern male voice for tech support",
+    badge: "Modern",
+    waveform: [6, 2, 8, 3, 7, 2, 6, 4, 8, 3, 7, 2, 6, 4, 8],
+    color: "#f59e0b",
+    gender: "MALE",
+  },
+  {
+    id: "puck",
+    name: "Puck",
+    description: "Youthful and upbeat male voice for casual contexts",
+    badge: "Friendly",
+    waveform: [6, 4, 8, 5, 7, 4, 6, 5, 8, 4, 7, 5, 6, 4, 8],
+    color: "#10b981",
+    gender: "MALE",
+  },
+  {
+    id: "umbriel",
+    name: "Umbriel",
+    description: "Subtle and sophisticated male voice for high-end hospitality",
+    badge: "Elite",
+    waveform: [4, 5, 6, 5, 4, 5, 6, 5, 4, 5, 6, 5, 4, 5, 6],
+    color: "#64748b",
+    gender: "MALE",
+  },
+];
+
+const AGENT_TYPES = [
+  {
+    id: "WIDGET",
+    name: "Web Widget",
+    description: "Interactive voice widget for your website",
+    icon: (
+      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" />
+      </svg>
+    ),
+  },
+  {
+    id: "INBOUND_TWILIO",
+    name: "Inbound Phone",
+    description: "Agent answers calls to a Twilio phone number",
+    icon: (
+      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+      </svg>
+    ),
+  },
+  {
+    id: "OUTBOUND_TWILIO",
+    name: "Outbound Phone",
+    description: "Agent places calls to lists of phone numbers",
+    icon: (
+      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path d="M15 3h6v6" />
+        <path d="M21 3l-9 9" />
+        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+      </svg>
+    ),
+  },
+];
+
+const AVATARS = [
+  { id: "male1", url: "/avatars/male1.png", gender: "MALE" },
+  { id: "male2", url: "/avatars/male2.png", gender: "MALE" },
+  { id: "male3", url: "/avatars/male3.png", gender: "MALE" },
+  { id: "male4", url: "/avatars/male4.png", gender: "MALE" },
+  { id: "male5", url: "/avatars/male5.png", gender: "MALE" },
+  { id: "male6", url: "/avatars/male6.png", gender: "MALE" },
+  { id: "male7", url: "/avatars/male7.png", gender: "MALE" },
+  { id: "male8", url: "/avatars/male8.png", gender: "MALE" },
+  { id: "female1", url: "/avatars/female1.png", gender: "FEMALE" },
+  { id: "female2", url: "/avatars/female2.png", gender: "FEMALE" },
+  { id: "female3", url: "/avatars/female3.png", gender: "FEMALE" },
+  { id: "female4", url: "/avatars/female4.png", gender: "FEMALE" },
+  { id: "female5", url: "/avatars/female5.png", gender: "FEMALE" },
+  { id: "female6", url: "/avatars/female6.png", gender: "FEMALE" },
+  { id: "female7", url: "/avatars/female7.png", gender: "FEMALE" },
+  { id: "female8", url: "/avatars/female8.png", gender: "FEMALE" },
 ];
 
 const PERSONA_TEMPLATES = [
@@ -85,6 +224,10 @@ export interface AgentData {
   name: string;
   systemPrompt: string;
   voiceId: string;
+  type?: "WIDGET" | "INBOUND_TWILIO" | "OUTBOUND_TWILIO";
+  voiceGender?: "MALE" | "FEMALE";
+  avatarUrl?: string | null;
+  autoStart?: boolean;
 }
 
 export default function AgentBuilderForm({
@@ -100,11 +243,18 @@ export default function AgentBuilderForm({
   const [agentId, setAgentId] = useState<string | undefined>(initialData?.id);
   const [name, setName] = useState(initialData?.name || "");
   const [systemPrompt, setSystemPrompt] = useState(initialData?.systemPrompt || "");
-  const [selectedVoice, setSelectedVoice] = useState(initialData?.voiceId || "default");
+  const [selectedVoice, setSelectedVoice] = useState(initialData?.voiceId || "aoede");
+  const [agentType, setAgentType] = useState<"WIDGET" | "INBOUND_TWILIO" | "OUTBOUND_TWILIO">(initialData?.type || "WIDGET");
+  const [voiceGender, setVoiceGender] = useState<"MALE" | "FEMALE">(initialData?.voiceGender || "FEMALE");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatarUrl || (initialData?.voiceGender === "MALE" ? "/avatars/male1.png" : "/avatars/female1.png"));
+  const [autoStart, setAutoStart] = useState<boolean>(initialData?.autoStart ?? true);
+  const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
+  const [isPlayingSample, setIsPlayingSample] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState(isEditing ? 1 : 1);
+  const [activeStep, setActiveStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  const isCreatingRef = useRef(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "error" | "">("");
   const [error, setError] = useState("");
   const [animatingVoice, setAnimatingVoice] = useState<string | null>(null);
@@ -118,6 +268,7 @@ export default function AgentBuilderForm({
   const sessionRef = useRef<any>(null);
   const recorderRef = useRef<AudioRecorder | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
+  const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -127,40 +278,71 @@ export default function AgentBuilderForm({
   const steps = [
     { n: 1, label: "Identity" },
     { n: 2, label: "Persona" },
-    { n: 3, label: "Voice" },
   ];
 
   // Background auto-save triggered when inputs change
   const triggerAutoSave = async (
     currentName: string,
     prompt: string,
-    voice: string
+    voice: string,
+    type: string,
+    gender: string,
+    avatar: string | null,
+    autostart: boolean
   ): Promise<boolean> => {
     if (!currentName.trim()) return false; // Name is required to save
 
     setAutoSaveStatus("saving");
     try {
       const token = localStorage.getItem("token");
+      const payload = { 
+        name: currentName, 
+        systemPrompt: prompt, 
+        voiceModel: voice,
+        type: type,
+        voiceGender: gender,
+        avatarUrl: avatar,
+        autoStart: autostart
+      };
+      
       if (!agentId) {
+        if (isCreatingRef.current) return false;
+        isCreatingRef.current = true;
+        
         // Initial POST
         const res = await fetch(`${API_BASE}/agents`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: currentName, systemPrompt: prompt, voiceModel: voice }),
+          body: JSON.stringify(payload),
         });
-        const data = await readApiBody<{ id?: string }>(res);
-        if (!res.ok) throw new Error(data.message || `Failed to create draft (HTTP ${res.status})`);
-        if (!data.data?.id) throw new Error("Draft created but no agent id returned");
-        setAgentId(data.data.id);
+        const data = await readApiBody<{ id?: string, data?: any }>(res);
+        if (!res.ok) {
+          isCreatingRef.current = false;
+          console.error("Agent creation failed:", data);
+          throw new Error(data.message || `Failed to create draft (HTTP ${res.status})`);
+        }
+        if (!data.data?.id) {
+          isCreatingRef.current = false;
+          throw new Error("Draft created but no agent id returned");
+        }
+        const newId = data.data.id;
+        setAgentId(newId);
+        isCreatingRef.current = false;
+        
+        // Push the new ID to the URL to make it persistent on refresh
+        router.push(`/agents/${newId}/edit`);
       } else {
         // Update PUT
         const res = await fetch(`${API_BASE}/agents/${agentId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: currentName, systemPrompt: prompt, voiceModel: voice }),
+          body: JSON.stringify(payload),
         });
-        const data = await readApiBody(res);
-        if (!res.ok) throw new Error(data.message || `Failed to auto-save (HTTP ${res.status})`);
+        const data = await readApiBody<any>(res);
+        if (!res.ok) {
+          console.error("Agent update failed:", data);
+          throw new Error(data.message || `Failed to auto-save (HTTP ${res.status})`);
+        }
       }
       setAutoSaveStatus("saved");
       return true;
@@ -173,10 +355,10 @@ export default function AgentBuilderForm({
   };
 
   // Debounce the system prompt text-area typing
-  const debouncedAutoSave = (nameVal: string, promptVal: string, voiceVal: string) => {
+  const debouncedAutoSave = (nameVal: string, promptVal: string, voiceVal: string, typeVal: string, genderVal: string, avatarVal: string | null, autostartVal: boolean) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      triggerAutoSave(nameVal, promptVal, voiceVal);
+      triggerAutoSave(nameVal, promptVal, voiceVal, typeVal, genderVal, avatarVal, autostartVal);
     }, 1500); // Wait 1.5 seconds after typing stops
   };
 
@@ -184,15 +366,53 @@ export default function AgentBuilderForm({
     setSelectedTemplate(t.id);
     if (t.prompt) {
       setSystemPrompt(t.prompt);
-      debouncedAutoSave(name, t.prompt, selectedVoice);
+      debouncedAutoSave(name, t.prompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
     }
   };
 
   const handleVoiceSelect = (voiceId: string) => {
     setAnimatingVoice(voiceId);
     setSelectedVoice(voiceId);
+    setIsVoiceDropdownOpen(false);
     setTimeout(() => setAnimatingVoice(null), 800);
-    triggerAutoSave(name, systemPrompt, voiceId); // Save immediately on voice click
+    triggerAutoSave(name, systemPrompt, voiceId, agentType, voiceGender, avatarUrl, autoStart);
+  };
+
+  const playVoiceSample = (voiceId: string) => {
+    // If clicking the same voice that's already playing, stop it
+    if (isPlayingSample === voiceId) {
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.pause();
+        sampleAudioRef.current = null;
+      }
+      setIsPlayingSample(null);
+      return;
+    }
+
+    // Stop any existing audio
+    if (sampleAudioRef.current) {
+      sampleAudioRef.current.pause();
+      sampleAudioRef.current = null;
+    }
+
+    setIsPlayingSample(voiceId);
+    
+    // Capitalize first letter to match PascalCase filenames (e.g. Aoede.wav)
+    const capitalizedId = voiceId.charAt(0).toUpperCase() + voiceId.slice(1);
+    
+    // Create new audio object
+    const audio = new Audio(`/assets/audio/samples/${capitalizedId}.wav`);
+    sampleAudioRef.current = audio;
+    
+    audio.play().catch(err => {
+      console.error("Failed to play voice sample:", err);
+      setIsPlayingSample(null);
+    });
+
+    audio.onended = () => {
+      setIsPlayingSample(null);
+      sampleAudioRef.current = null;
+    };
   };
 
   const handleStep1Continue = () => {
@@ -204,7 +424,7 @@ export default function AgentBuilderForm({
     setActiveStep(2);
     // Force an initial save if moving to step 2 for the first time
     if (!agentId) {
-      triggerAutoSave(name, systemPrompt, selectedVoice);
+      triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
     }
   };
 
@@ -220,7 +440,7 @@ export default function AgentBuilderForm({
       return;
     }
     setSaving(true);
-    triggerAutoSave(name, systemPrompt, selectedVoice).then((ok) => {
+    triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart).then((ok) => {
       if (ok) {
         router.push("/dashboard");
       } else {
@@ -238,7 +458,7 @@ export default function AgentBuilderForm({
 
     setError("");
     setSavingDraft(true);
-    const ok = await triggerAutoSave(name, systemPrompt, selectedVoice);
+    const ok = await triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
     if (!ok) {
       setError("Could not save right now. Please try again.");
     }
@@ -271,6 +491,9 @@ export default function AgentBuilderForm({
       }
       sessionRef.current = null;
     }
+
+    setIsTalking(false);
+    setIsConnecting(false);
   };
 
   const startTalking = async () => {
@@ -283,105 +506,111 @@ export default function AgentBuilderForm({
     setIsConnecting(true);
 
     try {
-      // 1. Fetch Gemini info
       const token = localStorage.getItem("token") || "";
-      let apiKey = "";
-      try {
-        const res = await fetch(`${API_BASE}/settings/google-config?include_secrets=true`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.data) {
-            apiKey = data.data.geminiApiKey;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch Google config", e);
-      }
 
-      if (!apiKey) {
-        setConnectionError(
-          "Gemini API Key is missing. Configure it in Workspace Management -> Settings -> Google Cloud & Gemini."
-        );
-        setIsConnecting(false);
-        return;
-      }
-
-      // 2. Init API and Player
-      const { GoogleGenAI, Modality } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
+      // 1. Initialize Player
       playerRef.current = new AudioPlayer();
       await playerRef.current.init();
 
-      // 3. Connect to Gemini Live
-      // Map our UI voice selection to Gemini voice names
-      const voiceMapping: Record<string, string> = {
-        default: "Zephyr",
-        professional: "Alloy",
-        friendly: "Echo",
-        concise: "Shimmer",
-      };
-      const geminiVoice = voiceMapping[selectedVoice] || "Zephyr";
+      // 2. Connect to Voice Gateway
+      const socket = new WebSocket(VOICE_GATEWAY_URL);
+      sessionRef.current = socket;
 
-      const session = await ai.live.connect({
-        model: "gemini-2.5-flash-native-audio-preview-09-2025",
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: geminiVoice } },
-          },
-          systemInstruction: {
-            parts: [{ text: `You are ${name}. ${systemPrompt}` }],
-          },
-        },
-        callbacks: {
-          onopen: async () => {
-            console.log("Connected to Gemini Live");
+      socket.onopen = () => {
+        console.log("Connected to Voice Gateway");
+        // Authenticate and Initialize
+        socket.send(
+          JSON.stringify({
+            type: "control",
+            data: JSON.stringify({
+              event: "init",
+              token: token,
+              agentId: agentId,
+              voiceId: selectedVoice,
+              voiceGender: voiceGender, // Pass gender to help with defaults
+            }),
+            timestamp: Date.now(),
+          })
+        );
+      };
+
+      socket.onmessage = async (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.ok && msg.message === "Session initialized") {
+            console.log("Gateway session ready");
             setIsConnecting(false);
             setIsTalking(true);
 
-            // 4. Start Recording and Streaming
-            recorderRef.current = new AudioRecorder((data: ArrayBuffer) => {
-              const base64Data = arrayBufferToBase64(data);
-              if (sessionRef.current) {
-                sessionRef.current.sendRealtimeInput({
-                  media: {
-                    mimeType: "audio/pcm;rate=16000",
-                    data: base64Data,
-                  },
-                });
-              }
-            });
-            await recorderRef.current.start();
-          },
-          onmessage: async (message: LiveServerMessage) => {
-            const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (base64Audio) {
-              const audioData = base64ToArrayBuffer(base64Audio);
-              playerRef.current?.play(audioData);
+            // Start recording once initialized
+            if (recorderRef.current) {
+              await recorderRef.current.start();
             }
+          }
 
-            if (message.serverContent?.interrupted) {
-              console.log("Gemini Interrupted");
+          if (msg.type === "audio" && msg.data) {
+            if (playerRef.current) {
+              const audioBuffer = base64ToArrayBuffer(msg.data);
+              playerRef.current.play(audioBuffer);
+            }
+          }
+
+          if (msg.type === "control") {
+            if (msg.data === "interrupted") {
+              console.log("Barge-in: AI interrupted");
               playerRef.current?.stop();
               playerRef.current = new AudioPlayer();
               await playerRef.current.init();
+            } else if (msg.data === "closed") {
+              stopTalking();
             }
-          },
-          onclose: () => {
-            console.log("Gemini Live session closed");
-            stopTalking();
-          },
-          onerror: (err: any) => {
-            console.error("Gemini session error:", err);
-            setConnectionError("Voice session error: " + err.message);
-            stopTalking();
-          },
-        },
-      });
+          }
 
-      sessionRef.current = session;
+          if (msg.error) {
+            setConnectionError(msg.error);
+            stopTalking();
+          }
+        } catch (e) {
+          console.error("Error parsing gateway message", e);
+        }
+      };
+
+      socket.onerror = (err: any) => {
+        console.error("Gateway socket error:", {
+          error: err,
+          gatewayUrl: VOICE_GATEWAY_URL,
+          readyState: socket.readyState,
+        });
+        setConnectionError("Failed to connect to voice gateway.");
+        stopTalking();
+      };
+
+      socket.onclose = (event) => {
+        console.log("Gateway connection closed", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean,
+        });
+        stopTalking();
+      };
+
+      // 3. Setup Recorder
+      recorderRef.current = new AudioRecorder((data: ArrayBuffer) => {
+        if (socket.readyState === WebSocket.OPEN) {
+          try {
+            socket.send(
+              JSON.stringify({
+                type: "audio",
+                data: arrayBufferToBase64(data),
+                timestamp: Date.now(),
+              })
+            );
+          } catch (e) {
+            console.warn("Could not send audio chunk", e);
+          }
+        }
+      });
     } catch (err: any) {
       console.error("Voice preparation error:", err);
       setConnectionError(err.message || "Failed to start conversation.");
@@ -392,6 +621,10 @@ export default function AgentBuilderForm({
   useEffect(() => {
     return () => {
       stopTalking();
+      if (sampleAudioRef.current) {
+        sampleAudioRef.current.pause();
+        sampleAudioRef.current = null;
+      }
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, []);
@@ -434,8 +667,8 @@ export default function AgentBuilderForm({
         <div className="max-w-5xl mx-auto">
           <div className="mb-8 fade-slide-up flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <button
-                onClick={() => router.back()}
+              <Link
+                href="/dashboard"
                 className="flex items-center gap-2 text-[rgba(240,244,250,0.4)] hover:text-[rgba(240,244,250,0.8)] text-sm mb-5 transition group"
               >
                 <svg
@@ -450,7 +683,7 @@ export default function AgentBuilderForm({
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
                 Back to Agents
-              </button>
+              </Link>
 
               <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">
                 {isEditing ? "Edit Voice Agent" : "Build Your Voice Agent"}
@@ -469,6 +702,7 @@ export default function AgentBuilderForm({
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <button
                 onClick={handleSaveDraft}
+                suppressHydrationWarning
                 disabled={savingDraft || saving || !name.trim()}
                 className="px-3 py-2 rounded-xl border border-[#14b8a6]/35 bg-[#14b8a6]/10 text-[#2dd4bf] text-xs font-semibold hover:bg-[#14b8a6]/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -491,6 +725,7 @@ export default function AgentBuilderForm({
               >
                 <button
                   onClick={() => setActiveStep(step.n)}
+                  suppressHydrationWarning
                   className="flex items-center gap-2.5 group shrink-0"
                 >
                   <div
@@ -542,6 +777,7 @@ export default function AgentBuilderForm({
               >
                 <button
                   onClick={() => setActiveStep(1)}
+                  suppressHydrationWarning
                   className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
                 >
                   <div
@@ -579,20 +815,57 @@ export default function AgentBuilderForm({
                         value={name}
                         onChange={(e) => {
                           setName(e.target.value);
-                          if (agentId)
-                            debouncedAutoSave(e.target.value, systemPrompt, selectedVoice);
+                          debouncedAutoSave(e.target.value, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
                         }}
                         placeholder="e.g., Sales Pro, Support Ally, Booking Bot..."
                         className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-[rgba(240,244,250,0.2)] focus:outline-none focus:border-[#14b8a6]/50 focus:ring-1 focus:ring-[#14b8a6]/20 transition text-sm"
                         autoFocus
+                        suppressHydrationWarning
                       />
                       <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.25)]">
                         Your customers will hear this name when interacting with the agent
                       </p>
 
+                      <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2 mt-6">
+                        Agent Type
+                      </label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {AGENT_TYPES.map((t) => (
+                          <button
+                            key={t.id}
+                            suppressHydrationWarning
+                            onClick={() => {
+                              setAgentType(t.id as any);
+                              triggerAutoSave(name, systemPrompt, selectedVoice, t.id, voiceGender, avatarUrl, autoStart);
+                            }}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 ${
+                              agentType === t.id
+                                ? "bg-[#14b8a6]/10 border-[#14b8a6]/50 ring-1 ring-[#14b8a6]/20"
+                                : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.04] hover:border-white/[0.12]"
+                            }`}
+                          >
+                            <div className={`p-2 rounded-lg ${agentType === t.id ? "bg-[#14b8a6]/20 text-[#14b8a6]" : "bg-white/[0.05] text-[rgba(240,244,250,0.4)]"}`}>
+                              {t.icon}
+                            </div>
+                            <div className="text-left">
+                              <div className={`text-sm font-semibold ${agentType === t.id ? "text-white" : "text-[rgba(240,244,250,0.8)]"}`}>{t.name}</div>
+                              <div className="text-[10px] text-[rgba(240,244,250,0.35)]">{t.description}</div>
+                            </div>
+                            {agentType === t.id && (
+                              <div className="ml-auto w-5 h-5 rounded-full bg-[#14b8a6] flex items-center justify-center">
+                                <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
+                                  <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z" />
+                                </svg>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
                       <button
                         onClick={handleStep1Continue}
-                        className="mt-5 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm"
+                        className="mt-6 w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
+                        suppressHydrationWarning
                       >
                         Continue to Persona →
                       </button>
@@ -607,6 +880,7 @@ export default function AgentBuilderForm({
               >
                 <button
                   onClick={() => setActiveStep(2)}
+                  suppressHydrationWarning
                   className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
                 >
                   <div
@@ -643,6 +917,7 @@ export default function AgentBuilderForm({
                           <button
                             key={t.id}
                             onClick={() => handleTemplateSelect(t)}
+                            suppressHydrationWarning
                             className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-medium transition-all duration-200 ${
                               selectedTemplate === t.id
                                 ? "bg-[#14b8a6]/15 border border-[#14b8a6]/40 text-[#14b8a6]"
@@ -663,7 +938,7 @@ export default function AgentBuilderForm({
                         value={systemPrompt}
                         onChange={(e) => {
                           setSystemPrompt(e.target.value.slice(0, maxChars));
-                          debouncedAutoSave(name, e.target.value.slice(0, maxChars), selectedVoice);
+                          debouncedAutoSave(name, e.target.value.slice(0, maxChars), selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
                         }}
                         placeholder="Define how your agent should behave, its tone, goals, and how it should handle different scenarios..."
                         rows={7}
@@ -680,112 +955,6 @@ export default function AgentBuilderForm({
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          if (systemPrompt.trim()) setActiveStep(3);
-                          else setError("Add a system prompt first.");
-                        }}
-                        className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm"
-                      >
-                        Continue to Voice →
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Step 3: Voice */}
-              <div
-                className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 3 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
-              >
-                <button
-                  onClick={() => setActiveStep(3)}
-                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      activeStep === 3
-                        ? "bg-[#14b8a6] text-white"
-                        : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
-                    }`}
-                  >
-                    3
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-semibold text-white">Voice & Style</div>
-                    <div className="text-xs text-[rgba(240,244,250,0.35)]">
-                      Choose how your agent sounds
-                    </div>
-                  </div>
-                  {activeStep !== 3 && (
-                    <div className="ml-auto text-xs text-[rgba(240,244,250,0.35)]">
-                      {voiceModel.name}
-                    </div>
-                  )}
-                </button>
-
-                {activeStep === 3 && (
-                  <div className="px-6 pb-6 fade-slide-up">
-                    <div className="border-t border-white/[0.05] pt-5">
-                      <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-3">
-                        Voice Model
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {VOICE_MODELS.map((voice) => (
-                          <button
-                            key={voice.id}
-                            onClick={() => handleVoiceSelect(voice.id)}
-                            className={`relative p-4 rounded-xl text-left transition-all duration-300 group ${
-                              selectedVoice === voice.id
-                                ? "border-2 bg-opacity-10"
-                                : "border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12]"
-                            }`}
-                            style={
-                              selectedVoice === voice.id
-                                ? {
-                                    borderColor: voice.color,
-                                    background: `${voice.color}12`,
-                                    boxShadow: `0 0 20px ${voice.color}18`,
-                                  }
-                                : {}
-                            }
-                          >
-                            {voice.badge && (
-                              <span
-                                className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                                style={{ background: `${voice.color}25`, color: voice.color }}
-                              >
-                                {voice.badge}
-                              </span>
-                            )}
-                            {/* Waveform */}
-                            <div className="flex items-center gap-0.5 h-8 mb-3">
-                              {voice.waveform.map((h, i) => (
-                                <div
-                                  key={i}
-                                  className={`w-1 rounded-full flex-shrink-0 ${animatingVoice === voice.id || selectedVoice === voice.id ? "wave-bar" : ""}`}
-                                  style={{
-                                    height: `${h * 3}px`,
-                                    backgroundColor:
-                                      selectedVoice === voice.id
-                                        ? voice.color
-                                        : "rgba(240,244,250,0.15)",
-                                    animationDelay: `${i * 0.07}s`,
-                                    animationPlayState:
-                                      selectedVoice === voice.id ? "running" : "paused",
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            <div className="text-sm font-semibold text-white mb-0.5">
-                              {voice.name}
-                            </div>
-                            <div className="text-[11px] text-[rgba(240,244,250,0.4)] leading-relaxed">
-                              {voice.description}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 )}
@@ -812,6 +981,7 @@ export default function AgentBuilderForm({
               {/* Launch Button */}
               <button
                 onClick={handleLaunch}
+                suppressHydrationWarning
                 disabled={saving || !name.trim() || !systemPrompt.trim()}
                 className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold text-sm transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden group mt-4"
                 style={{
@@ -886,13 +1056,17 @@ export default function AgentBuilderForm({
                     <div className="flex items-center gap-4 mb-5">
                       <div className="relative">
                         <div
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold"
+                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold overflow-hidden"
                           style={{
                             background: `linear-gradient(135deg, ${voiceModel.color}30, ${voiceModel.color}10)`,
                             border: `1px solid ${voiceModel.color}30`,
                           }}
                         >
-                          {name.trim() ? name.trim()[0].toUpperCase() : "?"}
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            name.trim() ? name.trim()[0].toUpperCase() : "?"
+                          )}
                         </div>
                         <div
                           className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
@@ -920,6 +1094,124 @@ export default function AgentBuilderForm({
                             {voiceModel.name}
                           </span>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Voice Selection Studio */}
+                    <div className="mb-6 fade-slide-up">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-[10px] font-semibold text-[rgba(240,244,250,0.3)] uppercase tracking-wider">
+                          Voice Model
+                        </label>
+                        <div className="flex bg-[#0a0e1a] p-1 rounded-lg border border-white/5 scale-90 origin-right">
+                          {(["MALE", "FEMALE"] as const).map((g) => (
+                            <button
+                              key={g}
+                              onClick={() => {
+                                setVoiceGender(g);
+                                const defaultAvatar = g === "MALE" ? "/avatars/male1.png" : "/avatars/female1.png";
+                                setAvatarUrl(defaultAvatar);
+                                const defaultVoice = g === "MALE" ? "charon" : "aoede";
+                                setSelectedVoice(defaultVoice);
+                                triggerAutoSave(name, systemPrompt, defaultVoice, agentType, g, defaultAvatar, autoStart);
+                              }}
+                              className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${
+                                voiceGender === g
+                                  ? "bg-[#14b8a6] text-white"
+                                  : "text-[rgba(240,244,250,0.4)]"
+                              }`}
+                            >
+                              {g}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
+                          className="w-full h-12 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 flex items-center justify-between hover:border-[#14b8a6]/30 transition group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: voiceModel.color }} />
+                            <div className="text-left">
+                              <span className="text-xs font-semibold text-white block truncate w-32">{voiceModel.name}</span>
+                            </div>
+                          </div>
+                          <svg 
+                            className={`transition-transform duration-300 ${isVoiceDropdownOpen ? 'rotate-180' : ''}`}
+                            width="14" height="14" fill="none" stroke="rgba(240,244,250,0.3)" strokeWidth="2" viewBox="0 0 24 24"
+                          >
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </button>
+
+                        {isVoiceDropdownOpen && (
+                          <div className="absolute bottom-full left-0 right-0 mb-2 z-50 glass-card border border-[#14b8a6]/20 rounded-xl overflow-hidden shadow-2xl py-1 fade-slide-up max-h-[300px] overflow-y-auto custom-scrollbar">
+                            {VOICE_MODELS.filter(v => v.gender === voiceGender).map((v) => (
+                              <div key={v.id} className="flex items-center group/item hover:bg-[#14b8a6]/10 px-1">
+                                <button
+                                  onClick={() => {
+                                    handleVoiceSelect(v.id);
+                                    setIsVoiceDropdownOpen(false);
+                                  }}
+                                  className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left transition"
+                                >
+                                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: v.color }} />
+                                  <div className="flex-1">
+                                    <div className="text-[11px] font-semibold text-white">{v.name}</div>
+                                  </div>
+                                  {selectedVoice === v.id && (
+                                    <div className="w-4 h-4 rounded-full bg-[#14b8a6] flex items-center justify-center">
+                                      <svg width="10" height="10" fill="white" viewBox="0 0 24 24"><path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z" /></svg>
+                                    </div>
+                                  )}
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    playVoiceSample(v.id);
+                                  }}
+                                  className="p-2 mr-1 rounded-lg hover:bg-[#14b8a6]/20 text-[#14b8a6] transition"
+                                >
+                                  {isPlayingSample === v.id ? (
+                                    <div className="w-3 h-3 rounded-full border-2 border-[#14b8a6]/30 border-t-[#14b8a6] animate-spin" />
+                                  ) : (
+                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M3 22v-20l18 10-18 10z" />
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Avatar Selection */}
+                    <div className="mb-6 fade-slide-up">
+                      <label className="block text-[10px] font-semibold text-[rgba(240,244,250,0.3)] uppercase tracking-wider mb-2">
+                        Quick Avatar Swap
+                      </label>
+                      <div className="flex gap-2">
+                        {AVATARS.filter(a => a.gender === voiceGender).map((avatar) => (
+                          <button
+                            key={avatar.id}
+                            suppressHydrationWarning
+                            onClick={() => {
+                              setAvatarUrl(avatar.url);
+                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatar.url, autoStart);
+                            }}
+                            className={`relative w-10 h-10 rounded-xl overflow-hidden border transition-all ${
+                              avatarUrl === avatar.url
+                                ? "border-[#14b8a6] ring-2 ring-[#14b8a6]/20"
+                                : "border-white/5 hover:border-white/20"
+                            }`}
+                          >
+                            <img src={avatar.url} alt="Avatar" className="w-full h-full object-cover" />
+                          </button>
+                        ))}
                       </div>
                     </div>
 

@@ -37,7 +37,11 @@ export default function EditAgentPage() {
                         id: data.data.id,
                         name: data.data.name,
                         systemPrompt: data.data.systemPrompt,
-                        voiceId: data.data.voiceId || "default"
+                        voiceId: data.data.voiceId || "aoede",
+                        type: data.data.type,
+                        voiceGender: data.data.voiceGender,
+                        avatarUrl: data.data.avatarUrl,
+                        autoStart: data.data.autoStart
                     });
                 }
             } catch (e: any) {
@@ -84,6 +88,7 @@ export default function EditAgentPage() {
                     </p>
                     <button
                         onClick={() => router.push("/dashboard")}
+                        suppressHydrationWarning
                         className="px-6 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition text-sm text-white"
                     >
                         Back to Dashboard

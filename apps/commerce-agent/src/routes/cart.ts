@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getCart, addToCart, clearCart } from '../lib/redis';
+import { getCart, addToCart, clearCart, removeFromCart } from '../lib/redis';
 import prisma from '../lib/prisma';
 import { z } from 'zod';
 
@@ -14,14 +14,17 @@ export default async function cartRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/', async (request) => {
+    console.info('GET /cart started');
     const userId = (request.user as any).userId;
     const items = await getCart(userId);
+    console.info(`Found ${items.length} items for ${userId}`);
     
     // Enrich items with product data from our local mirror
     const productIds = items.map(i => i.productId);
     const products = await prisma.product.findMany({
       where: { stripeProductId: { in: productIds } }
     });
+    console.info(`Enriched with ${products.length} products`);
 
     return {
       items: items.map(item => ({
@@ -52,5 +55,12 @@ export default async function cartRoutes(fastify: FastifyInstance) {
     const userId = (request.user as any).userId;
     await clearCart(userId);
     return { success: true };
+  });
+
+  fastify.delete('/:productId', async (request, reply) => {
+    const userId = (request.user as any).userId;
+    const { productId } = request.params as { productId: string };
+    const cart = await removeFromCart(userId, productId);
+    return { success: true, cart };
   });
 }

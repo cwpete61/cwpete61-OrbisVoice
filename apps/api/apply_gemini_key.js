@@ -9,13 +9,13 @@ async function applyKey() {
             await prisma.tenantGoogleConfig.upsert({
                 where: { tenantId: tenant.id },
                 update: {
-                    geminiApiKey: "AIzaSyDUA_s8zhW_xKfPA-HmSrFIo6YRgS2nbRs",
+                    geminiApiKey: "AIzaSyByYPQX4hG8RUFplZoXo6fhfO5q0ac9zXo",
                 },
                 create: {
                     tenantId: tenant.id,
                     clientId: "default",
                     clientSecret: "default",
-                    geminiApiKey: "AIzaSyDUA_s8zhW_xKfPA-HmSrFIo6YRgS2nbRs"
+                    geminiApiKey: "AIzaSyByYPQX4hG8RUFplZoXo6fhfO5q0ac9zXo"
                 }
             });
             console.log(`Updated Gemini API Key for tenant ${tenant.id}`);

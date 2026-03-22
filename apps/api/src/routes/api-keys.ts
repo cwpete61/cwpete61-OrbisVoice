@@ -1,10 +1,10 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse, AuthPayload } from "../types";
 import { authenticate, requireAdmin } from "../middleware/auth";
-import { FastifyRequest } from "fastify";
+
 import { randomBytes } from "crypto";
 
 const CreateApiKeySchema = z.object({
@@ -13,32 +13,36 @@ const CreateApiKeySchema = z.object({
 
 export async function apiKeyRoutes(fastify: FastifyInstance) {
   // List API keys for tenant
-  fastify.get("/api-keys", { onRequest: [authenticate, requireAdmin] }, async (request: FastifyRequest, reply) => {
-    try {
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-      const keys = await prisma.apiKey.findMany({
-        where: { tenantId },
-        select: {
-          id: true,
-          name: true,
-          createdAt: true,
-          expiresAt: true,
-          key: false, // Never return full key in list
-        },
-      });
-      return reply.code(200).send({
-        ok: true,
-        message: "API keys retrieved",
-        data: keys,
-      } as ApiResponse);
-    } catch (err) {
-      logger.error(err, "Failed to list API keys");
-      return reply.code(500).send({
-        ok: false,
-        message: "Internal server error",
-      } as ApiResponse);
+  fastify.get(
+    "/api-keys",
+    { onRequest: [authenticate, requireAdmin] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+        const keys = await prisma.apiKey.findMany({
+          where: { tenantId },
+          select: {
+            id: true,
+            name: true,
+            createdAt: true,
+            expiresAt: true,
+            key: false, // Never return full key in list
+          },
+        });
+        return reply.code(200).send({
+          ok: true,
+          message: "API keys retrieved",
+          data: keys,
+        } as ApiResponse);
+      } catch (err) {
+        logger.error(err, "Failed to list API keys");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
     }
-  });
+  );
 
   // Create new API key
   fastify.post<{ Body: z.infer<typeof CreateApiKeySchema> }>(

@@ -5,7 +5,7 @@ import { prisma } from "../db";
 import { StripeClient } from "../integrations/stripe";
 import { env } from "../env";
 import { logger } from "../logger";
-import { UsageService } from "../services/usage-service";
+import { UsageService, resolveUsageLimitForTier } from "../services/usage-service";
 import { referralManager } from "../services/referral";
 import { resolveAdminScopedTenantId } from "../services/admin-scope";
 
@@ -258,12 +258,14 @@ async function billingRoutes(fastify: FastifyInstance) {
 
       // If they are on a paid tier but no sub ID (e.g. legacy or manual), just reset them
       if (!tenant.stripeSubscriptionId) {
+        const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+        const freeUsageLimit = resolveUsageLimitForTier("free", settings);
         await prisma.tenant.update({
           where: { id: scopedTenantId },
           data: {
             subscriptionStatus: "canceled",
             subscriptionTier: "free",
-            usageLimit: 100,
+            usageLimit: freeUsageLimit,
           },
         });
         return { ok: true, message: "Subscription reset to free tier" };

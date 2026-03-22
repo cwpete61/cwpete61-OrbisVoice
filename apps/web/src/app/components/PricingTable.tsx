@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 export interface TierInfo {
   conversations: number;
   price: number;

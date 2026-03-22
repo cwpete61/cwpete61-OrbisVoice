@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Modality, Tool } from "@google/genai";
 import { env } from "../env";
 import { logger } from "../logger";
 
@@ -8,7 +8,8 @@ export interface GeminiAudioResponse {
 }
 
 class GeminiVoiceClient {
-  private model: string = "gemini-2.5-flash";
+  private model: string = "models/gemini-2.5-flash-native-audio-latest"; 
+  private liveModel: string = "models/gemini-2.5-flash-native-audio-latest";
 
   constructor() {
     if (!env.GEMINI_API_KEY) {
@@ -22,6 +23,44 @@ class GeminiVoiceClient {
       throw new Error("Gemini API key not configured");
     }
     return new GoogleGenAI({ apiKey: key });
+  }
+
+  async connectLive(
+    apiKey: string | undefined,
+    config: {
+      systemPrompt: string;
+      voiceName?: string;
+      tools?: Tool[];
+    },
+    callbacks: {
+      onmessage: (message: any) => void;
+      onclose: () => void;
+      onerror: (err: any) => void;
+    }
+  ) {
+    const client = this.getClient(apiKey);
+    
+    logger.info({ model: this.liveModel, toolsCount: config.tools?.length || 0 }, "Connecting to Gemini Multimodal Live API");
+
+    const session = await client.live.connect({
+      model: this.liveModel,
+      config: {
+        responseModalities: ["audio"] as any,
+        speechConfig: {
+           voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voiceName || "Puck" } },
+        },
+        generationConfig: {
+          temperature: 0.7,
+        },
+        systemInstruction: {
+          parts: [{ text: config.systemPrompt }],
+        },
+        tools: config.tools,
+      },
+      callbacks,
+    });
+
+    return session;
   }
 
   async processAudio(apiKey: string | undefined, audioData: string, systemPrompt: string): Promise<GeminiAudioResponse> {

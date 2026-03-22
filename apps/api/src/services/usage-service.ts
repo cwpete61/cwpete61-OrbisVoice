@@ -3,13 +3,44 @@ import { logger } from "../logger";
 import { createNotification, NotifType } from "./notification";
 
 const TIER_PRIORITY: Record<string, number> = {
-  "free": 0,
-  "starter": 1,
-  "ltd": 2,
-  "professional": 3,
-  "enterprise": 4,
+  free: 0,
+  starter: 1,
+  ltd: 2,
+  professional: 3,
+  enterprise: 4,
   "ai-revenue-infrastructure": 5,
 };
+
+type TierLimits = {
+  freeTierLimit?: number | null;
+  freeToStarterEnabled?: boolean | null;
+  freeToProfessionalEnabled?: boolean | null;
+  freeToEnterpriseEnabled?: boolean | null;
+  freeToLtdEnabled?: boolean | null;
+  freeToAiInfraEnabled?: boolean | null;
+  starterLimit?: number | null;
+  professionalLimit?: number | null;
+  enterpriseLimit?: number | null;
+  ltdLimit?: number | null;
+  aiInfraLimit?: number | null;
+} | null;
+
+export function resolveUsageLimitForTier(tier: string, settings: TierLimits): number {
+  if (tier === "free") {
+    if (settings?.freeToAiInfraEnabled) return settings?.aiInfraLimit ?? 250000;
+    if (settings?.freeToEnterpriseEnabled) return settings?.enterpriseLimit ?? 100000;
+    if (settings?.freeToProfessionalEnabled) return settings?.professionalLimit ?? 10000;
+    if (settings?.freeToLtdEnabled) return settings?.ltdLimit ?? 1000;
+    if (settings?.freeToStarterEnabled) return settings?.starterLimit ?? 1000;
+    return settings?.freeTierLimit ?? 100;
+  }
+  if (tier === "ltd") return settings?.ltdLimit ?? 1000;
+  if (tier === "starter") return settings?.starterLimit ?? 1000;
+  if (tier === "professional") return settings?.professionalLimit ?? 10000;
+  if (tier === "enterprise") return settings?.enterpriseLimit ?? 100000;
+  if (tier === "ai-revenue-infrastructure") return settings?.aiInfraLimit ?? 250000;
+  return 100;
+}
 
 export class UsageService {
   /**
@@ -31,7 +62,10 @@ export class UsageService {
         nextReset.setMonth(nextReset.getMonth() + 1);
       }
 
-      logger.info({ tenantId, oldResetAt: tenant.usageResetAt, newResetAt: nextReset }, "Performing monthly usage reset");
+      logger.info(
+        { tenantId, oldResetAt: tenant.usageResetAt, newResetAt: nextReset },
+        "Performing monthly usage reset"
+      );
 
       return await prisma.tenant.update({
         where: { id: tenantId },
@@ -92,7 +126,12 @@ export class UsageService {
   /**
    * Update tenant's subscription tier and usage limits
    */
-  static async updateSubscriptionTier(tenantId: string, tier: string, stripeSubscriptionId?: string, force: boolean = false) {
+  static async updateSubscriptionTier(
+    tenantId: string,
+    tier: string,
+    stripeSubscriptionId?: string,
+    force: boolean = false
+  ) {
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) return null;
 
@@ -101,31 +140,28 @@ export class UsageService {
     const newPriority = TIER_PRIORITY[tier] || 0;
 
     if (!force && newPriority < currentPriority && tenant.subscriptionStatus === "active") {
-      logger.info({ 
-        tenantId, 
-        currentTier: tenant.subscriptionTier, 
-        rejectedTier: tier,
-        reason: "Downgrade protection active" 
-      }, "Skipping subscription update to lower tier");
-      
+      logger.info(
+        {
+          tenantId,
+          currentTier: tenant.subscriptionTier,
+          rejectedTier: tier,
+          reason: "Downgrade protection active",
+        },
+        "Skipping subscription update to lower tier"
+      );
+
       // Still update the status and sub ID if they match the current tier's sub
-      if(stripeSubscriptionId === tenant.stripeSubscriptionId) {
-          await prisma.tenant.update({
-              where: { id: tenantId },
-              data: { stripeSubscriptionId }
-          });
+      if (stripeSubscriptionId === tenant.stripeSubscriptionId) {
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: { stripeSubscriptionId },
+        });
       }
       return tenant;
     }
 
     const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-    let newUsageLimit = 100;
-
-    if (tier === 'ltd') newUsageLimit = settings?.ltdLimit ?? 1000;
-    else if (tier === 'starter') newUsageLimit = settings?.starterLimit ?? 1000;
-    else if (tier === 'professional') newUsageLimit = settings?.professionalLimit ?? 10000;
-    else if (tier === 'enterprise') newUsageLimit = settings?.enterpriseLimit ?? 100000;
-    else if (tier === 'ai-revenue-infrastructure') newUsageLimit = settings?.aiInfraLimit ?? 250000;
+    const newUsageLimit = resolveUsageLimitForTier(tier, settings);
 
     const data: any = {
       subscriptionTier: tier,

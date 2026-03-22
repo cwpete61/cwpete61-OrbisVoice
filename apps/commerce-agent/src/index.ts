@@ -46,6 +46,7 @@ async function start() {
 
     // 4. Routes
     await fastify.register(import('./routes/cart'), { prefix: '/cart' });
+    await fastify.register(import('./routes/products'), { prefix: '/products' });
     await fastify.register(import('./routes/checkout'), { prefix: '/checkout' });
     await fastify.register(import('./routes/admin'), { prefix: '/internal' });
     await fastify.register(import('./routes/webhooks'), { prefix: '/webhooks' });

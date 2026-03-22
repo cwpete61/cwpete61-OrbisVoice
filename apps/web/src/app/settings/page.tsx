@@ -8,6 +8,68 @@ import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
 import { API_BASE } from "@/lib/api";
 
+const TOOL_CONFIG_OPTIONS = [
+  { key: "freeToolGetCartEnabled", label: "get_cart", description: "Read cart contents" },
+  { key: "freeToolAddToCartEnabled", label: "add_to_cart", description: "Add item to cart" },
+  { key: "freeToolClearCartEnabled", label: "clear_cart", description: "Clear all cart items" },
+  {
+    key: "freeToolListProductsEnabled",
+    label: "list_products",
+    description: "List available products",
+  },
+  {
+    key: "freeToolSearchProductsEnabled",
+    label: "search_products",
+    description: "Search products by query",
+  },
+  {
+    key: "freeToolRemoveFromCartEnabled",
+    label: "remove_from_cart",
+    description: "Remove item from cart",
+  },
+  {
+    key: "freeToolCreateCheckoutSessionEnabled",
+    label: "create_checkout_session",
+    description: "Create Stripe checkout session",
+  },
+  { key: "freeToolSendSmsEnabled", label: "send_sms", description: "Send SMS via Twilio" },
+  { key: "freeToolMakeCallEnabled", label: "make_call", description: "Place call via Twilio" },
+] as const;
+
+const TOOL_TIERS = [
+  { key: "free", label: "Free Tier" },
+  { key: "starter", label: "Starter Plan" },
+  { key: "professional", label: "Professional Plan" },
+  { key: "enterprise", label: "Enterprise Plan" },
+  { key: "ltd", label: "LTD Plan" },
+  { key: "aiInfra", label: "AI Infrastructure Plan" },
+] as const;
+
+type ToolName = (typeof TOOL_CONFIG_OPTIONS)[number]["label"];
+type ToolTierKey = (typeof TOOL_TIERS)[number]["key"];
+type TierToolAccessMap = Record<ToolTierKey, Record<ToolName, boolean>>;
+
+const createDefaultTierToolAccess = (): TierToolAccessMap =>
+  Object.fromEntries(
+    TOOL_TIERS.map((tier) => [
+      tier.key,
+      Object.fromEntries(TOOL_CONFIG_OPTIONS.map((tool) => [tool.label, true])),
+    ])
+  ) as TierToolAccessMap;
+
+const normalizeTierToolAccess = (payload: any): TierToolAccessMap | null => {
+  if (!payload?.tiers) return null;
+
+  const next = createDefaultTierToolAccess();
+  TOOL_TIERS.forEach((tier) => {
+    TOOL_CONFIG_OPTIONS.forEach((tool) => {
+      const value = payload.tiers?.[tier.key]?.[tool.label];
+      next[tier.key][tool.label] = value === undefined ? true : value === true;
+    });
+  });
+
+  return next;
+};
 
 function NotificationPrefsPanel({
   notifPrefs,
@@ -165,7 +227,9 @@ function SettingsContent() {
 
   // Tenant Google Config State
   const [tenantGoogleConfig, setTenantGoogleConfig] = useState<any>({
-    clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com",
+    clientId:
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+      "11487700361-lrlence29536nfmod8vp2541e59e4kfu.apps.googleusercontent.com",
     clientSecret: "",
     geminiApiKey: "",
     hasConfig: false,
@@ -258,6 +322,21 @@ function SettingsContent() {
     payoutMinimum: 100,
     refundHoldDays: 14,
     payoutCycleDelayMonths: 1,
+    freeTierLimit: 100,
+    freeToStarterEnabled: false,
+    freeToProfessionalEnabled: false,
+    freeToEnterpriseEnabled: false,
+    freeToLtdEnabled: false,
+    freeToAiInfraEnabled: false,
+    freeToolGetCartEnabled: true,
+    freeToolAddToCartEnabled: true,
+    freeToolClearCartEnabled: true,
+    freeToolListProductsEnabled: true,
+    freeToolSearchProductsEnabled: true,
+    freeToolRemoveFromCartEnabled: true,
+    freeToolCreateCheckoutSessionEnabled: true,
+    freeToolSendSmsEnabled: true,
+    freeToolMakeCallEnabled: true,
     starterLimit: 1000,
     professionalLimit: 10000,
     enterpriseLimit: 100000,
@@ -270,6 +349,14 @@ function SettingsContent() {
   const [packages, setPackages] = useState<any[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
   const [packagesSaving, setPackagesSaving] = useState(false);
+  const [agentToolForm, setAgentToolForm] = useState<TierToolAccessMap>(
+    createDefaultTierToolAccess
+  );
+  const [agentToolSaving, setAgentToolSaving] = useState(false);
+  const [agentToolMessage, setAgentToolMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const tokenLoaded = useTokenFromUrl();
 
@@ -314,7 +401,8 @@ function SettingsContent() {
       fetchGmailCredentials();
       fetchTenantGoogleConfig();
       fetchPackages();
-      
+      fetchAgentToolConfig();
+
       if (activeTab === "role-settings" || activeTab === "system-roles") {
         fetchUsers();
       }
@@ -358,6 +446,31 @@ function SettingsContent() {
             payoutMinimum: data.data.payoutMinimum,
             refundHoldDays: data.data.refundHoldDays,
             payoutCycleDelayMonths: data.data.payoutCycleDelayMonths,
+            freeTierLimit: data.data.freeTierLimit ?? 100,
+            freeToStarterEnabled: data.data.freeToStarterEnabled ?? false,
+            freeToProfessionalEnabled: data.data.freeToProfessionalEnabled ?? false,
+            freeToEnterpriseEnabled: data.data.freeToEnterpriseEnabled ?? false,
+            freeToLtdEnabled: data.data.freeToLtdEnabled ?? false,
+            freeToAiInfraEnabled: data.data.freeToAiInfraEnabled ?? false,
+            freeToolGetCartEnabled:
+              data.data.freeToolGetCartEnabled ?? settingsForm.freeToolGetCartEnabled,
+            freeToolAddToCartEnabled:
+              data.data.freeToolAddToCartEnabled ?? settingsForm.freeToolAddToCartEnabled,
+            freeToolClearCartEnabled:
+              data.data.freeToolClearCartEnabled ?? settingsForm.freeToolClearCartEnabled,
+            freeToolListProductsEnabled:
+              data.data.freeToolListProductsEnabled ?? settingsForm.freeToolListProductsEnabled,
+            freeToolSearchProductsEnabled:
+              data.data.freeToolSearchProductsEnabled ?? settingsForm.freeToolSearchProductsEnabled,
+            freeToolRemoveFromCartEnabled:
+              data.data.freeToolRemoveFromCartEnabled ?? settingsForm.freeToolRemoveFromCartEnabled,
+            freeToolCreateCheckoutSessionEnabled:
+              data.data.freeToolCreateCheckoutSessionEnabled ??
+              settingsForm.freeToolCreateCheckoutSessionEnabled,
+            freeToolSendSmsEnabled:
+              data.data.freeToolSendSmsEnabled ?? settingsForm.freeToolSendSmsEnabled,
+            freeToolMakeCallEnabled:
+              data.data.freeToolMakeCallEnabled ?? settingsForm.freeToolMakeCallEnabled,
             starterLimit: data.data.starterLimit,
             professionalLimit: data.data.professionalLimit,
             enterpriseLimit: data.data.enterpriseLimit,
@@ -385,14 +498,26 @@ function SettingsContent() {
         },
         body: JSON.stringify(settingsForm),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setPlatformSettings(data.data);
-        setNotifMsg("Commission settings updated successfully");
-        setTimeout(() => setNotifMsg(null), 3000);
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = { message: raw || "Failed to save settings" };
       }
+
+      if (!res.ok) {
+        throw new Error(data?.message || `Failed to save settings (HTTP ${res.status})`);
+      }
+
+      await fetchPlatformSettings();
+      setPlatformSettings(data?.data ?? null);
+      setNotifMsg(data?.message || "Settings updated successfully");
+      setTimeout(() => setNotifMsg(null), 3000);
     } catch (err) {
       console.error("Failed to save settings:", err);
+      setNotifMsg(err instanceof Error ? err.message : "Failed to save settings");
+      setTimeout(() => setNotifMsg(null), 4000);
     } finally {
       setSaveSettingsLoading(false);
     }
@@ -493,6 +618,75 @@ function SettingsContent() {
       }
     } catch (err) {
       console.error("Failed to fetch API keys:", err);
+    }
+  };
+
+  const fetchAgentToolConfig = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/settings/agent-tool-config/admin`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const next = normalizeTierToolAccess(data?.data);
+      if (next) {
+        setAgentToolForm(next);
+        return next;
+      }
+      return null;
+    } catch (err) {
+      console.error("Failed to fetch agent tool config:", err);
+      return null;
+    }
+  };
+
+  const saveAgentToolConfig = async () => {
+    setAgentToolSaving(true);
+    setAgentToolMessage(null);
+    try {
+      const token = localStorage.getItem("token");
+      const body = {
+        tiers: agentToolForm,
+      };
+
+      const res = await fetch(`${API_BASE}/settings/agent-tool-config/admin`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || `Failed to save config (HTTP ${res.status})`);
+      }
+
+      if (!data?.data?.tiers) {
+        throw new Error(
+          "API returned legacy tool-config format. Restart/update API so tiered tool config is enabled."
+        );
+      }
+
+      const saved = normalizeTierToolAccess(data?.data);
+      if (!saved) {
+        throw new Error("Saved request succeeded, but persisted values were not returned by API.");
+      }
+      setAgentToolForm(saved);
+
+      setAgentToolMessage({ type: "success", text: "Agent tool config saved" });
+      setTimeout(() => setAgentToolMessage(null), 3000);
+    } catch (err) {
+      setAgentToolMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to save config",
+      });
+    } finally {
+      setAgentToolSaving(false);
     }
   };
 
@@ -859,16 +1053,16 @@ function SettingsContent() {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/admin/stripe-connect/test`, {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           accountId: stripeConnectConfig.accountId,
           publishableKey: stripeConnectConfig.publishableKey,
           secretKey: stripeConnectConfig.secretKey,
-          clientId: stripeConnectConfig.clientId
-        })
+          clientId: stripeConnectConfig.clientId,
+        }),
       });
       const data = await res.json();
 
@@ -1345,6 +1539,20 @@ function SettingsContent() {
               </button>
               <button
                 onClick={() => {
+                  setActiveTab("gemini-api");
+                  router.replace("/settings?tab=gemini-api");
+                  fetchPlatformSettings();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "gemini-api"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                Gemini API
+              </button>
+              <button
+                onClick={() => {
                   setActiveTab("system-commissions");
                   router.replace("/settings?tab=system-commissions");
                   fetchPlatformSettings();
@@ -1356,6 +1564,20 @@ function SettingsContent() {
                 }`}
               >
                 System Commissions
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("agent-tool-config");
+                  router.replace("/settings?tab=agent-tool-config");
+                  fetchAgentToolConfig();
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === "agent-tool-config"
+                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                }`}
+              >
+                Agent Tool Config
               </button>
             </>
           )}
@@ -1433,7 +1655,10 @@ function SettingsContent() {
                 await fetch(`${API_BASE}/notifications/preferences`, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ emailNotifications: updatedEmail, ...(updatedPrefs || {}) }),
+                  body: JSON.stringify({
+                    emailNotifications: updatedEmail,
+                    ...(updatedPrefs || {}),
+                  }),
                 });
                 setNotifMsg("Saved");
                 setTimeout(() => setNotifMsg(null), 2000);
@@ -1522,9 +1747,11 @@ function SettingsContent() {
                     }
                     className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                   />
-                  <p className="mt-1 text-[10px] text-white/30 italic">Used for payouts and identification</p>
+                  <p className="mt-1 text-[10px] text-white/30 italic">
+                    Used for payouts and identification
+                  </p>
                 </div>
-                
+
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
                     Stripe Publishable Key (pk_)
@@ -1534,7 +1761,10 @@ function SettingsContent() {
                     placeholder="pk_test_... or pk_live_..."
                     value={stripeConnectConfig.publishableKey || ""}
                     onChange={(e) =>
-                      setStripeConnectConfig({ ...stripeConnectConfig, publishableKey: e.target.value })
+                      setStripeConnectConfig({
+                        ...stripeConnectConfig,
+                        publishableKey: e.target.value,
+                      })
                     }
                     className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                   />
@@ -1553,7 +1783,9 @@ function SettingsContent() {
                   placeholder="sk_test_... or sk_live_..."
                   className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
                 />
-                <p className="mt-1 text-[10px] text-white/30 italic">Required for all backend Stripe operations</p>
+                <p className="mt-1 text-[10px] text-white/30 italic">
+                  Required for all backend Stripe operations
+                </p>
               </div>
 
               <div className="pt-2">
@@ -1577,7 +1809,10 @@ function SettingsContent() {
                         placeholder="price_..."
                         value={(stripeConnectConfig as any)[field.key] || ""}
                         onChange={(e) =>
-                          setStripeConnectConfig({ ...stripeConnectConfig, [field.key]: e.target.value })
+                          setStripeConnectConfig({
+                            ...stripeConnectConfig,
+                            [field.key]: e.target.value,
+                          })
                         }
                         className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2 text-xs text-[#f0f4fa] placeholder-[rgba(240,244,250,0.2)] outline-none focus:border-[#14b8a6]/60 transition"
                       />
@@ -1609,14 +1844,16 @@ function SettingsContent() {
 
                 <div className="flex flex-col justify-end pb-1">
                   <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2">
-                    <span className="text-xs font-medium text-[rgba(240,244,250,0.6)]">Onboarding Enabled</span>
+                    <span className="text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                      Onboarding Enabled
+                    </span>
                     <Toggle
                       value={stripeConnectConfig.enabled}
                       onChange={async () => {
                         const newVal = !stripeConnectConfig.enabled;
                         const updated = { ...stripeConnectConfig, enabled: newVal };
                         setStripeConnectConfig(updated);
-                        
+
                         // Immediate save
                         try {
                           const token = localStorage.getItem("token");
@@ -1688,7 +1925,10 @@ function SettingsContent() {
                 <button
                   type="button"
                   onClick={testStripeConnectConnection}
-                  disabled={stripeConnectTesting || (!stripeConnectConfig.secretKey && !stripeConnectConfig.clientId)}
+                  disabled={
+                    stripeConnectTesting ||
+                    (!stripeConnectConfig.secretKey && !stripeConnectConfig.clientId)
+                  }
                   className="flex-1 rounded-xl border border-white/[0.1] bg-white/[0.05] px-6 py-3 text-sm font-semibold text-[#f0f4fa] transition hover:bg-white/[0.1] disabled:opacity-30"
                 >
                   {stripeConnectTesting ? "Testing..." : "Test Connection"}
@@ -1701,51 +1941,66 @@ function SettingsContent() {
         {/* Conversation Packages Management */}
         {activeTab === "stripe-connect" && isAdmin && (
           <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
-            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
-              Conversation Packages
-            </h2>
+            <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Conversation Packages</h2>
             <p className="mb-5 text-sm text-[rgba(240,244,250,0.45)]">
               Manage purchasable credit bundles. These credits roll over month-to-month.
             </p>
 
             {packagesLoading ? (
-              <div className="py-10 text-center text-sm text-white/30 italic">Loading packages...</div>
+              <div className="py-10 text-center text-sm text-white/30 italic">
+                Loading packages...
+              </div>
             ) : (
               <div className="space-y-4">
                 {packages.map((pkg) => (
-                  <div key={pkg.id} className="rounded-xl border border-white/[0.06] bg-[#05080f] p-4">
+                  <div
+                    key={pkg.id}
+                    className="rounded-xl border border-white/[0.06] bg-[#05080f] p-4"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                       <div>
-                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">Name</label>
+                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">
+                          Name
+                        </label>
                         <input
                           type="text"
                           value={pkg.name}
                           onChange={(e) => {
-                            const newPkgs = packages.map(p => p.id === pkg.id ? { ...p, name: e.target.value } : p);
+                            const newPkgs = packages.map((p) =>
+                              p.id === pkg.id ? { ...p, name: e.target.value } : p
+                            );
                             setPackages(newPkgs);
                           }}
                           className="w-full rounded border border-white/10 bg-black/20 px-3 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/50"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">Credits</label>
+                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">
+                          Credits
+                        </label>
                         <input
                           type="number"
                           value={pkg.credits}
                           onChange={(e) => {
-                            const newPkgs = packages.map(p => p.id === pkg.id ? { ...p, credits: parseInt(e.target.value) || 0 } : p);
+                            const newPkgs = packages.map((p) =>
+                              p.id === pkg.id ? { ...p, credits: parseInt(e.target.value) || 0 } : p
+                            );
                             setPackages(newPkgs);
                           }}
                           className="w-full rounded border border-white/10 bg-black/20 px-3 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/50"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">Price ($)</label>
+                        <label className="mb-1 block text-[10px] font-medium text-white/40 uppercase">
+                          Price ($)
+                        </label>
                         <input
                           type="number"
                           value={pkg.price}
                           onChange={(e) => {
-                            const newPkgs = packages.map(p => p.id === pkg.id ? { ...p, price: parseFloat(e.target.value) || 0 } : p);
+                            const newPkgs = packages.map((p) =>
+                              p.id === pkg.id ? { ...p, price: parseFloat(e.target.value) || 0 } : p
+                            );
                             setPackages(newPkgs);
                           }}
                           className="w-full rounded border border-white/10 bg-black/20 px-3 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/50"
@@ -1753,20 +2008,27 @@ function SettingsContent() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handlePackageUpdate(pkg.id, { name: pkg.name, credits: pkg.credits, price: pkg.price, active: pkg.active })}
+                          onClick={() =>
+                            handlePackageUpdate(pkg.id, {
+                              name: pkg.name,
+                              credits: pkg.credits,
+                              price: pkg.price,
+                              active: pkg.active,
+                            })
+                          }
                           disabled={packagesSaving}
                           className="flex-1 rounded bg-[#14b8a6] py-1.5 text-xs font-bold text-[#05080f] hover:bg-[#0d9488] transition"
                         >
-                          {packagesSaving ? '...' : 'Save'}
+                          {packagesSaving ? "..." : "Save"}
                         </button>
                         <button
                           onClick={() => {
                             const newActive = !pkg.active;
                             handlePackageUpdate(pkg.id, { active: newActive });
                           }}
-                          className={`rounded px-3 py-1.5 text-xs font-bold transition ${pkg.active ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
+                          className={`rounded px-3 py-1.5 text-xs font-bold transition ${pkg.active ? "bg-red-500/20 text-red-400 hover:bg-red-500/30" : "bg-green-500/20 text-green-400 hover:bg-green-500/30"}`}
                         >
-                          {pkg.active ? 'Disable' : 'Enable'}
+                          {pkg.active ? "Disable" : "Enable"}
                         </button>
                       </div>
                     </div>
@@ -2492,39 +2754,58 @@ function SettingsContent() {
               <div className="mb-8 rounded-xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-6 shadow-lg shadow-[#14b8a6]/5">
                 <div className="flex items-center justify-between border-b border-[#14b8a6]/10 pb-4 mb-4">
                   <h3 className="text-sm font-bold text-[#14b8a6] uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                      />
+                    </svg>
                     Beta Testing Platform Controls
                   </h3>
-                  <span className="rounded-full bg-[#14b8a6]/20 px-2 py-0.5 text-[10px] font-bold text-[#14b8a6]">ADMIN ONLY</span>
+                  <span className="rounded-full bg-[#14b8a6]/20 px-2 py-0.5 text-[10px] font-bold text-[#14b8a6]">
+                    ADMIN ONLY
+                  </span>
                 </div>
-                
+
                 <div className="space-y-6">
                   {/* Email Verification Toggle */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-[#f0f4fa]">System Email Verification</p>
+                      <p className="text-sm font-semibold text-[#f0f4fa]">
+                        System Email Verification
+                      </p>
                       <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
                         Forces all users to verify their email addresses system-wide.
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <Toggle 
-                        value={settingsForm.emailVerificationEnabled} 
+                      <Toggle
+                        value={settingsForm.emailVerificationEnabled}
                         onChange={async () => {
                           const newVal = !settingsForm.emailVerificationEnabled;
-                          setSettingsForm(prev => ({ ...prev, emailVerificationEnabled: newVal }));
+                          setSettingsForm((prev) => ({
+                            ...prev,
+                            emailVerificationEnabled: newVal,
+                          }));
                           try {
                             const token = localStorage.getItem("token");
                             await fetch(`${API_BASE}/admin/settings`, {
                               method: "PATCH",
-                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
                               body: JSON.stringify({ emailVerificationEnabled: newVal }),
                             });
                             // Use notification message for feedback
                             setNotifMsg("Saved");
                             setTimeout(() => setNotifMsg(null), 2000);
-                          } catch (err) { console.error(err); }
-                        }} 
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
                       />
                     </div>
                   </div>
@@ -2532,29 +2813,36 @@ function SettingsContent() {
                   {/* Global Email Enabled Toggle */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-[#f0f4fa]">System-wide Email Outbox</p>
+                      <p className="text-sm font-semibold text-[#f0f4fa]">
+                        System-wide Email Outbox
+                      </p>
                       <p className="text-xs text-[rgba(240,244,250,0.4)] mt-0.5">
                         Master switch to kill all outgoing transactional emails from the platform.
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <Toggle 
-                        value={settingsForm.globalEmailEnabled} 
+                      <Toggle
+                        value={settingsForm.globalEmailEnabled}
                         onChange={async () => {
                           const newVal = !settingsForm.globalEmailEnabled;
-                          setSettingsForm(prev => ({ ...prev, globalEmailEnabled: newVal }));
+                          setSettingsForm((prev) => ({ ...prev, globalEmailEnabled: newVal }));
                           try {
                             const token = localStorage.getItem("token");
                             await fetch(`${API_BASE}/admin/settings`, {
                               method: "PATCH",
-                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
                               body: JSON.stringify({ globalEmailEnabled: newVal }),
                             });
                             // Use notification message for feedback
                             setNotifMsg("Saved");
                             setTimeout(() => setNotifMsg(null), 2000);
-                          } catch (err) { console.error(err); }
-                        }} 
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
                       />
                     </div>
                   </div>
@@ -3166,7 +3454,7 @@ function SettingsContent() {
                         <option value="MED">MED</option>
                         <option value="HIGH">HIGH</option>
                       </select>
-                        </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3264,6 +3552,270 @@ function SettingsContent() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === "gemini-api" && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">Gemini API Global Usage</h2>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
+                  Set the global free-tier VoiceAgent monthly usage limit.
+                </p>
+              </div>
+              <button
+                onClick={handleSaveSettings}
+                disabled={saveSettingsLoading}
+                className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50"
+              >
+                {saveSettingsLoading ? "Saving…" : "Save Settings"}
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
+              <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                Tier Usage Limits (Conversations / Month)
+              </h3>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                    <div className="mb-2 text-xs font-semibold text-[#f0f4fa]">
+                      Free Tier Base Limit
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={settingsForm.freeTierLimit}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          freeTierLimit: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#f0f4fa]">Starter Plan</p>
+                      <Toggle
+                        value={settingsForm.freeToStarterEnabled}
+                        onChange={() =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            freeToStarterEnabled: !settingsForm.freeToStarterEnabled,
+                          })
+                        }
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={settingsForm.starterLimit}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          starterLimit: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#f0f4fa]">Professional Plan</p>
+                      <Toggle
+                        value={settingsForm.freeToProfessionalEnabled}
+                        onChange={() =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            freeToProfessionalEnabled: !settingsForm.freeToProfessionalEnabled,
+                          })
+                        }
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={settingsForm.professionalLimit}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          professionalLimit: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#f0f4fa]">Enterprise Plan</p>
+                      <Toggle
+                        value={settingsForm.freeToEnterpriseEnabled}
+                        onChange={() =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            freeToEnterpriseEnabled: !settingsForm.freeToEnterpriseEnabled,
+                          })
+                        }
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={settingsForm.enterpriseLimit}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          enterpriseLimit: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#f0f4fa]">LTD Plan</p>
+                      <Toggle
+                        value={settingsForm.freeToLtdEnabled}
+                        onChange={() =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            freeToLtdEnabled: !settingsForm.freeToLtdEnabled,
+                          })
+                        }
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={settingsForm.ltdLimit}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          ltdLimit: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-[#f0f4fa]">AI Infrastructure Plan</p>
+                      <Toggle
+                        value={settingsForm.freeToAiInfraEnabled}
+                        onChange={() =>
+                          setSettingsForm({
+                            ...settingsForm,
+                            freeToAiInfraEnabled: !settingsForm.freeToAiInfraEnabled,
+                          })
+                        }
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={settingsForm.aiInfraLimit}
+                      onChange={(e) =>
+                        setSettingsForm({
+                          ...settingsForm,
+                          aiInfraLimit: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-[#f0f4fa] outline-none focus:border-[#14b8a6]/50 transition"
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="mt-3 text-[10px] text-[rgba(240,244,250,0.35)]">
+                Toggle a paid tier ON to grant free-tier accounts that plan&apos;s limit for
+                testing. Highest enabled tier wins.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "agent-tool-config" && isAdmin && (
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[#f0f4fa]">Agent Tool Config</h2>
+                <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)]">
+                  Enable or disable voice tools for all tiers.
+                </p>
+              </div>
+              <button
+                onClick={saveAgentToolConfig}
+                disabled={agentToolSaving}
+                className="rounded-xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] transition disabled:opacity-50"
+              >
+                {agentToolSaving ? "Saving…" : "Save Settings"}
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-white/[0.06] bg-[#05080f] p-5">
+              <h3 className="mb-1 text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.3)]">
+                Tool Access (All Tiers)
+              </h3>
+              <p className="mb-4 text-[11px] text-[rgba(240,244,250,0.45)]">
+                Configure each tier independently.
+              </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {TOOL_TIERS.map((tier) => (
+                  <div
+                    key={tier.key}
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3"
+                  >
+                    <p className="mb-3 text-xs font-semibold text-[#f0f4fa]">{tier.label}</p>
+                    <div className="space-y-2">
+                      {TOOL_CONFIG_OPTIONS.map((tool) => (
+                        <label key={`${tier.key}-${tool.label}`} className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={agentToolForm[tier.key][tool.label] === true}
+                            onChange={(e) =>
+                              setAgentToolForm((prev) => ({
+                                ...prev,
+                                [tier.key]: {
+                                  ...prev[tier.key],
+                                  [tool.label]: e.target.checked,
+                                },
+                              }))
+                            }
+                            className="mt-0.5 h-4 w-4 rounded border-white/30 bg-transparent"
+                          />
+                          <span>
+                            <span className="block text-xs font-semibold text-[#f0f4fa]">
+                              {tool.label}
+                            </span>
+                            <span className="block text-[11px] text-[rgba(240,244,250,0.45)]">
+                              {tool.description}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {agentToolMessage && (
+              <div
+                className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                  agentToolMessage.type === "success"
+                    ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                    : "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]"
+                }`}
+              >
+                {agentToolMessage.text}
+              </div>
+            )}
           </div>
         )}
       </div>

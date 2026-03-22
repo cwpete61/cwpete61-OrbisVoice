@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -19,17 +19,15 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+      const { data } = await apiFetch<{ message?: string }>("/auth/forgot-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
 
-      if (res.ok) {
-        setMessage(data.message || "If an account exists, a reset link has been sent.");
+      if (data?.data) {
+        setMessage(data.data.message || "If an account exists, a reset link has been sent.");
       } else {
-        setError(data.message || "Failed to send reset link");
+        setError(data?.data?.message || "Failed to send reset link");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -45,7 +43,9 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <h1 className="text-2xl font-bold text-[#f0f4fa]">Reset Password</h1>
-            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Enter your email to receive a password reset link</p>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
+              Enter your email to receive a password reset link
+            </p>
           </div>
 
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8">
@@ -54,7 +54,10 @@ export default function ForgotPasswordPage() {
                 <div className="mb-4 rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/10 p-4 text-sm text-[#14b8a6]">
                   {message}
                 </div>
-                <Link href="/login" className="text-sm font-semibold text-[#14b8a6] hover:underline">
+                <Link
+                  href="/login"
+                  className="text-sm font-semibold text-[#14b8a6] hover:underline"
+                >
                   Back to Login
                 </Link>
               </div>
@@ -66,7 +69,9 @@ export default function ForgotPasswordPage() {
                   </div>
                 )}
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Email or Username</label>
+                  <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                    Email or Username
+                  </label>
                   <input
                     type="text"
                     placeholder="email@example.com or username"
@@ -76,15 +81,14 @@ export default function ForgotPasswordPage() {
                     required
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary mt-2 w-full py-2.5"
-                >
+                <button type="submit" disabled={loading} className="btn-primary mt-2 w-full py-2.5">
                   {loading ? "Sending..." : "Send Reset Link"}
                 </button>
                 <div className="text-center mt-4">
-                  <Link href="/login" className="text-xs text-[rgba(240,244,250,0.4)] hover:text-[#14b8a6] transition">
+                  <Link
+                    href="/login"
+                    className="text-xs text-[rgba(240,244,250,0.4)] hover:text-[#14b8a6] transition"
+                  >
                     Back to Login
                   </Link>
                 </div>

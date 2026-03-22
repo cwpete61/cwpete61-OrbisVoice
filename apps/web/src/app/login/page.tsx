@@ -16,9 +16,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [unverifiedEmail, setUnverifiedEmail] = useState("");
   // const [captchaToken, setCaptchaToken] = useState("");
-  const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "success" | "error">(
+    "idle"
+  );
   const router = useRouter();
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +96,9 @@ export default function LoginPage() {
               <div className="h-5 w-5 rounded-sm bg-[#05080f]" />
             </div>
             <h1 className="text-2xl font-bold text-[#f0f4fa]">Welcome back</h1>
-            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Sign in to your MyOrbisVoice account</p>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
+              Sign in to your MyOrbisVoice account
+            </p>
           </div>
 
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8">
@@ -106,7 +109,9 @@ export default function LoginPage() {
                   {unverifiedEmail && (
                     <div className="mt-2 pt-2 border-t border-[#f97316]/20">
                       {resendStatus === "success" ? (
-                        <p className="text-xs text-[#14b8a6]">Verification link resent! Please check your inbox.</p>
+                        <p className="text-xs text-[#14b8a6]">
+                          Verification link resent! Please check your inbox.
+                        </p>
                       ) : (
                         <button
                           type="button"
@@ -122,7 +127,9 @@ export default function LoginPage() {
                 </div>
               )}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Email or Username</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Email or Username
+                </label>
                 <input
                   type="text"
                   placeholder="Email address or username"
@@ -130,10 +137,13 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-white/[0.08] bg-[#111827] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none transition focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30"
                   required
+                  suppressHydrationWarning={true}
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Password</label>
+                <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                  Password
+                </label>
                 <PasswordInput
                   placeholder="••••••••"
                   value={password}
@@ -142,7 +152,10 @@ export default function LoginPage() {
                   required
                 />
                 <div className="mt-2 text-right">
-                  <Link href="/forgot-password" className="text-xs font-medium text-[#14b8a6] hover:underline transition">
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-medium text-[#14b8a6] hover:underline transition"
+                  >
                     Forgot email or password?
                   </Link>
                 </div>
@@ -160,11 +173,7 @@ export default function LoginPage() {
                 className="mx-auto"
               /> */}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary mt-2 w-full py-2.5"
-              >
+              <button type="submit" disabled={loading} className="btn-primary mt-2 w-full py-2.5">
                 {loading ? "Signing in…" : "Sign In"}
               </button>
 
@@ -205,12 +214,13 @@ export default function LoginPage() {
                 Sign in with Google
               </button> */}
             </form>
-
           </div>
 
           <p className="mt-5 text-center text-sm text-[rgba(240,244,250,0.4)]">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-[#14b8a6] hover:underline">Sign up free</Link>
+            <Link href="/signup" className="text-[#14b8a6] hover:underline">
+              Sign up free
+            </Link>
           </p>
         </div>
       </div>

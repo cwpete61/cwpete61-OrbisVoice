@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest } from "fastify";
+import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { OAuth2Client } from "google-auth-library";
 import axios from "axios";
@@ -6,12 +6,10 @@ import { prisma } from "../db.js";
 import { ApiResponse, AuthPayload } from "../types.js";
 import { env } from "../env.js";
 import { authenticate } from "../middleware/auth.js";
+import { resolveUsageLimitForTier } from "../services/usage-service.js";
 
 // Initialize Google OAuth client
-const googleClient = new OAuth2Client(
-  env.GOOGLE_CLIENT_ID,
-  env.GOOGLE_CLIENT_SECRET
-);
+const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
 
 const getGoogleConfig = async (tenantId?: string) => {
   try {
@@ -24,9 +22,9 @@ const getGoogleConfig = async (tenantId?: string) => {
       }
 
       if (!config) {
-        config = await prisma.googleAuthConfig.findUnique({
+        config = (await prisma.googleAuthConfig.findUnique({
           where: { id: "google-auth-config" },
-        }) as any; // Cast to match shape
+        })) as any; // Cast to match shape
       }
     } catch (dbError) {
       console.error("Database query error:", dbError);
@@ -37,9 +35,7 @@ const getGoogleConfig = async (tenantId?: string) => {
       clientId: config?.clientId || env.GOOGLE_CLIENT_ID,
       clientSecret: config?.clientSecret || env.GOOGLE_CLIENT_SECRET,
       redirectUri:
-        config?.redirectUri ||
-        env.GOOGLE_REDIRECT_URI ||
-        `${env.WEB_URL}/auth/google/callback`,
+        config?.redirectUri || env.GOOGLE_REDIRECT_URI || `${env.WEB_URL}/auth/google/callback`,
       enabled: config?.enabled ?? (!!config?.clientId || !!env.GOOGLE_CLIENT_ID),
     };
 
@@ -50,19 +46,21 @@ const getGoogleConfig = async (tenantId?: string) => {
   }
 };
 
-const GoogleAuthTokenSchema = z.object({
-  token: z.string().optional(),
-  code: z.string().optional(),
-}).refine((data) => data.token || data.code, {
-  message: "Token or code is required",
-});
+const GoogleAuthTokenSchema = z
+  .object({
+    token: z.string().optional(),
+    code: z.string().optional(),
+  })
+  .refine((data) => data.token || data.code, {
+    message: "Token or code is required",
+  });
 
 // Google Auth Routes
 export default async function googleAuthRoutes(fastify: FastifyInstance) {
   // Get Google Auth URL for frontend
   fastify.get("/auth/google/url", async (request, reply) => {
     try {
-      // Try to get the config  
+      // Try to get the config
       let googleConfig;
       try {
         googleConfig = await getGoogleConfig();
@@ -164,14 +162,11 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
         }
 
         try {
-          const response = await axios.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          );
+          const response = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          });
           googleProfile = response.data;
         } catch (err) {
           fastify.log.error({ err }, "Failed to fetch Google profile");
@@ -220,20 +215,19 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           } else {
             // Create new user with Google account
             // Find or create tenant
-            // No subscription assigned until upgrade, with $0.50 trial credits (approx 3 conversions)
+            // No subscription assigned until upgrade, with trial credits.
+            const settings = await prisma.platformSettings.findUnique({
+              where: { id: "global" },
+            });
+            const freeUsageLimit = resolveUsageLimitForTier("free", settings);
             const tenant = await prisma.tenant.create({
               data: {
                 name: `${googleName}'s Workspace`,
                 subscriptionTier: "free",
                 subscriptionStatus: "none",
-                usageLimit: 0,
+                usageLimit: freeUsageLimit,
                 creditBalance: 3,
               },
-            });
-
-            // Fetch system wide commission default
-            const settings = await prisma.platformSettings.findUnique({
-              where: { id: "global" }
             });
 
             user = await prisma.user.create({
@@ -270,10 +264,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           { expiresIn: "7d" }
         );
 
-        fastify.log.info(
-          { userId: user.id, googleId },
-          "User authenticated with Google"
-        );
+        fastify.log.info({ userId: user.id, googleId }, "User authenticated with Google");
 
         return reply.send({
           ok: true,
@@ -284,7 +275,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
               id: user.id,
               email: user.email,
               name: user.name,
-              username: (user).username,
+              username: user.username,
               avatar: user.avatar || googleProfilePicture,
             },
           },
@@ -371,7 +362,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Handle calendar authorization callback  
+  // Handle calendar authorization callback
   fastify.post<{ Body: { code: string; state: string } }>(
     "/auth/google/calendar/callback",
     { onRequest: [authenticate] },
@@ -433,14 +424,11 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           });
 
           // Get user's email
-          const response = await axios.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            {
-              headers: {
-                Authorization: `Bearer ${tokens.access_token}`,
-              },
-            }
-          );
+          const response = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: {
+              Authorization: `Bearer ${tokens.access_token}`,
+            },
+          });
 
           const calendarEmail = response.data.email;
 
@@ -497,68 +485,64 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
   );
 
   // Get Google Gmail authorization URL for authenticated users
-  fastify.get(
-    "/auth/google/gmail-url",
-    { onRequest: [authenticate] },
-    async (request, reply) => {
-      try {
-        const userId = (request as unknown as { user: AuthPayload }).user?.userId;
-        if (!userId) {
-          return reply.code(401).send({
-            ok: false,
-            message: "Unauthorized",
-          } as ApiResponse);
-        }
-
-        const tenantId = (request as unknown as { user: AuthPayload }).user?.tenantId;
-        const googleConfig = await getGoogleConfig(tenantId);
-        if (!googleConfig.clientId || !googleConfig.enabled) {
-          return reply.code(503).send({
-            ok: false,
-            message: "Google OAuth not configured",
-          } as ApiResponse);
-        }
-
-        const redirectUrl = googleConfig.redirectUri;
-        const scopes = [
-          "https://www.googleapis.com/auth/gmail.readonly",
-          "https://www.googleapis.com/auth/gmail.send",
-          "https://www.googleapis.com/auth/userinfo.email",
-        ];
-
-        const client = new OAuth2Client(
-          googleConfig.clientId,
-          googleConfig.clientSecret,
-          redirectUrl
-        );
-
-        const state = JSON.stringify({
-          type: "gmail",
-          userId,
-          timestamp: Date.now(),
-        });
-
-        const url = client.generateAuthUrl({
-          client_id: googleConfig.clientId,
-          redirect_uri: redirectUrl,
-          access_type: "offline",
-          scope: scopes,
-          state: Buffer.from(state).toString("base64"),
-        });
-
-        return reply.send({
-          ok: true,
-          data: { url },
-        } as ApiResponse);
-      } catch (err) {
-        fastify.log.error({ err }, "Error generating Gmail auth URL");
-        return reply.code(500).send({
+  fastify.get("/auth/google/gmail-url", { onRequest: [authenticate] }, async (request, reply) => {
+    try {
+      const userId = (request as unknown as { user: AuthPayload }).user?.userId;
+      if (!userId) {
+        return reply.code(401).send({
           ok: false,
-          message: "Internal server error",
+          message: "Unauthorized",
         } as ApiResponse);
       }
+
+      const tenantId = (request as unknown as { user: AuthPayload }).user?.tenantId;
+      const googleConfig = await getGoogleConfig(tenantId);
+      if (!googleConfig.clientId || !googleConfig.enabled) {
+        return reply.code(503).send({
+          ok: false,
+          message: "Google OAuth not configured",
+        } as ApiResponse);
+      }
+
+      const redirectUrl = googleConfig.redirectUri;
+      const scopes = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/userinfo.email",
+      ];
+
+      const client = new OAuth2Client(
+        googleConfig.clientId,
+        googleConfig.clientSecret,
+        redirectUrl
+      );
+
+      const state = JSON.stringify({
+        type: "gmail",
+        userId,
+        timestamp: Date.now(),
+      });
+
+      const url = client.generateAuthUrl({
+        client_id: googleConfig.clientId,
+        redirect_uri: redirectUrl,
+        access_type: "offline",
+        scope: scopes,
+        state: Buffer.from(state).toString("base64"),
+      });
+
+      return reply.send({
+        ok: true,
+        data: { url },
+      } as ApiResponse);
+    } catch (err) {
+      fastify.log.error({ err }, "Error generating Gmail auth URL");
+      return reply.code(500).send({
+        ok: false,
+        message: "Internal server error",
+      } as ApiResponse);
     }
-  );
+  });
 
   // Handle Gmail authorization callback
   fastify.post<{ Body: { code: string; state: string } }>(
@@ -620,14 +604,11 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
           });
 
           // Get user's email
-          const response = await axios.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            {
-              headers: {
-                Authorization: `Bearer ${tokens.access_token}`,
-              },
-            }
-          );
+          const response = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: {
+              Authorization: `Bearer ${tokens.access_token}`,
+            },
+          });
 
           const gmailEmail = response.data.email;
 

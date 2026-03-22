@@ -1,10 +1,126 @@
-import { FastifyInstance, FastifyRequest } from "fastify";
+import { FastifyInstance } from "fastify";
 import { prisma } from "../db";
 import { logger } from "../logger";
 import { ApiResponse } from "../types";
 import { requireAdmin, requireSystemAdmin } from "../middleware/auth";
 import { sessionManager } from "../services/session";
 import { pickWorkspacePrimaryUser } from "../services/workspace-management";
+
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toBooleanOrNull = (value: unknown): boolean | null => {
+  if (value === undefined) return null;
+  return Boolean(value);
+};
+
+async function ensureGlobalSettingsRow() {
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE "PlatformSettings"
+    ADD COLUMN IF NOT EXISTS "freeTierLimit" INTEGER NOT NULL DEFAULT 100,
+    ADD COLUMN IF NOT EXISTS "freeToStarterEnabled" BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS "freeToProfessionalEnabled" BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS "freeToEnterpriseEnabled" BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS "freeToLtdEnabled" BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS "freeToAiInfraEnabled" BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS "freeToolGetCartEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolAddToCartEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolClearCartEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolListProductsEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolSearchProductsEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolRemoveFromCartEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolCreateCheckoutSessionEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolSendSmsEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "freeToolMakeCallEnabled" BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN IF NOT EXISTS "costPerMinute" DOUBLE PRECISION NOT NULL DEFAULT 0.013
+  `);
+
+  const existing = await prisma.platformSettings.findFirst();
+  if (!existing) {
+    await prisma.platformSettings.create({
+      data: {
+        id: "global",
+        lowCommission: 10,
+        medCommission: 20,
+        highCommission: 30,
+        commissionDurationMonths: 0,
+        defaultCommissionLevel: "LOW",
+        payoutMinimum: 100,
+        refundHoldDays: 14,
+        payoutCycleDelayMonths: 1,
+        transactionFeePercent: 3.4,
+        starterLimit: 1000,
+        professionalLimit: 10000,
+        enterpriseLimit: 100000,
+        ltdLimit: 1000,
+        aiInfraLimit: 250000,
+        emailVerificationEnabled: false,
+        globalEmailEnabled: true,
+        freeTierLimit: 100,
+        freeToStarterEnabled: false,
+        freeToProfessionalEnabled: false,
+        freeToEnterpriseEnabled: false,
+        freeToLtdEnabled: false,
+        freeToAiInfraEnabled: false,
+        freeToolGetCartEnabled: true,
+        freeToolAddToCartEnabled: true,
+        freeToolClearCartEnabled: true,
+        freeToolListProductsEnabled: true,
+        freeToolSearchProductsEnabled: true,
+        freeToolRemoveFromCartEnabled: true,
+        freeToolCreateCheckoutSessionEnabled: true,
+        freeToolSendSmsEnabled: true,
+        freeToolMakeCallEnabled: true,
+        costPerMinute: 0.013,
+      } as any,
+    });
+  }
+}
+
+async function readGlobalSettingsRow() {
+  const rows = await prisma.$queryRaw<any[]>`
+    SELECT
+      "id",
+      "lowCommission",
+      "medCommission",
+      "highCommission",
+      "payoutMinimum",
+      "refundHoldDays",
+      "payoutCycleDelayMonths",
+      "transactionFeePercent",
+      "freeTierLimit",
+      "freeToStarterEnabled",
+      "freeToProfessionalEnabled",
+      "freeToEnterpriseEnabled",
+      "freeToLtdEnabled",
+      "freeToAiInfraEnabled",
+      "freeToolGetCartEnabled",
+      "freeToolAddToCartEnabled",
+      "freeToolClearCartEnabled",
+      "freeToolListProductsEnabled",
+      "freeToolSearchProductsEnabled",
+      "freeToolRemoveFromCartEnabled",
+      "freeToolCreateCheckoutSessionEnabled",
+      "freeToolSendSmsEnabled",
+      "freeToolMakeCallEnabled",
+      "starterLimit",
+      "professionalLimit",
+      "enterpriseLimit",
+      "aiInfraLimit",
+      "ltdLimit",
+      "emailVerificationEnabled",
+      "globalEmailEnabled",
+      "costPerMinute",
+      "updatedAt"
+    FROM "PlatformSettings"
+    WHERE "id" = 'global'
+    LIMIT 1
+  `;
+  return rows[0] || null;
+}
 
 export async function adminRoutes(fastify: FastifyInstance) {
   // All routes in this group require admin privileges
@@ -44,6 +160,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
         avgDurationRes,
         subscriptionStats,
         recentActivities,
+        totalCostRes,
       ] = await Promise.all([
         prisma.tenant.count(),
         prisma.user.count(),
@@ -65,9 +182,13 @@ export async function adminRoutes(fastify: FastifyInstance) {
             include: { agent: { select: { name: true, tenantId: true } } },
           })
           .catch(() => []),
+        prisma.transcript.aggregate({
+          _sum: { estimatedCost: true },
+        }),
       ]);
 
       const avgDuration = Math.round(avgDurationRes._avg.duration || 0);
+      const totalPlatformCost = totalCostRes._sum.estimatedCost || 0;
       const conversionRate = totalLeads > 0 ? (bookedLeads / totalLeads) * 100 : 0;
 
       // Calculate MRR (estimated based on current pricing)
@@ -99,6 +220,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
           avgDuration,
           conversionRate,
           estimatedMRR,
+          totalPlatformCost,
           subscriptionBreakdown: subscriptionStats,
           recentActivities,
           systemHealth: {
@@ -160,13 +282,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
    */
   fastify.get("/admin/settings", { onRequest: [requireAdmin] }, async (request, reply) => {
     try {
-      let settings = await prisma.platformSettings.findFirst();
-
-      if (!settings) {
-        settings = await prisma.platformSettings.create({
-          data: { id: "global" },
-        });
-      }
+      await ensureGlobalSettingsRow();
+      const settings = await readGlobalSettingsRow();
 
       return reply.code(200).send({
         ok: true,
@@ -187,38 +304,45 @@ export async function adminRoutes(fastify: FastifyInstance) {
     try {
       const body = request.body as any;
 
-      const updateData: any = {};
-      const allowedFields = [
-        "lowCommission",
-        "medCommission",
-        "highCommission",
-        "payoutMinimum",
-        "refundHoldDays",
-        "payoutCycleDelayMonths",
-        "transactionFeePercent",
-        "starterLimit",
-        "professionalLimit",
-        "enterpriseLimit",
-        "aiInfraLimit",
-        "ltdLimit",
-        "emailVerificationEnabled",
-        "globalEmailEnabled",
-      ];
+      await ensureGlobalSettingsRow();
 
-      allowedFields.forEach((field) => {
-        if (body[field] !== undefined) {
-          if (field === "emailVerificationEnabled" || field === "globalEmailEnabled") {
-            updateData[field] = Boolean(body[field]);
-          } else {
-            updateData[field] = Number(body[field]);
-          }
-        }
-      });
+      await prisma.$executeRaw`
+        UPDATE "PlatformSettings"
+        SET
+          "lowCommission" = COALESCE(${toNumberOrNull(body.lowCommission)}, "lowCommission"),
+          "medCommission" = COALESCE(${toNumberOrNull(body.medCommission)}, "medCommission"),
+          "highCommission" = COALESCE(${toNumberOrNull(body.highCommission)}, "highCommission"),
+          "payoutMinimum" = COALESCE(${toNumberOrNull(body.payoutMinimum)}, "payoutMinimum"),
+          "refundHoldDays" = COALESCE(${toNumberOrNull(body.refundHoldDays)}, "refundHoldDays"),
+          "payoutCycleDelayMonths" = COALESCE(${toNumberOrNull(body.payoutCycleDelayMonths)}, "payoutCycleDelayMonths"),
+          "transactionFeePercent" = COALESCE(${toNumberOrNull(body.transactionFeePercent)}, "transactionFeePercent"),
+          "freeTierLimit" = COALESCE(${toNumberOrNull(body.freeTierLimit)}, "freeTierLimit"),
+          "freeToStarterEnabled" = COALESCE(${toBooleanOrNull(body.freeToStarterEnabled)}, "freeToStarterEnabled"),
+          "freeToProfessionalEnabled" = COALESCE(${toBooleanOrNull(body.freeToProfessionalEnabled)}, "freeToProfessionalEnabled"),
+          "freeToEnterpriseEnabled" = COALESCE(${toBooleanOrNull(body.freeToEnterpriseEnabled)}, "freeToEnterpriseEnabled"),
+          "freeToLtdEnabled" = COALESCE(${toBooleanOrNull(body.freeToLtdEnabled)}, "freeToLtdEnabled"),
+          "freeToAiInfraEnabled" = COALESCE(${toBooleanOrNull(body.freeToAiInfraEnabled)}, "freeToAiInfraEnabled"),
+          "freeToolGetCartEnabled" = COALESCE(${toBooleanOrNull(body.freeToolGetCartEnabled)}, "freeToolGetCartEnabled"),
+          "freeToolAddToCartEnabled" = COALESCE(${toBooleanOrNull(body.freeToolAddToCartEnabled)}, "freeToolAddToCartEnabled"),
+          "freeToolClearCartEnabled" = COALESCE(${toBooleanOrNull(body.freeToolClearCartEnabled)}, "freeToolClearCartEnabled"),
+          "freeToolListProductsEnabled" = COALESCE(${toBooleanOrNull(body.freeToolListProductsEnabled)}, "freeToolListProductsEnabled"),
+          "freeToolSearchProductsEnabled" = COALESCE(${toBooleanOrNull(body.freeToolSearchProductsEnabled)}, "freeToolSearchProductsEnabled"),
+          "freeToolRemoveFromCartEnabled" = COALESCE(${toBooleanOrNull(body.freeToolRemoveFromCartEnabled)}, "freeToolRemoveFromCartEnabled"),
+          "freeToolCreateCheckoutSessionEnabled" = COALESCE(${toBooleanOrNull(body.freeToolCreateCheckoutSessionEnabled)}, "freeToolCreateCheckoutSessionEnabled"),
+          "freeToolSendSmsEnabled" = COALESCE(${toBooleanOrNull(body.freeToolSendSmsEnabled)}, "freeToolSendSmsEnabled"),
+          "freeToolMakeCallEnabled" = COALESCE(${toBooleanOrNull(body.freeToolMakeCallEnabled)}, "freeToolMakeCallEnabled"),
+          "starterLimit" = COALESCE(${toNumberOrNull(body.starterLimit)}, "starterLimit"),
+          "professionalLimit" = COALESCE(${toNumberOrNull(body.professionalLimit)}, "professionalLimit"),
+          "enterpriseLimit" = COALESCE(${toNumberOrNull(body.enterpriseLimit)}, "enterpriseLimit"),
+          "aiInfraLimit" = COALESCE(${toNumberOrNull(body.aiInfraLimit)}, "aiInfraLimit"),
+          "ltdLimit" = COALESCE(${toNumberOrNull(body.ltdLimit)}, "ltdLimit"),
+          "costPerMinute" = COALESCE(${toNumberOrNull(body.costPerMinute)}, "costPerMinute"),
+          "emailVerificationEnabled" = COALESCE(${toBooleanOrNull(body.emailVerificationEnabled)}, "emailVerificationEnabled"),
+          "globalEmailEnabled" = COALESCE(${toBooleanOrNull(body.globalEmailEnabled)}, "globalEmailEnabled")
+        WHERE "id" = 'global'
+      `;
 
-      const settings = await prisma.platformSettings.update({
-        where: { id: "global" },
-        data: updateData,
-      });
+      const settings = await readGlobalSettingsRow();
 
       return reply.code(200).send({
         ok: true,

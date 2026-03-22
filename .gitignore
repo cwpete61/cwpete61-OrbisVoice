@@ -19,6 +19,8 @@ build/
 # Misc
 *.log
 *.sql
+!apps/api/prisma/migrations/20260320112000_add_free_tier_limit/migration.sql
+!apps/api/prisma/migrations/20260320123500_add_free_tier_upgrade_toggles/migration.sql
 *.txt
 .turbo
 apps/api/.env
@@ -30,6 +32,7 @@ apps/api/reset_admin.ts
 gsd/
 nul
 %USERPROFILE%.configopencodesuperpowers/
+.worktrees/
 
 # Prevent compiled JS from being committed in TS source folders
 **/src/**/*.js

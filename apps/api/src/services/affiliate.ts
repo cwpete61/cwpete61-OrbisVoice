@@ -1,5 +1,4 @@
 import { prisma } from "../db";
-import { Prisma } from "@prisma/client";
 import { logger } from "../logger";
 import { referralManager } from "./referral";
 import { StripeClient } from "../integrations/stripe";

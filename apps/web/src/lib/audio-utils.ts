@@ -1,5 +1,3 @@
-import { useEffect, useRef } from "react";
-
 export class AudioRecorder {
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;

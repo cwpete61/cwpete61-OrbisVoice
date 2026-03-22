@@ -8,14 +8,22 @@ import { resolveAdminScopedTenantId } from "../services/admin-scope";
 
 const CreateAgentSchema = z.object({
   name: z.string().min(1),
-  systemPrompt: z.string().optional(),
-  voiceModel: z.string().optional(),
+  systemPrompt: z.string().optional().nullable(),
+  voiceModel: z.string().optional().nullable(),
+  type: z.enum(["WIDGET", "INBOUND_TWILIO", "OUTBOUND_TWILIO"]).optional().nullable(),
+  voiceGender: z.enum(["MALE", "FEMALE"]).optional().nullable(),
+  avatarUrl: z.string().optional().nullable(),
+  autoStart: z.boolean().optional(),
 });
 
 const UpdateAgentSchema = z.object({
   name: z.string().min(1).optional(),
-  systemPrompt: z.string().optional(),
-  voiceModel: z.string().optional(),
+  systemPrompt: z.string().optional().nullable(),
+  voiceModel: z.string().optional().nullable(),
+  type: z.enum(["WIDGET", "INBOUND_TWILIO", "OUTBOUND_TWILIO"]).optional().nullable(),
+  voiceGender: z.enum(["MALE", "FEMALE"]).optional().nullable(),
+  avatarUrl: z.string().optional().nullable(),
+  autoStart: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -31,6 +39,10 @@ export async function agentRoutes(fastify: FastifyInstance) {
 
         const agents = await prisma.agent.findMany({
           where: { tenantId: effectiveTenantId },
+          include: { 
+            tenant: { select: { name: true } },
+            creator: { select: { username: true } }
+          },
           orderBy: { createdAt: "desc" },
         });
         return reply.code(200).send({
@@ -55,7 +67,9 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const body = CreateAgentSchema.parse(request.body);
-        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+        const user = (request as unknown as { user: AuthPayload }).user;
+        const tenantId = user.tenantId;
+        const userId = user.userId;
         const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
 
         // Create the agent directly without checking usage counts or limits
@@ -63,9 +77,14 @@ export async function agentRoutes(fastify: FastifyInstance) {
         const agent = await prisma.agent.create({
           data: {
             tenantId: effectiveTenantId,
+            userId,
             name: body.name,
             systemPrompt: body.systemPrompt || "",
             voiceId: body.voiceModel || "default",
+            type: (body.type as any) || "WIDGET",
+            voiceGender: body.voiceGender as any,
+            avatarUrl: body.avatarUrl,
+            autoStart: body.autoStart !== undefined ? body.autoStart : true,
             isActive: true,
           },
         });
@@ -76,8 +95,9 @@ export async function agentRoutes(fastify: FastifyInstance) {
           message: "Agent created",
           data: agent,
         } as ApiResponse);
-      } catch (err) {
+      } catch (err: any) {
         if (err instanceof z.ZodError) {
+          logger.warn({ body: request.body, errors: err.errors }, "Agent create validation failed");
           return reply.code(400).send({
             ok: false,
             message: "Validation error",
@@ -142,8 +162,12 @@ export async function agentRoutes(fastify: FastifyInstance) {
         // Explicitly build update data to avoid passing undefined properties that Prisma might reject
         const updateData: any = {};
         if (body.name !== undefined) updateData.name = body.name;
-        if (body.systemPrompt !== undefined) updateData.systemPrompt = body.systemPrompt;
-        if (body.voiceModel !== undefined) updateData.voiceId = body.voiceModel;
+        if (body.systemPrompt !== undefined) updateData.systemPrompt = body.systemPrompt || "";
+        if (body.voiceModel !== undefined) updateData.voiceId = body.voiceModel || "aoede";
+        if (body.type !== undefined) updateData.type = body.type || "WIDGET";
+        if (body.voiceGender !== undefined) updateData.voiceGender = body.voiceGender;
+        if (body.avatarUrl !== undefined) updateData.avatarUrl = body.avatarUrl;
+        if (body.autoStart !== undefined) updateData.autoStart = body.autoStart;
         if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
         logger.debug({ agentId: id, updateData, tenantId: effectiveTenantId }, "Updating agent");
@@ -170,6 +194,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
         } as ApiResponse);
       } catch (err: any) {
         if (err instanceof z.ZodError) {
+          logger.warn({ body: request.body, errors: err.errors }, "Agent update validation failed");
           return reply.code(400).send({
             ok: false,
             message: "Validation error",

@@ -6,13 +6,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import PublicNav from "../components/PublicNav";
 import Footer from "../components/Footer";
 import PasswordInput from "../components/PasswordInput";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
-  
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,26 +31,24 @@ function ResetPasswordForm() {
       setError("Passwords do not match");
       return;
     }
-    
+
     setError("");
     setMessage("");
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      const { data } = await apiFetch<{ message?: string }>("/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
       });
-      const data = await res.json();
 
-      if (res.ok) {
-        setMessage(data.message || "Password reset successful!");
+      if (data?.data) {
+        setMessage(data.data.message || "Password reset successful!");
         setTimeout(() => {
           router.push("/login");
         }, 3000);
       } else {
-        setError(data.message || "Failed to reset password");
+        setError(data?.data?.message || "Failed to reset password");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -63,7 +61,9 @@ function ResetPasswordForm() {
     <div className="w-full max-w-md">
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-bold text-[#f0f4fa]">Set New Password</h1>
-        <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Choose a strong password for your account</p>
+        <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
+          Choose a strong password for your account
+        </p>
       </div>
 
       <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-8">
@@ -72,7 +72,9 @@ function ResetPasswordForm() {
             <div className="mb-4 rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/10 p-4 text-sm text-[#14b8a6]">
               {message}
             </div>
-            <p className="text-xs text-[rgba(240,244,250,0.4)]">Redirecting to login in 3 seconds...</p>
+            <p className="text-xs text-[rgba(240,244,250,0.4)]">
+              Redirecting to login in 3 seconds...
+            </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,7 +84,9 @@ function ResetPasswordForm() {
               </div>
             )}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">New Password</label>
+              <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                New Password
+              </label>
               <PasswordInput
                 placeholder="••••••••"
                 value={password}
@@ -92,7 +96,9 @@ function ResetPasswordForm() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">Confirm New Password</label>
+              <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
+                Confirm New Password
+              </label>
               <PasswordInput
                 placeholder="••••••••"
                 value={confirmPassword}

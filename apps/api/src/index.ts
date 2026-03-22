@@ -30,6 +30,7 @@ import { adminRoutes, subscriberAdminRoutes } from "./routes/admin";
 import { notificationRoutes } from "./routes/notifications";
 import { helpRoutes } from "./routes/help";
 import { commerceBridgeRoutes } from "./routes/commerce-bridge";
+import { publicRoutes } from "./routes/public";
 import { prisma } from "./db";
 
 const fastify = Fastify({
@@ -55,7 +56,12 @@ fastify.register(helmet, {
       scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://m.stripe.network"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:", "https://*.stripe.com"],
-      connectSrc: ["'self'", "https://*.googleapis.com", "https://api.stripe.com", "https://m.stripe.network"],
+      connectSrc: [
+        "'self'",
+        "https://*.googleapis.com",
+        "https://api.stripe.com",
+        "https://m.stripe.network",
+      ],
       frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
     },
@@ -78,10 +84,7 @@ fastify.register(rateLimit, {
 
 // Configure stricter limits for auth routes
 fastify.addHook("onRoute", (routeOptions) => {
-  if (
-    routeOptions.url === "/auth/login" ||
-    routeOptions.url === "/auth/signup"
-  ) {
+  if (routeOptions.url === "/auth/login" || routeOptions.url === "/auth/signup") {
     routeOptions.config = {
       ...routeOptions.config,
       rateLimit: {
@@ -102,11 +105,13 @@ fastify.get("/api", async () => {
   try {
     const fs = require("fs");
     const path = require("path");
-    const versionData = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../version.json"), "utf8"));
-    return { 
-      message: "OrbisVoice API v1", 
+    const versionData = JSON.parse(
+      fs.readFileSync(path.join(__dirname, "../../../version.json"), "utf8")
+    );
+    return {
+      message: "OrbisVoice API v1",
       version: versionData.version,
-      deployTime: versionData.deployTime
+      deployTime: versionData.deployTime,
     };
   } catch (err) {
     return { message: "OrbisVoice API v1", version: "1.0.1 (fallback)" };
@@ -136,6 +141,7 @@ fastify.register(subscriberAdminRoutes, { prefix: "/admin" });
 fastify.register(notificationRoutes);
 fastify.register(helpRoutes);
 fastify.register(commerceBridgeRoutes);
+fastify.register(publicRoutes);
 
 // Start server
 const start = async () => {
@@ -161,7 +167,7 @@ const start = async () => {
       try {
         const adminEmail = "admin@orbisvoice.app";
         const adminExist = await prisma.user.findFirst({
-          where: { email: adminEmail }
+          where: { email: adminEmail },
         });
 
         if (!adminExist) {
@@ -169,7 +175,7 @@ const start = async () => {
           let defaultTenant = await prisma.tenant.findFirst();
           if (!defaultTenant) {
             defaultTenant = await prisma.tenant.create({
-              data: { name: "System Workspace" }
+              data: { name: "System Workspace" },
             });
             logger.info("Default system tenant created");
           }
@@ -177,7 +183,7 @@ const start = async () => {
           // Create the admin user
           const salt = await bcrypt.genSalt(10);
           const passwordHash = await bcrypt.hash("admin123", salt);
-          
+
           await prisma.user.create({
             data: {
               email: adminEmail,
@@ -186,8 +192,8 @@ const start = async () => {
               role: "SYSTEM_ADMIN",
               tenantId: defaultTenant.id,
               emailVerified: new Date(),
-              passwordHash: passwordHash
-            }
+              passwordHash: passwordHash,
+            },
           });
           logger.info("Admin user created");
         } else {
@@ -196,7 +202,7 @@ const start = async () => {
 
           await prisma.user.update({
             where: { id: adminExist.id },
-            data: updateData
+            data: updateData,
           });
           logger.info("Admin roles synchronized");
         }
@@ -207,23 +213,29 @@ const start = async () => {
           await prisma.platformSettings.create({
             data: {
               id: "global",
+              freeTierLimit: 100,
+              freeToStarterEnabled: false,
+              freeToProfessionalEnabled: false,
+              freeToEnterpriseEnabled: false,
+              freeToLtdEnabled: false,
+              freeToAiInfraEnabled: false,
               starterLimit: 1000,
               professionalLimit: 10000,
               enterpriseLimit: 100000,
               aiInfraLimit: 250000,
               ltdLimit: 1000,
-            }
+            } as any,
           });
           logger.info("Platform settings bootstrapped");
         }
-        
+
         logger.info("Admin bootstrap completed");
         bootstrapped = true;
       } catch (err: any) {
         retries++;
-        if (err.code === 'P2021' || err.message?.includes('does not exist')) {
+        if (err.code === "P2021" || err.message?.includes("does not exist")) {
           logger.warn(`Bootstrap tables not ready (attempt ${retries}/${maxRetries}), waiting...`);
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          await new Promise((resolve) => setTimeout(resolve, 5000));
         } else {
           logger.error({ err }, "Unexpected bootstrap failure");
           break;
@@ -239,11 +251,13 @@ const start = async () => {
     logger.info(`Server running at http://0.0.0.0:${env.PORT}`);
 
     // Set up background job to process commission holds (every hour)
-    setInterval(() => {
-      logger.info("Running scheduled clearPendingHolds...");
-      referralManager.clearPendingHolds();
-    }, 1000 * 60 * 60);
-
+    setInterval(
+      () => {
+        logger.info("Running scheduled clearPendingHolds...");
+        referralManager.clearPendingHolds();
+      },
+      1000 * 60 * 60
+    );
   } catch (err) {
     logger.error(err);
     process.exit(1);

@@ -1,11 +1,36 @@
 "use client";
-import { Suspense, useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ProfileMenu from "./ProfileMenu";
 import UserInfoCard from "./UserInfoCard";
 import IdleTimeoutModal from "./IdleTimeoutModal";
 import { API_BASE, User, Notification } from "@/lib/api";
+
+type NavItem = {
+  label: string;
+  href: string;
+  category: string;
+  icon?: React.ReactNode;
+  isSystemAdminOnly?: boolean;
+  isAdminOnly?: boolean;
+  isAffiliateHidden?: boolean;
+};
+
+const shouldShowNavItem = (item: NavItem, profile: User | null | undefined): boolean => {
+  const isSystemAdmin = profile?.role === "SYSTEM_ADMIN";
+  const isAffiliateOnly =
+    typeof profile?.isAffiliate === "boolean" ? profile.isAffiliate && !profile.isAdmin : false;
+
+  if (item.isSystemAdminOnly && !isSystemAdmin) return false;
+  if (item.isAdminOnly && !profile?.isAdmin) return false;
+  if (item.isAffiliateHidden && isAffiliateOnly) return false;
+
+  if (item.label === "My Affiliate Partnership") {
+    return !!(profile?.isAdmin || profile?.isAffiliate);
+  }
+  return true;
+};
 
 const TYPE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
   COMMISSION_EARNED: { label: "Commission", color: "text-[#14b8a6]", emoji: "💰" },
@@ -551,6 +576,7 @@ export default function DashboardShell({
           </Link>
           <button
             onClick={() => setIsSidebarOpen(false)}
+            suppressHydrationWarning
             className="lg:hidden text-[rgba(240,244,250,0.5)]"
           >
             <svg
@@ -569,24 +595,9 @@ export default function DashboardShell({
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
           {["Main", "Partnership", "Admin", "System"].map((cat) => {
-            const items = (NAV as any[]).filter((item) => {
-              if (item.category !== cat) return false;
-
-              const isSystemAdmin = profile?.role === "SYSTEM_ADMIN";
-              const isAffiliateOnly =
-                typeof profile?.isAffiliate === "boolean"
-                  ? profile.isAffiliate && !profile.isAdmin
-                  : false;
-
-              if (item.isSystemAdminOnly && !isSystemAdmin) return false;
-              if (item.isAdminOnly && !profile?.isAdmin) return false;
-              if (item.isAffiliateHidden && isAffiliateOnly) return false;
-
-              if (item.label === "My Affiliate Partnership") {
-                return profile?.isAdmin || profile?.isAffiliate;
-              }
-              return true;
-            });
+            const items = (NAV as NavItem[]).filter(
+              (item) => item.category === cat && shouldShowNavItem(item, profile)
+            );
 
             if (items.length === 0) return null;
 
@@ -632,11 +643,12 @@ export default function DashboardShell({
         </nav>
 
         {/* User / Footer */}
-        <div className="border-t border-white/[0.06] p-4 bg-[#05080f]/30">
+        <div className="border-t border-white/[0.06] p-4 bg-[#05080f]/30" suppressHydrationWarning>
           <UserInfoCard onProfileClick={() => setShowProfileMenu(true)} tokenLoaded={tokenLoaded} />
           <button
             onClick={handleLogout}
             className="mt-4 flex items-center gap-3 rounded-lg px-3 py-2.5 w-full text-xs text-[rgba(240,244,250,0.4)] hover:text-[rgba(240,244,250,0.7)] hover:bg-white/[0.02] transition"
+            suppressHydrationWarning
           >
             <svg
               width="16"
@@ -661,6 +673,7 @@ export default function DashboardShell({
           <div className="flex items-center gap-3 lg:hidden">
             <button
               onClick={() => setIsSidebarOpen(true)}
+              suppressHydrationWarning
               className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[rgba(240,244,250,0.7)]"
             >
               <svg
@@ -700,6 +713,7 @@ export default function DashboardShell({
             <div className="relative" ref={notifRef}>
               <button
                 onClick={toggleNotifs}
+                suppressHydrationWarning
                 className="relative p-2 rounded-xl border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.06] transition group focus:outline-none"
               >
                 <svg

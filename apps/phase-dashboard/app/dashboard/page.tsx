@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import dynamic from "next/dynamic";
 
 type PhaseStatus = "complete" | "in_progress" | "blocked" | "failed" | "not_started";
 
@@ -286,36 +285,18 @@ export default function DashboardPage() {
     Critical: "bg-rose-500/15 text-rose-300",
   } as const;
 
-  const exportPdf = async () => {
-    if (!dashboardRef.current) return;
-
-    setIsExporting(true);
-    setMessage("Exporting snapshot to PDF...");
-
-    try {
-      const canvas = await html2canvas(dashboardRef.current, {
-        backgroundColor: "#020617",
-        scale: 2,
-        useCORS: true,
-      });
-
-      const imageData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [canvas.width, canvas.height],
-      });
-
-      pdf.addImage(imageData, "PNG", 0, 0, canvas.width, canvas.height);
-      pdf.save("orbisvoice-phase-dashboard.pdf");
-      setMessage("PDF export complete");
-    } catch (error) {
-      console.error(error);
-      setMessage("PDF export failed");
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const ExportPdfButton = React.useMemo(
+    () =>
+      dynamic(() => import("../../components/ExportPdfButton"), {
+        ssr: false,
+        loading: () => (
+          <button disabled className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-200 opacity-50">
+            Loading...
+          </button>
+        ),
+      }),
+    []
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6 md:p-10">
@@ -346,13 +327,12 @@ export default function DashboardPage() {
               {showSource ? "Hide source" : "Show source"}
             </button>
 
-            <button
-              onClick={exportPdf}
-              disabled={isExporting}
-              className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50"
-            >
-              {isExporting ? "Exporting..." : "Export PDF"}
-            </button>
+            <ExportPdfButton
+              dashboardRef={dashboardRef}
+              isExporting={isExporting}
+              setIsExporting={setIsExporting}
+              setMessage={setMessage}
+            />
           </div>
         </div>
 

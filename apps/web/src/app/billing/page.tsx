@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
-import { API_BASE, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { retrySyncUntilPaid } from "./sync-utils";
 
 import PricingTable, { AllTierName, TIER_CONFIGS } from "../components/PricingTable";
@@ -102,22 +102,18 @@ function BillingContent() {
 
   const fetchSubscription = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/billing/subscription`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/billing/subscription");
 
       if (res.status === 401) {
         router.push("/login");
         return;
       }
 
-      const data = await res.json();
-      if (res.ok) {
+      if (data?.data) {
         setSubscription(data.data);
         setBillingEmail(data.data.billingEmail || "");
       } else {
-        setError(data.message || "Failed to load subscription data");
+        setError(data?.data?.message || "Failed to load subscription data");
       }
     } catch (err: any) {
       setError("Unable to connect to billing service");
@@ -128,9 +124,8 @@ function BillingContent() {
 
   const fetchAvailableTiers = async () => {
     try {
-      const res = await fetch(`${API_BASE}/billing/tiers`);
-      if (res.ok) {
-        const data = await res.json();
+      const { data } = await apiFetch<any>("/billing/tiers");
+      if (data?.data) {
         setAvailableTiers(data.data);
       }
     } catch (err: any) {
@@ -140,10 +135,9 @@ function BillingContent() {
 
   const fetchPackages = async () => {
     try {
-      const res = await fetch(`${API_BASE}/packages`);
-      if (res.ok) {
-        const data = await res.json();
-        setPackages(data.data || []);
+      const { data } = await apiFetch<any[]>("/packages");
+      if (data?.data) {
+        setPackages(data.data);
       }
     } catch (err: any) {
       console.error("Failed to load packages:", err);
@@ -153,24 +147,17 @@ function BillingContent() {
   const handleUpgrade = async (tier: AllTierName) => {
     try {
       setError("");
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/billing/checkout`, {
+      const { data } = await apiFetch<{ url?: string; error?: string }>("/billing/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ tier }),
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.url) {
+      if (data?.data?.url) {
         // Redirect to Stripe Checkout
-        window.location.href = data.url;
+        window.location.href = data.data.url;
       } else {
         console.error("Checkout error:", data);
-        setError(data.error || "Failed to start checkout");
+        setError(data?.data?.error || "Failed to start checkout");
         setSelectedTier(null);
       }
     } catch (err: any) {
@@ -183,17 +170,14 @@ function BillingContent() {
     if (!confirm("Are you sure you want to cancel your subscription?")) return;
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/billing/subscription`, {
+      const { data } = await apiFetch<{ error?: string }>("/billing/subscription", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.ok) {
+      if (data?.data) {
         fetchSubscription();
       } else {
-        const data = await res.json();
-        setError(data.error || "Failed to cancel subscription");
+        setError(data?.data?.error || "Failed to cancel subscription");
       }
     } catch (err: any) {
       setError(err.message);
@@ -205,22 +189,16 @@ function BillingContent() {
 
     setPurchasingPackage(pkg.id);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/billing/purchase-package`, {
+      const { data } = await apiFetch<{ error?: string }>("/billing/purchase-package", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ packageId: pkg.id }),
       });
 
-      if (res.ok) {
+      if (data?.data) {
         alert(`Successfully purchased ${pkg.name}. Credits have been added to your account.`);
         fetchSubscription(); // Refresh to show new credit balance
       } else {
-        const data = await res.json();
-        setError(data.error || "Failed to purchase package");
+        setError(data?.data?.error || "Failed to purchase package");
       }
     } catch (err: any) {
       setError(err.message);
@@ -453,17 +431,15 @@ function BillingContent() {
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch(`${API_BASE}/billing/portal`, {
-                      method: "POST",
-                      headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({ returnUrl: window.location.href }),
-                    });
-                    const data = await res.json();
-                    if (data.url) window.location.href = data.url;
-                    else alert(data.error || "Failed to open billing portal");
+                    const { data } = await apiFetch<{ url?: string; error?: string }>(
+                      "/billing/portal",
+                      {
+                        method: "POST",
+                        body: JSON.stringify({ returnUrl: window.location.href }),
+                      }
+                    );
+                    if (data?.data?.url) window.location.href = data.data.url;
+                    else alert(data?.data?.error || "Failed to open billing portal");
                   } catch (err) {
                     alert("Connection error");
                   }

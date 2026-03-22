@@ -1,5 +1,6 @@
 import { env } from "../env";
 import { logger } from "../logger";
+import { http } from "../lib/http";
 
 export async function verifyTurnstileToken(token: string): Promise<boolean> {
   const secret = env.TURNSTILE_SECRET_KEY;
@@ -9,21 +10,30 @@ export async function verifyTurnstileToken(token: string): Promise<boolean> {
   }
 
   try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
+    const result = await http.post<{ success: boolean; "error-codes"?: string[] }>(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      new URLSearchParams({
         secret: secret,
         response: token,
       }).toString(),
-    });
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
-    const data = (await response.json()) as { success: boolean; "error-codes"?: string[] };
-    
-    if (!data.success) {
-      logger.warn({ errorCodes: data["error-codes"], token }, "Turnstile verification failed");
+    if (!result.ok) {
+      logger.warn(
+        { status: result.status, error: result.error, token },
+        "Turnstile verification failed"
+      );
+      return false;
+    }
+
+    const data = result.data;
+    if (!data || !data.success) {
+      logger.warn({ errorCodes: data?.["error-codes"], token }, "Turnstile verification failed");
       return false;
     }
 

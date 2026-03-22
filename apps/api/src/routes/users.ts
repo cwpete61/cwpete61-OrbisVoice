@@ -30,11 +30,20 @@ const UpdatePasswordSchema = z.object({
 const AdminUpdateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  username: z.string().min(3).regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens").optional(),
+  username: z
+    .string()
+    .min(3)
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "Username can only contain letters, numbers, underscores, and hyphens"
+    )
+    .optional(),
   role: z.enum(["SYSTEM_ADMIN", "ADMIN", "USER"]).optional(),
   isAdmin: z.boolean().optional(),
   isBlocked: z.boolean().optional(),
-  tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
+  tier: z
+    .enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"])
+    .optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).optional(),
   emailVerifiedByAdmin: z.boolean().optional(),
 });
@@ -45,9 +54,14 @@ const AdminCreateUserSchema = z.object({
   username: z
     .string()
     .min(3)
-    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "Username can only contain letters, numbers, underscores, and hyphens"
+    ),
   password: z.string().min(8),
-  tier: z.enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"]).optional(),
+  tier: z
+    .enum(["free", "starter", "professional", "enterprise", "ai-revenue-infrastructure", "ltd"])
+    .optional(),
   commissionLevel: z.enum(["LOW", "MED", "HIGH"]).default("LOW"),
   isAffiliate: z.boolean().optional(),
 });
@@ -62,11 +76,18 @@ const PlatformSettingsSchema = z.object({
   refundHoldDays: z.number().int().min(0).default(14),
   payoutCycleDelayMonths: z.number().int().min(0).default(1),
   transactionFeePercent: z.number().min(0).max(100).default(3.4),
+  freeTierLimit: z.number().int().min(0).default(100),
+  freeToStarterEnabled: z.boolean().default(false),
+  freeToProfessionalEnabled: z.boolean().default(false),
+  freeToEnterpriseEnabled: z.boolean().default(false),
+  freeToLtdEnabled: z.boolean().default(false),
+  freeToAiInfraEnabled: z.boolean().default(false),
   starterLimit: z.number().int().min(0),
   professionalLimit: z.number().int().min(0),
   enterpriseLimit: z.number().int().min(0),
   ltdLimit: z.number().int().min(0),
   aiInfraLimit: z.number().int().min(0),
+  costPerMinute: z.number().min(0).default(0.013),
 });
 
 const AdminBlockUserSchema = z.object({
@@ -325,90 +346,86 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: list users
-  fastify.get(
-    "/admin/users",
-    { onRequest: [requireAdmin] },
-    async (request, reply) => {
-      try {
-        const query = (request.query as any);
-        const filter = query.filter as string | undefined;
-        const search = query.search as string | undefined;
+  fastify.get("/admin/users", { onRequest: [requireAdmin] }, async (request, reply) => {
+    try {
+      const query = request.query as any;
+      const filter = query.filter as string | undefined;
+      const search = query.search as string | undefined;
 
-        let where: any = {};
+      let where: any = {};
 
-        // Search filter
-        if (search) {
-          where.OR = [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-          ];
-        }
+      // Search filter
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ];
+      }
 
-        // Base filters
-        if (filter === "affiliates") {
-          where.isAffiliate = true;
-        } else if (filter === "referrers") {
-          where.isAffiliate = false;
-          where.affiliate = { isNot: null };
-        }
+      // Base filters
+      if (filter === "affiliates") {
+        where.isAffiliate = true;
+      } else if (filter === "referrers") {
+        where.isAffiliate = false;
+        where.affiliate = { isNot: null };
+      }
 
-        // Status filters (can be combined with base filters in a future update, 
-        // for now we'll support both via specialized query params or logic)
-        const subFilter = query.subFilter as string | undefined;
-        const paidFilter = { tenant: { subscriptionStatus: "active" } };
+      // Status filters (can be combined with base filters in a future update,
+      // for now we'll support both via specialized query params or logic)
+      const subFilter = query.subFilter as string | undefined;
+      const paidFilter = { tenant: { subscriptionStatus: "active" } };
 
-        if (subFilter === "paid" || filter === "paid") {
-          where = { ...where, ...paidFilter };
-        } else if (subFilter === "free" || filter === "free") {
-          where = { ...where, NOT: paidFilter };
-        }
+      if (subFilter === "paid" || filter === "paid") {
+        where = { ...where, ...paidFilter };
+      } else if (subFilter === "free" || filter === "free") {
+        where = { ...where, NOT: paidFilter };
+      }
 
-        const users = await prisma.user.findMany({
-          where,
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            username: true,
-            isAdmin: true,
-            role: true,
-            isBlocked: true,
-            tenantId: true,
-            googleId: true,
-            googleEmail: true,
-            commissionLevel: true,
-            createdAt: true,
-            updatedAt: true,
-            tenant: {
-              select: {
-                subscriptionStatus: true,
-                subscriptionTier: true,
-              },
-            },
-            affiliate: {
-              select: {
-                id: true,
-                status: true,
-                slug: true,
-              },
+      const users = await prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          username: true,
+          isAdmin: true,
+          role: true,
+          isBlocked: true,
+          tenantId: true,
+          googleId: true,
+          googleEmail: true,
+          commissionLevel: true,
+          createdAt: true,
+          updatedAt: true,
+          tenant: {
+            select: {
+              subscriptionStatus: true,
+              subscriptionTier: true,
             },
           },
-          orderBy: { createdAt: "desc" },
-        });
+          affiliate: {
+            select: {
+              id: true,
+              status: true,
+              slug: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
 
-        return reply.send({
-          ok: true,
-          data: users,
-        } as ApiResponse<typeof users>);
-      } catch (err) {
-        fastify.log.error({ err }, "Failed to list users");
-        return reply.code(500).send({
-          ok: false,
-          message: "Internal server error",
-        } as ApiResponse);
-      }
+      return reply.send({
+        ok: true,
+        data: users,
+      } as ApiResponse<typeof users>);
+    } catch (err) {
+      fastify.log.error({ err }, "Failed to list users");
+      return reply.code(500).send({
+        ok: false,
+        message: "Internal server error",
+      } as ApiResponse);
     }
-  );
+  });
 
   // Admin: create user
   fastify.post<{ Body: z.infer<typeof AdminCreateUserSchema> }>(
@@ -481,7 +498,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
             const { affiliateManager } = await import("../services/affiliate.js");
             await affiliateManager.applyForAffiliate(user.id, "ACTIVE");
           } catch {
-            fastify.log.error("Failed to automatically grant affiliate status to newly created user.");
+            fastify.log.error(
+              "Failed to automatically grant affiliate status to newly created user."
+            );
           }
         }
 
@@ -569,192 +588,219 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: update user
-  const adminUpdateHandler = async (request: FastifyRequest<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>, reply: any) => {
-      try {
-        const targetId = request.params.id;
-        const body = AdminUpdateUserSchema.parse(request.body);
+  const adminUpdateHandler = async (
+    request: FastifyRequest<{
+      Params: { id: string };
+      Body: z.infer<typeof AdminUpdateUserSchema>;
+    }>,
+    reply: any
+  ) => {
+    try {
+      const targetId = request.params.id;
+      const body = AdminUpdateUserSchema.parse(request.body);
 
-        const targetUser = await prisma.user.findUnique({
-          where: { id: targetId },
-          select: { id: true, email: true, username: true, isAdmin: true, role: true, tenantId: true },
-        });
-
-        if (!targetUser) {
-          return reply.code(404).send({
-            ok: false,
-            message: "User not found",
-          } as ApiResponse);
-        }
-
-        if (targetUser.username === "Oadmin") {
-          if (body.username) {
-            return reply.code(403).send({
-              ok: false,
-              message: "Admin username cannot be changed",
-            } as ApiResponse);
-          }
-
-          if (body.role && body.role !== "ADMIN") {
-            return reply.code(403).send({
-              ok: false,
-              message: "Admin role cannot be changed",
-            } as ApiResponse);
-          }
-
-          if (body.isAdmin === false) {
-            return reply.code(403).send({
-              ok: false,
-              message: "Admin privileges cannot be removed",
-            } as ApiResponse);
-          }
-        }
-
-        // Check if role or isAdmin is being changed
-        if (body.role !== undefined || body.isAdmin !== undefined) {
-          const requestingUser = (request as any).user as AuthPayload;
-          const dbRequestingUser = await prisma.user.findUnique({
-            where: { id: requestingUser.userId },
-            select: { role: true }
-          });
-          
-          if (dbRequestingUser?.role !== "SYSTEM_ADMIN") {
-            // Non-system admins cannot promote to SYSTEM_ADMIN
-            if (body.role === "SYSTEM_ADMIN" || (body.isAdmin && targetUser.role !== "SYSTEM_ADMIN" && body.role === undefined && targetUser.role === "USER")) {
-                return reply.code(403).send({
-                    ok: false,
-                    message: "Only System Admins can grant System Admin privileges",
-                } as ApiResponse);
-            }
-            // Non-system admins cannot demote SYSTEM_ADMINs
-            if (targetUser.role === "SYSTEM_ADMIN") {
-                return reply.code(403).send({
-                    ok: false,
-                    message: "Only System Admins can modify other System Admins",
-                } as ApiResponse);
-            }
-          }
-        }
-
-        if (body.email && body.email !== targetUser.email) {
-          const existingEmail = await prisma.user.findUnique({
-            where: { email: body.email },
-          });
-          if (existingEmail) {
-            return reply.code(400).send({
-              ok: false,
-              message: "Email already in use",
-            } as ApiResponse);
-          }
-        }
-
-        if (body.username && body.username !== targetUser.username) {
-          const existingUsername = await prisma.user.findUnique({
-            where: { username: body.username },
-          });
-          if (existingUsername) {
-            return reply.code(400).send({
-              ok: false,
-              message: "Username already taken",
-            } as ApiResponse);
-          }
-        }
-
-        const { tier, emailVerifiedByAdmin, ...inputData } = body;
-        const userData: any = { ...inputData };
-
-        if (emailVerifiedByAdmin !== undefined) {
-          const requestingUser = (request as any).user as AuthPayload;
-          const dbRequestingUser = await prisma.user.findUnique({
-            where: { id: requestingUser.userId },
-            select: { role: true }
-          });
-
-          if (dbRequestingUser?.role === "SYSTEM_ADMIN") {
-            userData.isEmailVerifiedByAdmin = !!emailVerifiedByAdmin;
-            if (emailVerifiedByAdmin) {
-              userData.emailVerified = new Date();
-            }
-          } else {
-            return reply.code(403).send({
-              ok: false,
-              message: "Only System Admins can modify email verification status",
-            } as ApiResponse);
-          }
-        }
-        const userSelect = {
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetId },
+        select: {
           id: true,
           email: true,
-          name: true,
           username: true,
           isAdmin: true,
           role: true,
-          isBlocked: true,
-          commissionLevel: true,
-          isEmailVerifiedByAdmin: true,
-          tenant: {
-            select: {
-              subscriptionStatus: true,
-              subscriptionTier: true,
-            },
-          },
-        };
+          tenantId: true,
+        },
+      });
 
-        const operations = [];
-        if (Object.keys(userData).length > 0) {
-          operations.push(
-            prisma.user.update({
-              where: { id: targetId },
-              data: userData,
-              select: userSelect,
-            })
-          );
-        } else {
-          operations.push(
-            prisma.user.findUnique({
-              where: { id: targetId },
-              select: userSelect,
-            })
-          );
-        }
+      if (!targetUser) {
+        return reply.code(404).send({
+          ok: false,
+          message: "User not found",
+        } as ApiResponse);
+      }
 
-        if (tier) {
-          operations.push(
-            prisma.tenant.update({
-              where: { id: targetUser.tenantId },
-              data: {
-                subscriptionTier: tier,
-                subscriptionStatus: "active",
-              },
-            })
-          );
-        }
-
-        const [user] = await prisma.$transaction(operations);
-
-        return reply.send({
-          ok: true,
-          data: user,
-          message: "User updated successfully",
-        } as ApiResponse<typeof user>);
-      } catch (err) {
-        if (err instanceof z.ZodError) {
-          return reply.code(400).send({
+      if (targetUser.username === "Oadmin") {
+        if (body.username) {
+          return reply.code(403).send({
             ok: false,
-            message: "Validation error",
-            data: err.errors,
+            message: "Admin username cannot be changed",
           } as ApiResponse);
         }
 
-        fastify.log.error({ err }, "Failed to update user");
-        return reply.code(500).send({
+        if (body.role && body.role !== "ADMIN") {
+          return reply.code(403).send({
+            ok: false,
+            message: "Admin role cannot be changed",
+          } as ApiResponse);
+        }
+
+        if (body.isAdmin === false) {
+          return reply.code(403).send({
+            ok: false,
+            message: "Admin privileges cannot be removed",
+          } as ApiResponse);
+        }
+      }
+
+      // Check if role or isAdmin is being changed
+      if (body.role !== undefined || body.isAdmin !== undefined) {
+        const requestingUser = (request as any).user as AuthPayload;
+        const dbRequestingUser = await prisma.user.findUnique({
+          where: { id: requestingUser.userId },
+          select: { role: true },
+        });
+
+        if (dbRequestingUser?.role !== "SYSTEM_ADMIN") {
+          // Non-system admins cannot promote to SYSTEM_ADMIN
+          if (
+            body.role === "SYSTEM_ADMIN" ||
+            (body.isAdmin &&
+              targetUser.role !== "SYSTEM_ADMIN" &&
+              body.role === undefined &&
+              targetUser.role === "USER")
+          ) {
+            return reply.code(403).send({
+              ok: false,
+              message: "Only System Admins can grant System Admin privileges",
+            } as ApiResponse);
+          }
+          // Non-system admins cannot demote SYSTEM_ADMINs
+          if (targetUser.role === "SYSTEM_ADMIN") {
+            return reply.code(403).send({
+              ok: false,
+              message: "Only System Admins can modify other System Admins",
+            } as ApiResponse);
+          }
+        }
+      }
+
+      if (body.email && body.email !== targetUser.email) {
+        const existingEmail = await prisma.user.findUnique({
+          where: { email: body.email },
+        });
+        if (existingEmail) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Email already in use",
+          } as ApiResponse);
+        }
+      }
+
+      if (body.username && body.username !== targetUser.username) {
+        const existingUsername = await prisma.user.findUnique({
+          where: { username: body.username },
+        });
+        if (existingUsername) {
+          return reply.code(400).send({
+            ok: false,
+            message: "Username already taken",
+          } as ApiResponse);
+        }
+      }
+
+      const { tier, emailVerifiedByAdmin, ...inputData } = body;
+      const userData: any = { ...inputData };
+
+      if (emailVerifiedByAdmin !== undefined) {
+        const requestingUser = (request as any).user as AuthPayload;
+        const dbRequestingUser = await prisma.user.findUnique({
+          where: { id: requestingUser.userId },
+          select: { role: true },
+        });
+
+        if (dbRequestingUser?.role === "SYSTEM_ADMIN") {
+          userData.isEmailVerifiedByAdmin = !!emailVerifiedByAdmin;
+          if (emailVerifiedByAdmin) {
+            userData.emailVerified = new Date();
+          }
+        } else {
+          return reply.code(403).send({
+            ok: false,
+            message: "Only System Admins can modify email verification status",
+          } as ApiResponse);
+        }
+      }
+      const userSelect = {
+        id: true,
+        email: true,
+        name: true,
+        username: true,
+        isAdmin: true,
+        role: true,
+        isBlocked: true,
+        commissionLevel: true,
+        isEmailVerifiedByAdmin: true,
+        tenant: {
+          select: {
+            subscriptionStatus: true,
+            subscriptionTier: true,
+          },
+        },
+      };
+
+      const operations = [];
+      if (Object.keys(userData).length > 0) {
+        operations.push(
+          prisma.user.update({
+            where: { id: targetId },
+            data: userData,
+            select: userSelect,
+          })
+        );
+      } else {
+        operations.push(
+          prisma.user.findUnique({
+            where: { id: targetId },
+            select: userSelect,
+          })
+        );
+      }
+
+      if (tier) {
+        operations.push(
+          prisma.tenant.update({
+            where: { id: targetUser.tenantId },
+            data: {
+              subscriptionTier: tier,
+              subscriptionStatus: "active",
+            },
+          })
+        );
+      }
+
+      const [user] = await prisma.$transaction(operations);
+
+      return reply.send({
+        ok: true,
+        data: user,
+        message: "User updated successfully",
+      } as ApiResponse<typeof user>);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return reply.code(400).send({
           ok: false,
-          message: "Internal server error",
+          message: "Validation error",
+          data: err.errors,
         } as ApiResponse);
       }
+
+      fastify.log.error({ err }, "Failed to update user");
+      return reply.code(500).send({
+        ok: false,
+        message: "Internal server error",
+      } as ApiResponse);
+    }
   };
 
-  fastify.patch<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>("/admin/users/:id", { onRequest: [requireAdmin] }, adminUpdateHandler as any);
-  fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>("/admin/users/:id", { onRequest: [requireAdmin] }, adminUpdateHandler as any);
+  fastify.patch<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>(
+    "/admin/users/:id",
+    { onRequest: [requireAdmin] },
+    adminUpdateHandler as any
+  );
+  fastify.put<{ Params: { id: string }; Body: z.infer<typeof AdminUpdateUserSchema> }>(
+    "/admin/users/:id",
+    { onRequest: [requireAdmin] },
+    adminUpdateHandler as any
+  );
 
   // Admin: block or unblock user
   fastify.patch<{ Params: { id: string }; Body: z.infer<typeof AdminBlockUserSchema> }>(
@@ -993,44 +1039,42 @@ export default async function userRoutes(fastify: FastifyInstance) {
   );
 
   // Admin: update Google auth configuration
-  fastify.put<{ Body: { clientId?: string; clientSecret?: string; redirectUri?: string; enabled?: boolean } }>(
-    "/admin/google-auth/config",
-    { onRequest: [requireSystemAdmin] },
-    async (request, reply) => {
-      try {
-        const body = request.body || {};
+  fastify.put<{
+    Body: { clientId?: string; clientSecret?: string; redirectUri?: string; enabled?: boolean };
+  }>("/admin/google-auth/config", { onRequest: [requireSystemAdmin] }, async (request, reply) => {
+    try {
+      const body = request.body || {};
 
-        const config = await prisma.googleAuthConfig.upsert({
-          where: { id: "google-auth-config" },
-          update: {
-            clientId: body.clientId,
-            clientSecret: body.clientSecret,
-            redirectUri: body.redirectUri,
-            enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
-          },
-          create: {
-            id: "google-auth-config",
-            clientId: body.clientId || null,
-            clientSecret: body.clientSecret || null,
-            redirectUri: body.redirectUri || null,
-            enabled: body.enabled ?? false,
-          },
-        });
+      const config = await prisma.googleAuthConfig.upsert({
+        where: { id: "google-auth-config" },
+        update: {
+          clientId: body.clientId,
+          clientSecret: body.clientSecret,
+          redirectUri: body.redirectUri,
+          enabled: typeof body.enabled === "boolean" ? body.enabled : undefined,
+        },
+        create: {
+          id: "google-auth-config",
+          clientId: body.clientId || null,
+          clientSecret: body.clientSecret || null,
+          redirectUri: body.redirectUri || null,
+          enabled: body.enabled ?? false,
+        },
+      });
 
-        return reply.send({
-          ok: true,
-          data: config,
-          message: "Google auth configuration updated",
-        } as ApiResponse);
-      } catch (err) {
-        fastify.log.error({ err }, "Failed to update Google auth config");
-        return reply.code(500).send({
-          ok: false,
-          message: "Internal server error",
-        } as ApiResponse);
-      }
+      return reply.send({
+        ok: true,
+        data: config,
+        message: "Google auth configuration updated",
+      } as ApiResponse);
+    } catch (err) {
+      fastify.log.error({ err }, "Failed to update Google auth config");
+      return reply.code(500).send({
+        ok: false,
+        message: "Internal server error",
+      } as ApiResponse);
     }
-  );
+  });
 
   // Admin: get System Email configuration
   fastify.get(
@@ -1128,7 +1172,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     { onRequest: [requireSystemAdmin] },
     async (request, reply) => {
       try {
-        const config = await (prisma).stripeConnectConfig.findUnique({
+        const config = await prisma.stripeConnectConfig.findUnique({
           where: { id: "global" },
         });
 
@@ -1158,7 +1202,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       try {
         const body = (request.body as any) || {};
 
-        const config = await (prisma).stripeConnectConfig.upsert({
+        const config = await prisma.stripeConnectConfig.upsert({
           where: { id: "global" },
           update: {
             accountId: body.accountId,
@@ -1214,14 +1258,22 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const Stripe = stripeModule.default;
         // Check DB config first, then env
         const dbConfig = await prisma.stripeConnectConfig.findUnique({ where: { id: "global" } });
-        
+
         const { accountId, secretKey, clientId } = request.body || {};
-        
+
         // Priority: Request body secretKey > Request body clientId (if it's sk_...) > DB secretKey > Env secretKey
-        let stripeKey = secretKey || (clientId?.startsWith("sk_") ? clientId : null) || (dbConfig as any)?.secretKey || env.STRIPE_API_KEY;
-        
+        let stripeKey =
+          secretKey ||
+          (clientId?.startsWith("sk_") ? clientId : null) ||
+          (dbConfig as any)?.secretKey ||
+          env.STRIPE_API_KEY;
+
         // Request body accountId > Request body clientId (if it's acct_...) > DB accountId > DB clientId
-        const targetAccountId = accountId || (clientId?.startsWith("acct_") ? clientId : null) || (dbConfig as any)?.accountId || (dbConfig as any)?.clientId;
+        const targetAccountId =
+          accountId ||
+          (clientId?.startsWith("acct_") ? clientId : null) ||
+          (dbConfig as any)?.accountId ||
+          (dbConfig as any)?.clientId;
 
         if (!stripeKey) {
           return reply.code(400).send({
@@ -1247,13 +1299,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
               ok: true,
               data: {
                 id: account.id,
-                name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Connected Account",
-                email: account.email
+                name:
+                  account.settings?.dashboard?.display_name ||
+                  account.business_profile?.name ||
+                  "Connected Account",
+                email: account.email,
               },
               message: `Successfully verified Stripe Account: ${targetAccountId}`,
             } as ApiResponse);
           } catch (accountErr: any) {
-             return reply.code(400).send({
+            return reply.code(400).send({
               ok: false,
               message: `Failed to verify Stripe Account ID (${targetAccountId}): ${accountErr.message}`,
             } as ApiResponse);
@@ -1267,8 +1322,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
           ok: true,
           data: {
             id: account.id,
-            name: account.settings?.dashboard?.display_name || account.business_profile?.name || "Platform Account",
-            email: account.email
+            name:
+              account.settings?.dashboard?.display_name ||
+              account.business_profile?.name ||
+              "Platform Account",
+            email: account.email,
           },
           message: "Successfully connected to your Stripe Platform account!",
         } as ApiResponse);
@@ -1306,7 +1364,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         let isDevTest = false;
 
         const isDevEnv = process.env.NODE_ENV !== "production";
-        const requiresDevFallback = (!config || !config.smtpServer || !config.username || !config.password);
+        const requiresDevFallback =
+          !config || !config.smtpServer || !config.username || !config.password;
         const shouldRunDevMode = isDevEnv && (forceDevMode || requiresDevFallback);
 
         if (shouldRunDevMode) {
@@ -1320,8 +1379,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
               pass: testAccount.pass, // generated ethereal password
             },
             tls: {
-              rejectUnauthorized: false
-            }
+              rejectUnauthorized: false,
+            },
           });
           isDevTest = true;
         } else if (requiresDevFallback) {
@@ -1612,15 +1671,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token || null,
             expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-            gmailEmail: (userInfo.data).email,
-            scope: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email",
+            gmailEmail: userInfo.data.email,
+            scope:
+              "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email",
             verified: true,
           },
           update: {
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token || null,
             expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-            gmailEmail: (userInfo.data).email,
+            gmailEmail: userInfo.data.email,
             verified: true,
           },
         });
@@ -1629,7 +1689,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           ok: true,
           message: "Gmail connected successfully",
           data: {
-            gmailEmail: (userInfo.data).email,
+            gmailEmail: userInfo.data.email,
           },
         } as ApiResponse);
       } catch (err) {
@@ -1738,14 +1798,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         try {
           // Test access by making a simple API call to Gmail
-          const response = await fetch(
-            "https://www.googleapis.com/gmail/v1/users/me/profile",
-            {
-              headers: {
-                Authorization: `Bearer ${creds.accessToken}`,
-              },
-            }
-          );
+          const response = await fetch("https://www.googleapis.com/gmail/v1/users/me/profile", {
+            headers: {
+              Authorization: `Bearer ${creds.accessToken}`,
+            },
+          });
 
           if (!response.ok) {
             if (response.status === 401) {
@@ -1822,12 +1879,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
               refundHoldDays: 14,
               payoutCycleDelayMonths: 1,
               transactionFeePercent: 3.4,
+              freeTierLimit: 100,
+              freeToStarterEnabled: false,
+              freeToProfessionalEnabled: false,
+              freeToEnterpriseEnabled: false,
+              freeToLtdEnabled: false,
+              freeToAiInfraEnabled: false,
               starterLimit: 1000,
               professionalLimit: 10000,
               enterpriseLimit: 100000,
               ltdLimit: 1000,
               aiInfraLimit: 250000,
-            },
+            } as any,
           });
         }
 
@@ -1855,7 +1918,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
         const oldSettings = await prisma.platformSettings.findUnique({
           where: { id: "global" },
-          select: { defaultCommissionLevel: true }
+          select: { defaultCommissionLevel: true },
         });
         const oldLevel = oldSettings?.defaultCommissionLevel || "LOW";
 
@@ -1874,7 +1937,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
             where: { commissionLevel: oldLevel },
             data: { commissionLevel: body.defaultCommissionLevel },
           });
-          fastify.log.info({ oldLevel, newLevel: body.defaultCommissionLevel }, "Dynamically updated users to new default commission level");
+          fastify.log.info(
+            { oldLevel, newLevel: body.defaultCommissionLevel },
+            "Dynamically updated users to new default commission level"
+          );
         }
 
         return reply.send({
@@ -1900,4 +1966,3 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   );
 }
-

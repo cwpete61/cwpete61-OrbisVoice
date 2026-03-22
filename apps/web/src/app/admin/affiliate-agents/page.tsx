@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "../../components/DashboardShell";
 import PasswordInput from "../../components/PasswordInput";
-import { API_BASE, User, PlatformSettings, Affiliate } from "@/lib/api";
+import { apiFetch, User, PlatformSettings, Affiliate } from "@/lib/api";
 import { useCallback } from "react";
 
 function AffiliateAgentsContent() {
@@ -51,16 +51,12 @@ function AffiliateAgentsContent() {
 
   const fetchPlatformSettings = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const { data } = await apiFetch<PlatformSettings>("/admin/settings");
+      if (data?.data) {
         setPlatformSettings(data.data);
-        setCreateForm(prev => ({
+        setCreateForm((prev) => ({
           ...prev,
-          commissionLevel: data.data.defaultCommissionLevel || "LOW"
+          commissionLevel: data.data?.defaultCommissionLevel || "LOW",
         }));
       }
     } catch {
@@ -70,12 +66,8 @@ function AffiliateAgentsContent() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const { data } = await apiFetch<User>("/users/me");
+      if (data?.data) {
         setProfile(data.data);
       }
     } catch {
@@ -83,44 +75,39 @@ function AffiliateAgentsContent() {
     }
   }, []);
 
-  const fetchUsers = useCallback(async (subFilter: "all" | "paid" | "free" = "all", searchTerm: string = "") => {
-    setUsersLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const params = new URLSearchParams();
-      params.set("filter", "affiliates");
-      if (subFilter !== "all") {
-        params.set("subFilter", subFilter);
-      }
-      if (searchTerm) {
-        params.set("search", searchTerm);
-      }
-      const url = `${API_BASE}/admin/users?${params.toString()}`;
+  const fetchUsers = useCallback(
+    async (subFilter: "all" | "paid" | "free" = "all", searchTerm: string = "") => {
+      setUsersLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("filter", "affiliates");
+        if (subFilter !== "all") {
+          params.set("subFilter", subFilter);
+        }
+        if (searchTerm) {
+          params.set("search", searchTerm);
+        }
+        const path = `/admin/users?${params.toString()}`;
 
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.data || []);
+        const { data } = await apiFetch<User[]>(path);
+        if (data?.data) {
+          setUsers(data.data);
+        }
+      } catch {
+        // console.error("Failed to fetch users");
+      } finally {
+        setUsersLoading(false);
       }
-    } catch {
-      // console.error("Failed to fetch users");
-    } finally {
-      setUsersLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const fetchAffiliates = useCallback(async () => {
     setAffiliatesLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/affiliates?filter=affiliates`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAffiliates(data.data || []);
+      const { data } = await apiFetch<Affiliate[]>("/admin/affiliates?filter=affiliates");
+      if (data?.data) {
+        setAffiliates(data.data);
       }
     } catch {
       // console.error("Failed to fetch affiliates");
@@ -156,22 +143,14 @@ function AffiliateAgentsContent() {
     }
   }, [isAdmin, debouncedSearch, userFilter, fetchUsers]);
 
-
   const handleUpdateAffiliateStatus = async (id: string, status: string) => {
     setActionLoading(id);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/affiliates/${id}/status`, {
+      await apiFetch(`/admin/affiliates/${id}/status`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status }),
       });
-      if (res.ok) {
-        fetchAffiliates();
-      }
+      fetchAffiliates();
     } catch {
       // console.error("Failed to update affiliate status");
     } finally {
@@ -181,7 +160,10 @@ function AffiliateAgentsContent() {
 
   const handleSetCustomRate = async (aff: any) => {
     const currentRate = aff.customCommissionRate !== null ? aff.customCommissionRate : "";
-    const input = window.prompt(`Enter a custom commission rate (%) for ${aff.user?.name}, or leave blank to clear the override and use the global/locked rate:`, String(currentRate));
+    const input = window.prompt(
+      `Enter a custom commission rate (%) for ${aff.user?.name}, or leave blank to clear the override and use the global/locked rate:`,
+      String(currentRate)
+    );
     if (input === null) return;
 
     let customCommissionRate: number | null = null;
@@ -196,20 +178,17 @@ function AffiliateAgentsContent() {
 
     setActionLoading(`rate-${aff.id}`);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/affiliates/${aff.id}/commission-rate`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ customCommissionRate }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const { data } = await apiFetch<{ message?: string }>(
+        `/admin/affiliates/${aff.id}/commission-rate`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ customCommissionRate }),
+        }
+      );
+      if (data?.data) {
         fetchAffiliates();
       } else {
-        alert("Failed to update rate: " + data.message);
+        alert("Failed to update rate: " + (data?.data?.message || "Unknown error"));
       }
     } catch {
       // console.error("Failed to update custom commission rate");
@@ -223,13 +202,8 @@ function AffiliateAgentsContent() {
     setCreateError(null);
     setCreateLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users`, {
+      const { data } = await apiFetch<{ message?: string }>("/admin/users", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: createForm.name.trim(),
           email: createForm.email.trim(),
@@ -241,13 +215,19 @@ function AffiliateAgentsContent() {
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setCreateError(data?.message || "Failed to create user");
+      if (!data?.data) {
+        setCreateError(data?.data?.message || "Failed to create user");
         return;
       }
 
-      setCreateForm({ name: "", email: "", username: "", password: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
+      setCreateForm({
+        name: "",
+        email: "",
+        username: "",
+        password: "",
+        tier: "starter",
+        commissionLevel: platformSettings?.defaultCommissionLevel || "LOW",
+      });
       setCreateOpen(false);
       await fetchUsers(userFilter, debouncedSearch);
     } catch {
@@ -270,20 +250,20 @@ function AffiliateAgentsContent() {
 
   const cancelEditUser = () => {
     setEditingUserId(null);
-    setEditForm({ name: "", email: "", tier: "starter", commissionLevel: platformSettings?.defaultCommissionLevel || "LOW" });
+    setEditForm({
+      name: "",
+      email: "",
+      tier: "starter",
+      commissionLevel: platformSettings?.defaultCommissionLevel || "LOW",
+    });
   };
 
   const saveEditUser = async (userId: string) => {
     const key = `save-${userId}`;
     setActionLoading(key);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+      await apiFetch(`/admin/users/${userId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: editForm.name.trim(),
           email: editForm.email.trim(),
@@ -292,10 +272,8 @@ function AffiliateAgentsContent() {
         }),
       });
 
-      if (res.ok) {
-        await fetchUsers(userFilter, debouncedSearch);
-        cancelEditUser();
-      }
+      await fetchUsers(userFilter, debouncedSearch);
+      cancelEditUser();
     } catch {
       // console.error("Failed to update user");
     } finally {
@@ -308,23 +286,17 @@ function AffiliateAgentsContent() {
 
     setActionLoading(`promote-${userId}`);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/affiliates/promote`, {
+      const { data } = await apiFetch<{ message?: string }>("/admin/affiliates/promote", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ userId }),
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      if (data?.data) {
         alert("User successfully promoted to Professional Partner!");
         fetchUsers(userFilter, debouncedSearch);
         fetchAffiliates();
       } else {
-        alert(data.message || "Failed to promote user");
+        alert(data?.data?.message || "Failed to promote user");
       }
     } catch {
       alert("Error connecting to server");
@@ -337,21 +309,14 @@ function AffiliateAgentsContent() {
     const key = `block-${user.id}`;
     setActionLoading(key);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users/${user.id}`, {
+      await apiFetch(`/admin/users/${user.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           isBlocked: !user.isBlocked,
         }),
       });
 
-      if (res.ok) {
-        await fetchUsers(userFilter, debouncedSearch);
-      }
+      await fetchUsers(userFilter, debouncedSearch);
     } catch {
       // console.error("Failed to update block status");
     } finally {
@@ -367,17 +332,11 @@ function AffiliateAgentsContent() {
     const key = `delete-${user.id}`;
     setActionLoading(key);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users/${user.id}`, {
+      await apiFetch(`/admin/users/${user.id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
-      if (res.ok) {
-        await fetchUsers(userFilter, debouncedSearch);
-      }
+      await fetchUsers(userFilter, debouncedSearch);
     } catch (err) {
       console.error("Failed to delete user:", err);
     } finally {
@@ -410,10 +369,11 @@ function AffiliateAgentsContent() {
                 <button
                   key={tab.id}
                   onClick={() => router.push(`?tab=${tab.id}`)}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all ${adminTab === tab.id
-                    ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-                    }`}
+                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all ${
+                    adminTab === tab.id
+                      ? "border-b-2 border-[#14b8a6] text-[#14b8a6]"
+                      : "text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                  }`}
                 >
                   <span>{tab.icon}</span>
                   {tab.label}
@@ -426,7 +386,9 @@ function AffiliateAgentsContent() {
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <h2 className="text-sm font-semibold text-[#f0f4fa]">Professional Partners</h2>
-                    <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">Review and manage professional partner accounts</p>
+                    <p className="mt-0.5 text-xs text-[rgba(240,244,250,0.4)]">
+                      Review and manage professional partner accounts
+                    </p>
                   </div>
                   <div className="relative">
                     <input
@@ -460,38 +422,55 @@ function AffiliateAgentsContent() {
                     </thead>
                     <tbody className="divide-y divide-white/[0.03]">
                       {affiliatesLoading ? (
-                        <tr><td colSpan={5} className="py-12 text-center text-xs text-white/30">Loading affiliates...</td></tr>
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-xs text-white/30">
+                            Loading affiliates...
+                          </td>
+                        </tr>
                       ) : affiliates.length > 0 ? (
                         affiliates.map((aff) => (
                           <tr key={aff.id} className="hover:bg-white/[0.02]">
                             <td className="px-6 py-4">
                               <div className="font-medium text-[#f0f4fa]">{aff.user?.name}</div>
-                              <div className="text-xs text-[rgba(240,244,250,0.4)]">{aff.user?.email}</div>
+                              <div className="text-xs text-[rgba(240,244,250,0.4)]">
+                                {aff.user?.email}
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="font-mono text-xs text-[#14b8a6]">{aff.slug}</div>
-                              {(aff.customCommissionRate !== null || aff.lockedCommissionRate !== null) && (
+                              {(aff.customCommissionRate !== null ||
+                                aff.lockedCommissionRate !== null) && (
                                 <div className="mt-1 flex flex-col gap-0.5 text-[10px] uppercase tracking-wide font-medium">
                                   {aff.customCommissionRate !== null ? (
-                                    <span className="text-[#f59e0b]">Custom Override: {aff.customCommissionRate}%</span>
+                                    <span className="text-[#f59e0b]">
+                                      Custom Override: {aff.customCommissionRate}%
+                                    </span>
                                   ) : null}
-                                  {aff.lockedCommissionRate !== null && aff.customCommissionRate === null ? (
-                                    <span className="text-[#14b8a6]/70">Locked Rate: {aff.lockedCommissionRate}%</span>
+                                  {aff.lockedCommissionRate !== null &&
+                                  aff.customCommissionRate === null ? (
+                                    <span className="text-[#14b8a6]/70">
+                                      Locked Rate: {aff.lockedCommissionRate}%
+                                    </span>
                                   ) : null}
                                 </div>
                               )}
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${aff.status === "ACTIVE"
-                                ? "bg-green-500/10 text-green-400"
-                                : aff.status === "PENDING"
-                                  ? "bg-yellow-500/10 text-yellow-400"
-                                  : "bg-red-500/10 text-red-400"
-                                }`}>
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
+                                  aff.status === "ACTIVE"
+                                    ? "bg-green-500/10 text-green-400"
+                                    : aff.status === "PENDING"
+                                      ? "bg-yellow-500/10 text-yellow-400"
+                                      : "bg-red-500/10 text-red-400"
+                                }`}
+                              >
                                 {aff.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-[#f0f4fa]">${typeof aff.balance === 'number' ? aff.balance.toFixed(2) : "0.00"}</td>
+                            <td className="px-6 py-4 text-[#f0f4fa]">
+                              ${typeof aff.balance === "number" ? aff.balance.toFixed(2) : "0.00"}
+                            </td>
                             <td className="px-6 py-4 text-right">
                               {aff.status === "PENDING" && (
                                 <div className="flex justify-end gap-2">
@@ -526,7 +505,11 @@ function AffiliateAgentsContent() {
                           </tr>
                         ))
                       ) : (
-                        <tr><td colSpan={5} className="py-12 text-center text-xs text-white/30">No affiliate applications found.</td></tr>
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-xs text-white/30">
+                            No affiliate applications found.
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
@@ -567,28 +550,31 @@ function AffiliateAgentsContent() {
                     <div className="flex items-center rounded-lg border border-white/[0.08] bg-[#05080f] p-1 text-xs">
                       <button
                         onClick={() => setUserFilter("paid")}
-                        className={`rounded-md px-2.5 py-1 transition ${userFilter === "paid"
-                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                          : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                          }`}
+                        className={`rounded-md px-2.5 py-1 transition ${
+                          userFilter === "paid"
+                            ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                            : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                        }`}
                       >
                         Paid only
                       </button>
                       <button
                         onClick={() => setUserFilter("free")}
-                        className={`rounded-md px-2.5 py-1 transition ${userFilter === "free"
-                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                          : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                          }`}
+                        className={`rounded-md px-2.5 py-1 transition ${
+                          userFilter === "free"
+                            ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                            : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                        }`}
                       >
                         Free only
                       </button>
                       <button
                         onClick={() => setUserFilter("all")}
-                        className={`rounded-md px-2.5 py-1 transition ${userFilter === "all"
-                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                          : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
-                          }`}
+                        className={`rounded-md px-2.5 py-1 transition ${
+                          userFilter === "all"
+                            ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                            : "text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa]"
+                        }`}
                       >
                         All
                       </button>
@@ -648,12 +634,17 @@ function AffiliateAgentsContent() {
                           <option value="starter">starter</option>
                           <option value="professional">professional</option>
                           <option value="enterprise">enterprise</option>
-                          <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                          <option value="ai-revenue-infrastructure">
+                            ai-revenue-infrastructure
+                          </option>
                         </select>
                         <select
                           value={createForm.commissionLevel}
                           onChange={(event) =>
-                            setCreateForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                            setCreateForm((prev) => ({
+                              ...prev,
+                              commissionLevel: event.target.value,
+                            }))
                           }
                           className="flex-1 rounded-lg border border-white/[0.08] bg-[#0c111d] px-3 py-2 text-xs text-[#f0f4fa]"
                         >
@@ -670,9 +661,7 @@ function AffiliateAgentsContent() {
                         </button>
                       </div>
                     </div>
-                    {createError && (
-                      <p className="mt-2 text-xs text-[#f97316]">{createError}</p>
-                    )}
+                    {createError && <p className="mt-2 text-xs text-[#f97316]">{createError}</p>}
                   </div>
                 )}
 
@@ -709,12 +698,18 @@ function AffiliateAgentsContent() {
                             </div>
                           ) : (
                             <div className="flex flex-col xl:flex-row xl:items-center gap-1 xl:gap-3">
-                              <p className="text-sm font-semibold text-[#f0f4fa] truncate">{user.name}</p>
+                              <p className="text-sm font-semibold text-[#f0f4fa] truncate">
+                                {user.name}
+                              </p>
                               <div className="flex flex-wrap items-center gap-2 text-xs truncate">
                                 <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                <p className="text-[rgba(240,244,250,0.5)] truncate">{user.email}</p>
+                                <p className="text-[rgba(240,244,250,0.5)] truncate">
+                                  {user.email}
+                                </p>
                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                <p className="text-[rgba(240,244,250,0.35)] truncate">@{user.username || "-"}</p>
+                                <p className="text-[rgba(240,244,250,0.35)] truncate">
+                                  @{user.username || "-"}
+                                </p>
                               </div>
                             </div>
                           )}
@@ -733,12 +728,17 @@ function AffiliateAgentsContent() {
                                   <option value="starter">starter</option>
                                   <option value="professional">professional</option>
                                   <option value="enterprise">enterprise</option>
-                                  <option value="ai-revenue-infrastructure">ai-revenue-infrastructure</option>
+                                  <option value="ai-revenue-infrastructure">
+                                    ai-revenue-infrastructure
+                                  </option>
                                 </select>
                                 <select
                                   value={editForm.commissionLevel}
                                   onChange={(event) =>
-                                    setEditForm((prev) => ({ ...prev, commissionLevel: event.target.value }))
+                                    setEditForm((prev) => ({
+                                      ...prev,
+                                      commissionLevel: event.target.value,
+                                    }))
                                   }
                                   className="block rounded-lg border border-white/[0.08] bg-[#0c111d] px-2 py-1.5 text-xs text-[#f0f4fa]"
                                 >
@@ -750,15 +750,19 @@ function AffiliateAgentsContent() {
                             ) : (
                               <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 text-[11px] text-[rgba(240,244,250,0.45)]">
                                 <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium border ${{
-                                    active: "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]",
-                                    trialing: "border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]",
-                                    canceled: "border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]",
-                                    past_due: "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]",
-                                    free: "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]",
-                                  }[(user?.tenant?.subscriptionStatus as string) || "free"] ||
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium border ${
+                                    {
+                                      active: "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]",
+                                      trialing:
+                                        "border-[#f59e0b]/30 bg-[#f59e0b]/10 text-[#f59e0b]",
+                                      canceled:
+                                        "border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]",
+                                      past_due:
+                                        "border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444]",
+                                      free: "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]",
+                                    }[(user?.tenant?.subscriptionStatus as string) || "free"] ||
                                     "border-white/[0.15] bg-white/[0.03] text-[rgba(240,244,250,0.6)]"
-                                    }`}
+                                  }`}
                                 >
                                   {(user?.tenant?.subscriptionStatus as string) || "free"}
                                 </span>
@@ -768,13 +772,27 @@ function AffiliateAgentsContent() {
                                   </span>
                                 )}
                                 <span className="hidden xl:block w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                <span>Tier: <span className="text-[#f0f4fa]">{(user?.tenant?.subscriptionTier as string) || "starter"}</span></span>
+                                <span>
+                                  Tier:{" "}
+                                  <span className="text-[#f0f4fa]">
+                                    {(user?.tenant?.subscriptionTier as string) || "starter"}
+                                  </span>
+                                </span>
                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                <span>Comm: <span className="text-[#14b8a6]">{user.commissionLevel || "LOW"}</span></span>
+                                <span>
+                                  Comm:{" "}
+                                  <span className="text-[#14b8a6]">
+                                    {user.commissionLevel || "LOW"}
+                                  </span>
+                                </span>
                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                <span className="uppercase font-semibold text-[rgba(240,244,250,0.6)]">{user.role || (user.isAdmin ? "ADMIN" : "USER")}</span>
+                                <span className="uppercase font-semibold text-[rgba(240,244,250,0.6)]">
+                                  {user.role || (user.isAdmin ? "ADMIN" : "USER")}
+                                </span>
                                 <span className="w-1 h-1 rounded-full bg-white/[0.15]"></span>
-                                <span className="text-[rgba(240,244,250,0.35)]">{new Date(user.createdAt).toLocaleDateString()}</span>
+                                <span className="text-[rgba(240,244,250,0.35)]">
+                                  {new Date(user.createdAt).toLocaleDateString()}
+                                </span>
                               </div>
                             )}
                           </div>

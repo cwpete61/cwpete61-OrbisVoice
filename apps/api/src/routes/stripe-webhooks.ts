@@ -5,7 +5,7 @@ import { env } from "../env";
 import { logger } from "../logger";
 import crypto from "crypto";
 import { createNotification, NotifType } from "../services/notification";
-import { UsageService } from "../services/usage-service";
+import { UsageService, resolveUsageLimitForTier } from "../services/usage-service";
 
 /**
  * Stripe Webhook Handler
@@ -343,12 +343,14 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
             break;
           }
 
+          const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+          const freeUsageLimit = resolveUsageLimitForTier("free", settings);
           await prisma.tenant.update({
             where: { id: tenant.id },
             data: {
               subscriptionStatus: "canceled",
               subscriptionTier: "free",
-              usageLimit: 0,
+              usageLimit: freeUsageLimit,
             },
           });
           logger.info(

@@ -33,7 +33,16 @@ export async function finalizeSession(sessionId: string): Promise<void> {
       .join("\n\n");
 
     // Calculate duration
-    const duration = session.lastActivityTime - session.startTime;
+    const durationSeconds = Math.round((session.lastActivityTime - session.startTime) / 1000);
+
+    // Fetch settings to get cost per minute
+    const settings = await prisma.platformSettings.findUnique({
+      where: { id: "global" },
+      select: { costPerMinute: true },
+    });
+    
+    const costPerMinute = settings?.costPerMinute ?? 0.013;
+    const estimatedCost = (durationSeconds / 60) * costPerMinute;
 
     // Create transcript record
     const transcript = await prisma.transcript.create({
@@ -41,7 +50,8 @@ export async function finalizeSession(sessionId: string): Promise<void> {
         agentId: session.agentId,
         userId: session.userId,
         content: transcriptContent,
-        duration: Math.round(duration / 1000), // Convert to seconds
+        duration: durationSeconds,
+        estimatedCost: estimatedCost,
       },
     });
 

@@ -3,14 +3,22 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 // ─── Helper ────────────────────────────────────────────────────────────────
 function StatusDot({ ok }: { ok: boolean }) {
-  return <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#10b981]" : "bg-[#f97316]"}`} />;
+  return (
+    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#10b981]" : "bg-[#f97316]"}`} />
+  );
 }
 
-function Badge({ children, color = "teal" }: { children: React.ReactNode; color?: "teal" | "green" | "red" | "orange" | "purple" }) {
+function Badge({
+  children,
+  color = "teal",
+}: {
+  children: React.ReactNode;
+  color?: "teal" | "green" | "red" | "orange" | "purple";
+}) {
   const colors: Record<string, string> = {
     teal: "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20",
     green: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -19,7 +27,9 @@ function Badge({ children, color = "teal" }: { children: React.ReactNode; color?
     purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${colors[color]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${colors[color]}`}
+    >
       {children}
     </span>
   );
@@ -52,17 +62,30 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
     { label: "Total Referred", value: stats?.totalReferred ?? 0, highlight: false },
     { label: "Accepted", value: stats?.accepted ?? 0, highlight: false },
     { label: "Converted", value: stats?.completed ?? 0, highlight: false },
-    { label: "Total Earned", value: `$${(stats?.totalRewards ?? 0).toFixed(2)}`, highlight: false, mono: true },
-    { label: "Available", value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`, highlight: true, mono: true, desc: "$100 minimum threshold" },
+    {
+      label: "Total Earned",
+      value: `$${(stats?.totalRewards ?? 0).toFixed(2)}`,
+      highlight: false,
+      mono: true,
+    },
+    {
+      label: "Available",
+      value: `$${(stats?.availableRewards ?? 0).toFixed(2)}`,
+      highlight: true,
+      mono: true,
+      desc: "$100 minimum threshold",
+    },
     {
       label: "Pending (Hold)",
       value: `$${(stats?.pendingRewards ?? 0).toFixed(2)}`,
       highlight: false,
       dim: true,
       mono: true,
-      desc: stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)
-        ? `Est. Payday: ${getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}`
-        : "30-day verification"
+      desc: stats?.referrals?.some(
+        (r: any) => (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0
+      )
+        ? `Est. Payday: ${getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0).createdAt)}`
+        : "30-day verification",
     },
   ];
 
@@ -71,15 +94,28 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
       {/* Commission rate + referral link */}
       <div className="grid gap-6 md:grid-cols-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
         <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl">
-          <h2 className="mb-1 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">Your Commission Rate</h2>
+          <h2 className="mb-1 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">
+            Your Commission Rate
+          </h2>
           <p className="text-4xl font-black text-[#14b8a6]">{commissionRate}%</p>
-          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.4)]">Per referred customer&apos;s first qualifying payment</p>
+          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.4)]">
+            Per referred customer&apos;s first qualifying payment
+          </p>
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-xl">
-          <h2 className="mb-3 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">Your Partner Link</h2>
+          <h2 className="mb-3 text-xs uppercase tracking-[0.1em] font-black text-[rgba(240,244,250,0.4)]">
+            Your Partner Link
+          </h2>
           <div className="flex gap-2">
-            <input readOnly value={stats?.shareUrl || "Loading…"} className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[rgba(240,244,250,0.7)] outline-none truncate font-mono" />
-            <button onClick={copyLink} className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-bold text-[#05080f] hover:bg-[#0d9488] transition active:scale-95 shrink-0">
+            <input
+              readOnly
+              value={stats?.shareUrl || "Loading…"}
+              className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-3 py-2.5 text-sm text-[rgba(240,244,250,0.7)] outline-none truncate font-mono"
+            />
+            <button
+              onClick={copyLink}
+              className="rounded-lg bg-[#14b8a6] px-4 py-2.5 text-sm font-bold text-[#05080f] hover:bg-[#0d9488] transition active:scale-95 shrink-0"
+            >
               Copy
             </button>
           </div>
@@ -94,9 +130,16 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
         </h3>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {metrics.map((m) => (
-            <div key={m.label} className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5 hover:border-white/[0.12] transition-all">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-2">{m.label}</p>
-              <p className={`text-2xl font-bold ${m.highlight ? "text-[#14b8a6]" : m.dim ? "text-[rgba(240,244,250,0.4)]" : "text-[#f0f4fa]"} ${m.mono ? "font-mono text-xl" : ""}`}>
+            <div
+              key={m.label}
+              className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5 hover:border-white/[0.12] transition-all"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-2">
+                {m.label}
+              </p>
+              <p
+                className={`text-2xl font-bold ${m.highlight ? "text-[#14b8a6]" : m.dim ? "text-[rgba(240,244,250,0.4)]" : "text-[#f0f4fa]"} ${m.mono ? "font-mono text-xl" : ""}`}
+              >
                 {m.value}
               </p>
             </div>
@@ -113,11 +156,36 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
         <div className="rounded-2xl border border-white/[0.06] bg-[#0c111d] p-6 shadow-lg shadow-[#14b8a6]/5">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
             {[
-              { label: "Customer Pays", icon: "💳", desc: "Referral commission created", color: "border-purple-500/30 bg-purple-500/5 text-purple-400" },
-              { label: "30-Day Hold", icon: "⏳", desc: "Refund protection period", color: "border-orange-500/30 bg-orange-500/5 text-orange-400" },
-              { label: "Available", icon: "✅", desc: "Ready for payout queue", color: "border-[#14b8a6]/30 bg-[#14b8a6]/5 text-[#14b8a6]" },
-              { label: "Transfer", icon: "🏦", desc: "Sent to your Stripe account", color: "border-green-500/30 bg-green-500/5 text-green-400" },
-              { label: "Bank Deposit", icon: "🎉", desc: "Lands in your bank account", color: "border-blue-500/30 bg-blue-500/5 text-blue-400" },
+              {
+                label: "Customer Pays",
+                icon: "💳",
+                desc: "Referral commission created",
+                color: "border-purple-500/30 bg-purple-500/5 text-purple-400",
+              },
+              {
+                label: "30-Day Hold",
+                icon: "⏳",
+                desc: "Refund protection period",
+                color: "border-orange-500/30 bg-orange-500/5 text-orange-400",
+              },
+              {
+                label: "Available",
+                icon: "✅",
+                desc: "Ready for payout queue",
+                color: "border-[#14b8a6]/30 bg-[#14b8a6]/5 text-[#14b8a6]",
+              },
+              {
+                label: "Transfer",
+                icon: "🏦",
+                desc: "Sent to your Stripe account",
+                color: "border-green-500/30 bg-green-500/5 text-green-400",
+              },
+              {
+                label: "Bank Deposit",
+                icon: "🎉",
+                desc: "Lands in your bank account",
+                color: "border-blue-500/30 bg-blue-500/5 text-blue-400",
+              },
             ].map((step, i, arr) => (
               <div key={step.label} className="flex items-center gap-2 shrink-0">
                 <div className={`rounded-xl border ${step.color} p-4 text-center min-w-[130px]`}>
@@ -155,11 +223,22 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
                   <th className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-1.5 group/tip relative">
                       Expected Payout
-                      <svg className="h-3 w-3 text-[rgba(240,244,250,0.3)] cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="h-3 w-3 text-[rgba(240,244,250,0.3)] cursor-help"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 rounded-xl bg-[#05080f] border border-white/10 text-[10px] normal-case font-medium text-[rgba(240,244,250,0.6)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
-                        Funds are released to your bank in the next available bi-monthly window (15th or end of month) after the 30-day verification hold expires.
+                        Funds are released to your bank in the next available bi-monthly window
+                        (15th or end of month) after the 30-day verification hold expires.
                       </div>
                     </div>
                   </th>
@@ -169,38 +248,63 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
               <tbody className="divide-y divide-white/[0.04]">
                 {!stats?.referrals || stats.referrals.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)] font-medium">
+                    <td
+                      colSpan={7}
+                      className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)] font-medium"
+                    >
                       No referral activity found yet. Start sharing your link to earn!
                     </td>
                   </tr>
                 ) : (
                   stats.referrals.map((ref: any) => (
                     <tr key={ref.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-6 py-5 text-[rgba(240,244,250,0.5)] whitespace-nowrap">{new Date(ref.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-5 text-[rgba(240,244,250,0.6)] font-mono text-[10px]">{ref.referralCodeUsed || "—"}</td>
+                      <td className="px-6 py-5 text-[rgba(240,244,250,0.5)] whitespace-nowrap">
+                        {new Date(ref.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-5 text-[rgba(240,244,250,0.6)] font-mono text-[10px]">
+                        {ref.referralCodeUsed || "—"}
+                      </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-[10px] font-bold text-teal-400">
                             {(ref.name || "U").charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-[#f0f4fa]">{ref.name || "Anonymous User"}</div>
-                            <div className="text-[10px] text-[rgba(240,244,250,0.4)]">{ref.email || "No email"}</div>
+                            <div className="font-bold text-[#f0f4fa]">
+                              {ref.name || "Anonymous User"}
+                            </div>
+                            <div className="text-[10px] text-[rgba(240,244,250,0.4)]">
+                              {ref.email || "No email"}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <Badge color={ref.plan === "enterprise" ? "purple" : ref.plan === "professional" ? "teal" : "teal"}>{ref.plan}</Badge>
+                        <Badge
+                          color={
+                            ref.plan === "enterprise"
+                              ? "purple"
+                              : ref.plan === "professional"
+                                ? "teal"
+                                : "teal"
+                          }
+                        >
+                          {ref.plan}
+                        </Badge>
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex justify-center">
-                          <Badge color={ref.status === "completed" ? "green" : "orange"}>{ref.status}</Badge>
+                          <Badge color={ref.status === "completed" ? "green" : "orange"}>
+                            {ref.status}
+                          </Badge>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center font-medium text-[rgba(240,244,250,0.5)]">
                         {ref.status === "completed" ? getExpectedPayoutDate(ref.createdAt) : "—"}
                       </td>
-                      <td className="px-6 py-5 text-right font-mono font-bold text-[#14b8a6]">${(ref.rewardAmount || 0).toFixed(2)}</td>
+                      <td className="px-6 py-5 text-right font-mono font-bold text-[#14b8a6]">
+                        ${(ref.rewardAmount || 0).toFixed(2)}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -213,7 +317,13 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
   );
 }
 
-function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconnect, stripeStatus }: any) {
+function BankingTab({
+  stripeDetails,
+  loginLinkLoading,
+  onGetLoginLink,
+  onReconnect,
+  stripeStatus,
+}: any) {
   const isActive = stripeDetails?.connected && stripeDetails?.payoutsEnabled;
   const needsAction = stripeDetails?.requirementsDue?.length > 0;
 
@@ -225,7 +335,8 @@ function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconne
           <div>
             <h2 className="text-xl font-bold text-[#f0f4fa] mb-1">Stripe Connect</h2>
             <p className="text-sm text-[rgba(240,244,250,0.5)] max-w-lg">
-              Your bank account is connected via Stripe Express. Payouts go from OrbisVoice&apos;s platform to your Stripe account, then to your bank on your configured schedule.
+              Your bank account is connected via Stripe Express. Payouts go from OrbisVoice&apos;s
+              platform to your Stripe account, then to your bank on your configured schedule.
             </p>
           </div>
           <div className="flex gap-3 shrink-0">
@@ -235,13 +346,27 @@ function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconne
                 disabled={loginLinkLoading}
                 className="flex items-center gap-2 rounded-lg bg-[#635BFF] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524ae3] transition disabled:opacity-50 shadow-lg shadow-[#635BFF]/20"
               >
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
                 {loginLinkLoading ? "Opening…" : "Open Stripe Dashboard"}
               </button>
             )}
             {!isActive && (
-              <button onClick={onReconnect} className="rounded-lg bg-[#635BFF] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524ae3] transition shadow-lg shadow-[#635BFF]/20">
-                {stripeStatus?.status === "not_connected" ? "Connect Bank Account" : "Complete Onboarding"}
+              <button
+                onClick={onReconnect}
+                className="rounded-lg bg-[#635BFF] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524ae3] transition shadow-lg shadow-[#635BFF]/20"
+              >
+                {stripeStatus?.status === "not_connected"
+                  ? "Connect Bank Account"
+                  : "Complete Onboarding"}
               </button>
             )}
           </div>
@@ -255,14 +380,21 @@ function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconne
             { label: "Payouts Enabled", ok: stripeDetails?.payoutsEnabled },
             { label: "Payout Schedule", value: stripeDetails?.payoutSchedule || "Not set" },
           ].map((item) => (
-            <div key={item.label} className="rounded-xl border border-white/[0.05] bg-[#111827] p-4">
-              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-2">{item.label}</p>
+            <div
+              key={item.label}
+              className="rounded-xl border border-white/[0.05] bg-[#111827] p-4"
+            >
+              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-2">
+                {item.label}
+              </p>
               {item.value !== undefined ? (
                 <p className="text-sm font-semibold text-[#f0f4fa]">{item.value}</p>
               ) : (
                 <div className="flex items-center gap-2">
                   <StatusDot ok={item.ok ?? false} />
-                  <span className="text-sm font-semibold text-[#f0f4fa]">{item.ok ? "Yes" : "No"}</span>
+                  <span className="text-sm font-semibold text-[#f0f4fa]">
+                    {item.ok ? "Yes" : "No"}
+                  </span>
                 </div>
               )}
             </div>
@@ -272,10 +404,24 @@ function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconne
         {/* Requirements due warning */}
         {needsAction && (
           <div className="mt-6 flex items-start gap-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
-            <svg className="mt-0.5 h-5 w-5 shrink-0 text-orange-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <svg
+              className="mt-0.5 h-5 w-5 shrink-0 text-orange-400"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
             <div>
               <p className="text-sm font-semibold text-orange-400">Action Required</p>
-              <p className="mt-1 text-xs text-orange-300/70">Stripe needs additional information: {stripeDetails.requirementsDue.join(", ")}</p>
+              <p className="mt-1 text-xs text-orange-300/70">
+                Stripe needs additional information: {stripeDetails.requirementsDue.join(", ")}
+              </p>
             </div>
           </div>
         )}
@@ -284,13 +430,23 @@ function BankingTab({ stripeDetails, loginLinkLoading, onGetLoginLink, onReconne
         {stripeDetails?.liveDataAvailable && (
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="rounded-xl border border-white/[0.05] bg-[#111827] p-4">
-              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-1">Your Stripe Available</p>
-              <p className="text-2xl font-bold font-mono text-[#10b981]">${(stripeDetails.connectedBalance?.available ?? 0).toFixed(2)}</p>
-              <p className="text-[10px] text-[rgba(240,244,250,0.3)] mt-1">Ready to pay out to bank</p>
+              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-1">
+                Your Stripe Available
+              </p>
+              <p className="text-2xl font-bold font-mono text-[#10b981]">
+                ${(stripeDetails.connectedBalance?.available ?? 0).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-[rgba(240,244,250,0.3)] mt-1">
+                Ready to pay out to bank
+              </p>
             </div>
             <div className="rounded-xl border border-white/[0.05] bg-[#111827] p-4">
-              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-1">Your Stripe Pending</p>
-              <p className="text-2xl font-bold font-mono text-[rgba(240,244,250,0.5)]">${(stripeDetails.connectedBalance?.pending ?? 0).toFixed(2)}</p>
+              <p className="text-[10px] uppercase tracking-wider text-[rgba(240,244,250,0.4)] mb-1">
+                Your Stripe Pending
+              </p>
+              <p className="text-2xl font-bold font-mono text-[rgba(240,244,250,0.5)]">
+                ${(stripeDetails.connectedBalance?.pending ?? 0).toFixed(2)}
+              </p>
               <p className="text-[10px] text-[rgba(240,244,250,0.3)] mt-1">In Stripe settlement</p>
             </div>
           </div>
@@ -306,7 +462,9 @@ function PayoutHistoryTab({ payouts }: { payouts: any[] }) {
       <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] overflow-hidden">
         <div className="p-6 border-b border-white/[0.05]">
           <h2 className="text-lg font-semibold text-[#f0f4fa]">Payout History</h2>
-          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">Confirmed transfers from OrbisVoice to your Stripe account.</p>
+          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
+            Confirmed transfers from OrbisVoice to your Stripe account.
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -321,26 +479,48 @@ function PayoutHistoryTab({ payouts }: { payouts: any[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {payouts.length > 0 ? payouts.map((p) => (
-                <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.6)]">{new Date(p.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-mono text-[rgba(240,244,250,0.7)]">${p.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-mono text-[#f97316]">-${(p.feeAmount ?? 0).toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#14b8a6]">${(p.netAmount ?? p.amount).toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {p.transactionId && p.transactionId !== "simulated" ? (
-                      <a href={`https://dashboard.stripe.com/test/transfers/${p.transactionId}`} target="_blank" rel="noopener noreferrer"
-                        className="font-mono text-[10px] text-[#635BFF] hover:underline">{p.transactionId.slice(0, 18)}…</a>
-                    ) : (
-                      <span className="font-mono text-[10px] text-[rgba(240,244,250,0.3)]">{p.transactionId || "—"}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge color="green">{p.status}</Badge>
+              {payouts.length > 0 ? (
+                payouts.map((p) => (
+                  <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.6)]">
+                      {new Date(p.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono text-[rgba(240,244,250,0.7)]">
+                      ${p.amount.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono text-[#f97316]">
+                      -${(p.feeAmount ?? 0).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#14b8a6]">
+                      ${(p.netAmount ?? p.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {p.transactionId && p.transactionId !== "simulated" ? (
+                        <a
+                          href={`https://dashboard.stripe.com/test/transfers/${p.transactionId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-[10px] text-[#635BFF] hover:underline"
+                        >
+                          {p.transactionId.slice(0, 18)}…
+                        </a>
+                      ) : (
+                        <span className="font-mono text-[10px] text-[rgba(240,244,250,0.3)]">
+                          {p.transactionId || "—"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge color="green">{p.status}</Badge>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
+                    No payouts yet
                   </td>
                 </tr>
-              )) : (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">No payouts yet</td></tr>
               )}
             </tbody>
           </table>
@@ -350,7 +530,15 @@ function PayoutHistoryTab({ payouts }: { payouts: any[] }) {
   );
 }
 
-function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, saveMsg, saveErr }: any) {
+function TaxComplianceTab({
+  taxStatus,
+  formData,
+  setFormData,
+  onSave,
+  saving,
+  saveMsg,
+  saveErr,
+}: any) {
   const ytd = taxStatus?.ytdEarnings ?? 0;
   const threshold = taxStatus?.thresholdAmount ?? 600;
   const pct = Math.min((ytd / threshold) * 100, 100);
@@ -361,13 +549,20 @@ function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, sa
       {/* YTD earning vs $600 threshold */}
       <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
         <h2 className="text-lg font-semibold text-[#f0f4fa] mb-1">IRS Compliance Status</h2>
-        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">The IRS requires a 1099-NEC for any partner earning $600+ in a calendar year.</p>
+        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">
+          The IRS requires a 1099-NEC for any partner earning $600+ in a calendar year.
+        </p>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-[rgba(240,244,250,0.6)]">YTD Earnings</span>
-          <span className="text-sm font-bold font-mono text-[#f0f4fa]">${ytd.toFixed(2)} / ${threshold}</span>
+          <span className="text-sm font-bold font-mono text-[#f0f4fa]">
+            ${ytd.toFixed(2)} / ${threshold}
+          </span>
         </div>
         <div className="h-3 w-full rounded-full bg-white/[0.05] overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-700 ${crossed ? "bg-[#f97316]" : "bg-[#14b8a6]"}`} style={{ width: `${pct}%` }} />
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${crossed ? "bg-[#f97316]" : "bg-[#14b8a6]"}`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
         <div className="mt-4 flex gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -376,15 +571,22 @@ function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, sa
           </div>
           <div className="flex items-center gap-2">
             <StatusDot ok={(taxStatus?.availableTaxForms ?? 0) > 0} />
-            <span className="text-xs text-[rgba(240,244,250,0.6)]">{taxStatus?.availableTaxForms ?? 0} 1099 form(s) available</span>
+            <span className="text-xs text-[rgba(240,244,250,0.6)]">
+              {taxStatus?.availableTaxForms ?? 0} 1099 form(s) available
+            </span>
           </div>
         </div>
         {crossed && !taxStatus?.taxFormCompleted && (
           <div className="mt-4 flex items-start gap-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
             <span className="text-orange-400 text-lg">⚠️</span>
             <div>
-              <p className="text-sm font-semibold text-orange-400">Action Required: Submit Tax Information</p>
-              <p className="mt-1 text-xs text-orange-300/70">You&apos;ve exceeded the $600 IRS reporting threshold. Complete the tax form below to prevent payout holds.</p>
+              <p className="text-sm font-semibold text-orange-400">
+                Action Required: Submit Tax Information
+              </p>
+              <p className="mt-1 text-xs text-orange-300/70">
+                You&apos;ve exceeded the $600 IRS reporting threshold. Complete the tax form below
+                to prevent payout holds.
+              </p>
             </div>
           </div>
         )}
@@ -393,16 +595,21 @@ function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, sa
             <p className="text-xs text-[rgba(240,244,250,0.5)] mb-2">Available Tax Documents:</p>
             <div className="space-y-2">
               {taxStatus.taxForms.map((f: any) => (
-                <div key={f.id} className="flex items-center justify-between rounded-lg border border-white/[0.05] bg-[#111827] px-4 py-2.5">
-                  <span className="text-sm text-[#f0f4fa]">{f.type} — {f.year}</span>
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between rounded-lg border border-white/[0.05] bg-[#111827] px-4 py-2.5"
+                >
+                  <span className="text-sm text-[#f0f4fa]">
+                    {f.type} — {f.year}
+                  </span>
                   <Badge color={f.status === "available" ? "green" : "orange"}>{f.status}</Badge>
                 </div>
               ))}
             </div>
             <p className="mt-3 text-xs text-[rgba(240,244,250,0.4)]">
               Access and download your 1099 from your{" "}
-              <span className="text-[#635BFF]">Stripe Express Dashboard</span>{" "}
-              (Payouts & Banking tab → Open Stripe Dashboard).
+              <span className="text-[#635BFF]">Stripe Express Dashboard</span> (Payouts & Banking
+              tab → Open Stripe Dashboard).
             </p>
           </div>
         )}
@@ -410,10 +617,22 @@ function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, sa
 
       {/* Tax info form */}
       <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6 lg:p-8">
-        <h2 className="text-lg font-semibold text-[#f0f4fa] mb-1">Tax & Identification Information</h2>
-        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">Required for 1099-NEC compliance. Stored securely, used only for tax reporting.</p>
-        {saveErr && <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{saveErr}</div>}
-        {saveMsg && <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">{saveMsg}</div>}
+        <h2 className="text-lg font-semibold text-[#f0f4fa] mb-1">
+          Tax & Identification Information
+        </h2>
+        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-6">
+          Required for 1099-NEC compliance. Stored securely, used only for tax reporting.
+        </p>
+        {saveErr && (
+          <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            {saveErr}
+          </div>
+        )}
+        {saveMsg && (
+          <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+            {saveMsg}
+          </div>
+        )}
         <form onSubmit={onSave} className="space-y-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[
@@ -423,36 +642,70 @@ function TaxComplianceTab({ taxStatus, formData, setFormData, onSave, saving, sa
               { key: "phone", label: "Phone" },
             ].map(({ key, label }) => (
               <div key={key}>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">{label}</label>
-                <input type="text" value={formData[key]} onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">
+                  {label}
+                </label>
+                <input
+                  type="text"
+                  value={formData[key]}
+                  onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                  className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none"
+                />
               </div>
             ))}
           </div>
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-4 sm:col-span-2">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">Street Address</label>
-              <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">
+                Street Address
+              </label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none"
+              />
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">City</label>
-              <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">
+                City
+              </label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none"
+              />
             </div>
             <div className="col-span-1">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">State</label>
-              <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">
+                State
+              </label>
+              <input
+                type="text"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none"
+              />
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">TIN / SSN (last 4 for verification)</label>
-            <input type="text" value={formData.tinSsn} onChange={(e) => setFormData({ ...formData, tinSsn: e.target.value })}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none" />
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[rgba(240,244,250,0.5)]">
+              TIN / SSN (last 4 for verification)
+            </label>
+            <input
+              type="text"
+              value={formData.tinSsn}
+              onChange={(e) => setFormData({ ...formData, tinSsn: e.target.value })}
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm text-white focus:border-[#14b8a6] outline-none"
+            />
           </div>
           <div className="flex justify-end pt-2">
-            <button type="submit" disabled={saving} className="rounded-lg bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50 transition">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488] disabled:opacity-50 transition"
+            >
               {saving ? "Saving…" : "Save Tax Information"}
             </button>
           </div>
@@ -475,7 +728,9 @@ function TransactionsTab({ stats }: any) {
       <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] overflow-hidden">
         <div className="p-6 border-b border-white/[0.05]">
           <h2 className="text-lg font-semibold text-[#f0f4fa]">Commission Transactions</h2>
-          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">Individual commission events from your referrals.</p>
+          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
+            Individual commission events from your referrals.
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -489,22 +744,32 @@ function TransactionsTab({ stats }: any) {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {txs.length > 0 ? txs.map((tx: any) => (
-                <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.6)]">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.7)] font-mono text-[10px]">
-                    {tx.sourcePaymentId?.slice(0, 16)}…
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#14b8a6]">${tx.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-[rgba(240,244,250,0.4)]">
-                    {tx.holdEndsAt ? new Date(tx.holdEndsAt).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge color={(statusColor[tx.status] ?? "teal") as any}>{tx.status}</Badge>
+              {txs.length > 0 ? (
+                txs.map((tx: any) => (
+                  <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.6)]">
+                      {new Date(tx.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-[rgba(240,244,250,0.7)] font-mono text-[10px]">
+                      {tx.sourcePaymentId?.slice(0, 16)}…
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#14b8a6]">
+                      ${tx.amount.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-xs text-[rgba(240,244,250,0.4)]">
+                      {tx.holdEndsAt ? new Date(tx.holdEndsAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge color={(statusColor[tx.status] ?? "teal") as any}>{tx.status}</Badge>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">
+                    No transactions yet. Share your link to start earning!
                   </td>
                 </tr>
-              )) : (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-[rgba(240,244,250,0.3)]">No transactions yet. Share your link to start earning!</td></tr>
               )}
             </tbody>
           </table>
@@ -528,7 +793,17 @@ function AffiliateDashboardContent() {
   const [payoutEligibility, setPayoutEligibility] = useState<any>(null);
   const [loginLinkLoading, setLoginLinkLoading] = useState(false);
 
-  const [formData, setFormData] = useState({ firstName: "", lastName: "", businessName: "", phone: "", address: "", city: "", state: "", zip: "", tinSsn: "" });
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    businessName: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    tinSsn: "",
+  });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -537,46 +812,56 @@ function AffiliateDashboardContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
-    if (!token) { setLoading(false); return; }
 
     try {
-      const [profileRes, statsRes, stripeRes, programRes, payoutsRes, stripeDetailsRes, taxRes, eligRes] = await Promise.all([
-        fetch(`${API_BASE}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/affiliates/me`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/affiliates/stripe/status`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/affiliates/program-details`),
-        fetch(`${API_BASE}/affiliates/me/payouts`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/affiliates/stripe/account-details`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/affiliates/me/tax-status`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/affiliates/me/payout-eligibility`, { headers: { Authorization: `Bearer ${token}` } }),
+      const [
+        profileData,
+        statsData,
+        stripeData,
+        programData,
+        payoutsData,
+        stripeDetailsData,
+        taxData,
+        eligData,
+      ] = await Promise.all([
+        apiFetch<any>("/users/me"),
+        apiFetch<any>("/affiliates/me"),
+        apiFetch<any>("/affiliates/stripe/status"),
+        apiFetch<any>("/affiliates/program-details"),
+        apiFetch<any>("/affiliates/me/payouts"),
+        apiFetch<any>("/affiliates/stripe/account-details"),
+        apiFetch<any>("/affiliates/me/tax-status"),
+        apiFetch<any>("/affiliates/me/payout-eligibility"),
       ]);
 
-      if (profileRes.ok) {
-        const d = await profileRes.json();
-        setProfile(d.data);
+      if (profileData.data?.data) {
+        const p = profileData.data.data;
+        setProfile(p);
         setFormData({
-          firstName: d.data.firstName || "", lastName: d.data.lastName || "",
-          businessName: d.data.businessName || "", phone: d.data.phone || "",
-          address: d.data.address || "", city: d.data.city || "",
-          state: d.data.state || "", zip: d.data.zip || "",
-          tinSsn: d.data.tinSsn || "",
+          firstName: p.firstName || "",
+          lastName: p.lastName || "",
+          businessName: p.businessName || "",
+          phone: p.phone || "",
+          address: p.address || "",
+          city: p.city || "",
+          state: p.state || "",
+          zip: p.zip || "",
+          tinSsn: p.tinSsn || "",
         });
       }
-      if (statsRes.ok) {
-        const statsData = (await statsRes.json()).data;
-        setStats(statsData);
-        // Sync isAffiliate from affiliate stats if profile hasn't updated yet
-        if (statsData?.isAffiliate) {
-          setProfile((prev: any) => prev ? { ...prev, isAffiliate: true } : prev);
+      if (statsData.data?.data) {
+        const stats = statsData.data.data;
+        setStats(stats);
+        if (stats?.isAffiliate) {
+          setProfile((prev: any) => (prev ? { ...prev, isAffiliate: true } : prev));
         }
       }
-      if (stripeRes.ok) setStripeStatus((await stripeRes.json()).data);
-      if (programRes.ok) setCommissionRate((await programRes.json()).data?.commissionRate ?? 30);
-      if (payoutsRes.ok) setPayouts((await payoutsRes.json()).data ?? []);
-      if (stripeDetailsRes.ok) setStripeDetails((await stripeDetailsRes.json()).data);
-      if (taxRes.ok) setTaxStatus((await taxRes.json()).data);
-      if (eligRes.ok) setPayoutEligibility((await eligRes.json()).data);
+      if (stripeData.data?.data) setStripeStatus(stripeData.data.data);
+      if (programData.data?.data) setCommissionRate(programData.data.data.commissionRate ?? 30);
+      if (payoutsData.data?.data) setPayouts(payoutsData.data.data ?? []);
+      if (stripeDetailsData.data?.data) setStripeDetails(stripeDetailsData.data.data);
+      if (taxData.data?.data) setTaxStatus(taxData.data.data);
+      if (eligData.data?.data) setPayoutEligibility(eligData.data.data);
     } catch (err) {
       console.error("Failed to load partner portal data", err);
     } finally {
@@ -591,35 +876,46 @@ function AffiliateDashboardContent() {
   const handleGetLoginLink = async () => {
     setLoginLinkLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/affiliates/stripe/login-link`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok && data.data?.url) {
+      const { data } = await apiFetch<{ url?: string; message?: string }>(
+        "/affiliates/stripe/login-link",
+        {
+          method: "POST",
+        }
+      );
+      if (data?.data?.url) {
         window.open(data.data.url, "_blank", "noopener,noreferrer");
       } else {
-        alert(data.message || "Failed to open Stripe Dashboard");
+        alert(data?.data?.message || "Failed to open Stripe Dashboard");
       }
+    } catch (err) {
+      console.error("Failed to get login link:", err);
     } finally {
       setLoginLinkLoading(false);
     }
   };
 
   const handleStripeOnboard = async () => {
-    const token = localStorage.getItem("token");
-    const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    if (res.ok && data.data?.url) window.location.href = data.data.url;
-    else alert(data.message || "Failed to generate onboarding link.");
+    const { data } = await apiFetch<{ url?: string; message?: string }>(
+      "/affiliates/stripe/onboard",
+      {
+        method: "POST",
+      }
+    );
+    if (data?.data?.url) window.location.href = data.data.url;
+    else alert(data?.data?.message || "Failed to generate onboarding link.");
   };
 
   const handleSaveTaxInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true); setSaveMsg(null); setSaveErr(null);
+    setSaving(true);
+    setSaveMsg(null);
+    setSaveErr(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(formData) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to save");
+      const { data } = await apiFetch<{ message?: string }>("/users/me", {
+        method: "PUT",
+        body: JSON.stringify(formData),
+      });
+      if (!data?.data) throw new Error(data?.data?.message || "Failed to save");
       setSaveMsg("Tax information saved.");
     } catch (err: any) {
       setSaveErr(err.message);
@@ -642,10 +938,19 @@ function AffiliateDashboardContent() {
     return (
       <DashboardShell tokenLoaded={tokenLoaded}>
         <div className="flex h-screen flex-col items-center justify-center text-center px-4">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14b8a6]/10 text-3xl">🔒</div>
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14b8a6]/10 text-3xl">
+            🔒
+          </div>
           <h2 className="text-xl font-bold text-[#f0f4fa]">Partner Access Required</h2>
-          <p className="mt-2 text-sm text-[rgba(240,244,250,0.5)]">This portal is for approved OrbisVoice partners.</p>
-          <a href="/partner/apply" className="mt-6 rounded-lg bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]">Apply for Partner Program</a>
+          <p className="mt-2 text-sm text-[rgba(240,244,250,0.5)]">
+            This portal is for approved OrbisVoice partners.
+          </p>
+          <a
+            href="/partner/apply"
+            className="mt-6 rounded-lg bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#05080f] hover:bg-[#0d9488]"
+          >
+            Apply for Partner Program
+          </a>
         </div>
       </DashboardShell>
     );
@@ -668,11 +973,25 @@ function AffiliateDashboardContent() {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#f0f4fa]">Partner Portal</h1>
-            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">Manage your earnings, banking, and compliance.</p>
+            <p className="mt-1 text-sm text-[rgba(240,244,250,0.5)]">
+              Manage your earnings, banking, and compliance.
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={fetchData} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.08] transition">
-              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <button
+              onClick={fetchData}
+              className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-medium text-white hover:bg-white/[0.08] transition"
+            >
+              <svg
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
               Refresh
             </button>
             <Badge color={isStripeActive ? "green" : "orange"}>
@@ -706,8 +1025,10 @@ function AffiliateDashboardContent() {
                   ))}
                 </ul>
               )}
-              <button onClick={() => setActiveTab("tax")}
-                className="mt-3 rounded-lg bg-orange-500/20 border border-orange-500/30 px-4 py-1.5 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition">
+              <button
+                onClick={() => setActiveTab("tax")}
+                className="mt-3 rounded-lg bg-orange-500/20 border border-orange-500/30 px-4 py-1.5 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition"
+              >
                 Go to Tax & Compliance →
               </button>
             </div>
@@ -718,28 +1039,44 @@ function AffiliateDashboardContent() {
         <div className="mb-8 flex items-center justify-between flex-wrap gap-4 border-b border-white/[0.06] pb-px">
           <div className="flex gap-0.5 overflow-x-auto">
             {TABS.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${activeTab === tab.id
-                  ? "border-[#14b8a6] text-[#14b8a6]"
-                  : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
-                  }`}>
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all border-b-2 ${
+                  activeTab === tab.id
+                    ? "border-[#14b8a6] text-[#14b8a6]"
+                    : "border-transparent text-[rgba(240,244,250,0.5)] hover:text-[#f0f4fa]"
+                }`}
+              >
                 {tab.label}
-                {tab.id === "tax" && taxStatus?.thresholdCrossed && !taxStatus?.taxFormCompleted && (
-                  <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-                )}
+                {tab.id === "tax" &&
+                  taxStatus?.thresholdCrossed &&
+                  !taxStatus?.taxFormCompleted && (
+                    <span className="ml-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                  )}
               </button>
             ))}
           </div>
 
-          {(stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)) && (
+          {stats?.referrals?.some(
+            (r: any) => (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0
+          ) && (
             <div className="bg-red-500/10 border border-red-500/20 px-5 py-3 rounded-2xl text-[20px] font-black text-white animate-pulse tracking-tight shadow-lg shadow-red-500/5 pr-4 pb-2">
-              Next Payout: {getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}
+              Next Payout:{" "}
+              {getExpectedPayoutDate(
+                stats.referrals.find(
+                  (r: any) =>
+                    (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0
+                ).createdAt
+              )}
             </div>
           )}
         </div>
 
         {/* Tab content */}
-        {activeTab === "overview" && <OverviewTab stats={stats} commissionRate={commissionRate} profile={profile} />}
+        {activeTab === "overview" && (
+          <OverviewTab stats={stats} commissionRate={commissionRate} profile={profile} />
+        )}
         {activeTab === "banking" && (
           <BankingTab
             stripeDetails={stripeDetails}

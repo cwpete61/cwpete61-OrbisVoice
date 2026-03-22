@@ -3,27 +3,32 @@
  */
 
 const ENV_API_URL = process.env.NEXT_PUBLIC_API_URL;
-const DEV_SSR_URL = process.env.NODE_ENV === "production" ? "http://api:4001" : "http://localhost:4001";
+const DEV_SSR_URL =
+  process.env.NODE_ENV === "production" ? "http://api:4001" : "http://localhost:4001";
 
 export const API_BASE = (() => {
-    // In browser, always use relative /api (proxied by Nginx or Next.js rewrites)
-    if (typeof window !== "undefined") {
-        return "/api";
-    }
-    // If NEXT_PUBLIC_API_URL is set (e.g. for SSR or specific overrides), use it
-    if (ENV_API_URL && ENV_API_URL !== "undefined" && ENV_API_URL !== "null" && ENV_API_URL !== "") {
-        return ENV_API_URL;
-    }
-    // Fallback for SSR (intra-container or localhost)
-    return DEV_SSR_URL;
+  // In browser, always use relative /api (proxied by Nginx or Next.js rewrites)
+  if (typeof window !== "undefined") {
+    return "/api";
+  }
+  // If NEXT_PUBLIC_API_URL is set (e.g. for SSR or specific overrides), use it
+  if (ENV_API_URL && ENV_API_URL !== "undefined" && ENV_API_URL !== "null" && ENV_API_URL !== "") {
+    return ENV_API_URL;
+  }
+  // Fallback for SSR (intra-container or localhost)
+  return DEV_SSR_URL;
 })();
 
 export const COMMERCE_BASE = (() => {
-    if (typeof window !== "undefined") {
-        return "/commerce";
-    }
-    return process.env.NODE_ENV === "production" ? "http://commerce-agent:4005" : "http://localhost:4005";
+  if (typeof window !== "undefined") {
+    return "/commerce";
+  }
+  return process.env.NODE_ENV === "production"
+    ? "http://commerce-agent:4005"
+    : "http://localhost:4005";
 })();
+
+export const VOICE_GATEWAY_URL = process.env.NEXT_PUBLIC_VOICE_GATEWAY_URL || "ws://localhost:4010";
 
 export interface User {
   id: string;
@@ -195,68 +200,101 @@ export interface Tenant {
 }
 
 export interface ApiResponse<T = unknown> {
-    ok: boolean;
-    message?: string;
-    data?: T;
+  ok: boolean;
+  message?: string;
+  data?: T;
 }
 
 /**
  * Typed fetch wrapper. Throws a user-friendly Error on network failure.
  */
 export async function apiFetch<T = unknown>(
-    path: string,
-    options?: RequestInit
+  path: string,
+  options?: RequestInit
 ): Promise<{ res: Response; data: ApiResponse<T> }> {
-    const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
-    let res: Response;
-    try {
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-            ...((options?.headers as Record<string, string>) || {}),
-        };
+  let res: Response;
+  try {
+    const headers: Record<string, string> = {
+      ...((options?.headers as Record<string, string>) || {}),
+    };
 
-        // Automatically add Authorization header if not present
-        if (!headers["Authorization"]) {
-            const auth = authHeader();
-            if (auth.Authorization) {
-                headers["Authorization"] = auth.Authorization;
-            }
-        }
-
-        res = await fetch(url, {
-            ...options,
-            headers,
-        });
-    } catch (_err) {
-        // Network-level failure: API down, wrong port, CORS, etc.
-        throw new Error(
-            "Cannot connect to the server. Please make sure the API is running."
-        );
+    // Only set Content-Type if there's a body
+    if (options?.body && !headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
     }
 
-    // Auto-redirect to login on 401/404, but NOT for auth endpoints (to avoid redirect loops)
-    const isAuthEndpoint = path.startsWith("/auth/");
-    if ((res.status === 401 || res.status === 404) && !isAuthEndpoint) {
-        if (typeof window !== "undefined") {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-        }
+    // Automatically add Authorization header if not present
+    if (!headers["Authorization"]) {
+      const auth = authHeader();
+      if (auth.Authorization) {
+        headers["Authorization"] = auth.Authorization;
+      }
     }
 
-    let data: ApiResponse<T>;
-    try {
-        data = await res.json();
-    } catch {
-        throw new Error(`Server returned an invalid response (HTTP ${res.status})`);
-    }
+    res = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (_err) {
+    // Network-level failure: API down, wrong port, CORS, etc.
+    throw new Error("Cannot connect to the server. Please make sure the API is running.");
+  }
 
-    return { res, data };
+  // Auto-redirect to login on 401, but NOT for auth endpoints (to avoid redirect loops)
+  const isAuthEndpoint = path.startsWith("/auth/");
+  if (res.status === 401 && !isAuthEndpoint) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+  }
+
+  let data: ApiResponse<T>;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Server returned an invalid response (HTTP ${res.status})`);
+  }
+
+  return { res, data };
+}
+
+/** Returns the action loading key for admin handlers */
+export const actionLoadingKey = (action: string, id: string) => `${action}-${id}`;
+
+/** Unwraps a raw fetch Response or pre-parsed ApiResponse, throws descriptive error on failure */
+export async function unwrapJson<T = unknown>(resOrData: Response | ApiResponse<T>): Promise<T> {
+  if (resOrData instanceof Response) {
+    if (resOrData.status === 401) throw new Error("Session expired. Please log in again.");
+    if (!resOrData.ok) {
+      let msg = `HTTP ${resOrData.status}`;
+      try {
+        const j = await resOrData.json();
+        msg = j?.message || msg;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    return resOrData.json() as Promise<T>;
+  }
+  if (!resOrData.ok) throw new Error((resOrData as ApiResponse<T>).message || "Request failed");
+  return (resOrData as ApiResponse<T>).data as T;
+}
+
+/** Unwraps an ApiResponse, returning data on ok or throwing with message */
+export function unwrapResponse<T>(response: ApiResponse<T>): T {
+  if (!response.ok) {
+    throw new Error(response.message || "Request failed");
+  }
+  return response.data as T;
 }
 
 /** Convenience: returns Authorization header from localStorage token */
 export function authHeader(): Record<string, string> {
-    if (typeof window === "undefined") return {};
-    const token = localStorage.getItem("token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

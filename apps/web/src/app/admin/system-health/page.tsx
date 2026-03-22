@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardShell from "../../components/DashboardShell";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export default function SystemHealthPage() {
   const [stats, setStats] = useState<any>(null);
@@ -12,14 +12,10 @@ export default function SystemHealthPage() {
   useEffect(() => {
     const run = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/admin/stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const { data } = await apiFetch<any>("/admin/stats");
 
-        if (!res.ok) {
-          setError(data.message || "Failed to load system health");
+        if (!data?.data) {
+          setError("Failed to load system health");
           return;
         }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 import PasswordInput from "./PasswordInput";
-import { API_BASE, User } from "@/lib/api";
+import { apiFetch, User } from "@/lib/api";
 import Image from "next/image";
 
 interface ProfileMenuProps {
@@ -15,13 +15,26 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
   const [showProfileModal, setShowProfileModal] = useState(!!onClose); // If onClose provided, start open (controlled)
   const [profileForm, setProfileForm] = useState({ name: "", email: "" });
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [profileMessage, setProfileMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
   const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [avatar, setAvatar] = useState<string>("");
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarMessage, setAvatarMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
+  const [avatarMessage, setAvatarMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const generateAvatar = useCallback((name: string) => {
     const initials = name
@@ -41,21 +54,16 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<User>("/users/me");
       if (res.status === 401 || res.status === 404) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
 
-      if (res.ok) {
-        const data = await res.json();
+      if (data?.data) {
         setProfile(data.data);
         setProfileForm({ name: data.data.name, email: data.data.email });
-        // Use uploaded avatar if available, otherwise generate one
         if (data.data.avatar) {
           setAvatar(data.data.avatar);
         } else {
@@ -77,22 +85,19 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
     setProfileMessage(null);
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
+      const { data } = await apiFetch<{ message?: string }>("/users/me", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(profileForm),
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      if (data?.data) {
         setProfileMessage({ type: "success", text: "Profile updated successfully" });
         fetchProfile();
       } else {
-        setProfileMessage({ type: "error", text: data.message || "Failed to update profile" });
+        setProfileMessage({
+          type: "error",
+          text: data?.data?.message || "Failed to update profile",
+        });
       }
     } catch (err) {
       setProfileMessage({ type: "error", text: "Failed to update profile" });
@@ -116,21 +121,15 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
     setPasswordMessage(null);
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me/password`, {
+      const { data } = await apiFetch<{ message?: string }>("/users/me/password", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         }),
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      if (data?.data) {
         setPasswordMessage({ type: "success", text: "Password updated successfully" });
         setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       } else {
@@ -155,7 +154,10 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
     // Validate file type
     if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
-      setAvatarMessage({ type: "error", text: "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed" });
+      setAvatarMessage({
+        type: "error",
+        text: "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed",
+      });
       return;
     }
 
@@ -163,30 +165,26 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
     setAvatarMessage(null);
 
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Data = event.target?.result as string;
 
         try {
-          const token = localStorage.getItem("token");
-          const res = await fetch(`${API_BASE}/users/me/avatar`, {
+          const { data } = await apiFetch<{ message?: string }>("/users/me/avatar", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({ avatarData: base64Data }),
           });
 
-          const data = await res.json();
-          if (res.ok) {
+          if (data?.data) {
             setAvatarMessage({ type: "success", text: "Avatar updated successfully" });
             fetchProfile();
             // Reset file input
-            e.target.value = "";
+            (e.target as HTMLInputElement).value = "";
           } else {
-            setAvatarMessage({ type: "error", text: data.message || "Failed to upload avatar" });
+            setAvatarMessage({
+              type: "error",
+              text: data?.data?.message || "Failed to upload avatar",
+            });
           }
         } catch (err) {
           setAvatarMessage({ type: "error", text: "Failed to upload avatar" });
@@ -229,7 +227,9 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold text-[#f0f4fa]">Profile Settings</h2>
-                <p className="mt-1 text-sm text-[rgba(240,244,250,0.45)]">Manage your account information</p>
+                <p className="mt-1 text-sm text-[rgba(240,244,250,0.45)]">
+                  Manage your account information
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -257,10 +257,11 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
               <div className="w-full max-w-xs">
                 {avatarMessage && (
                   <div
-                    className={`mb-3 rounded-lg p-3 text-sm ${avatarMessage.type === "success"
-                      ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                      : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
-                      }`}
+                    className={`mb-3 rounded-lg p-3 text-sm ${
+                      avatarMessage.type === "success"
+                        ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
+                    }`}
                   >
                     {avatarMessage.text}
                   </div>
@@ -286,10 +287,11 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                 {profileMessage && (
                   <div
-                    className={`mb-4 rounded-lg p-3 text-sm ${profileMessage.type === "success"
-                      ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                      : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
-                      }`}
+                    className={`mb-4 rounded-lg p-3 text-sm ${
+                      profileMessage.type === "success"
+                        ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
+                    }`}
                   >
                     {profileMessage.text}
                   </div>
@@ -343,10 +345,11 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                 {passwordMessage && (
                   <div
-                    className={`mb-4 rounded-lg p-3 text-sm ${passwordMessage.type === "success"
-                      ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                      : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
-                      }`}
+                    className={`mb-4 rounded-lg p-3 text-sm ${
+                      passwordMessage.type === "success"
+                        ? "border border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : "border border-[#f97316]/30 bg-[#f97316]/10 text-[#f97316]"
+                    }`}
                   >
                     {passwordMessage.text}
                   </div>
@@ -354,7 +357,9 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
 
                 <form onSubmit={handlePasswordUpdate} className="space-y-4">
                   <div>
-                    <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">Current Password</label>
+                    <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">
+                      Current Password
+                    </label>
                     <PasswordInput
                       value={passwordForm.currentPassword}
                       onChange={(e) =>
@@ -366,7 +371,9 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
                   </div>
 
                   <div>
-                    <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">New Password</label>
+                    <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">
+                      New Password
+                    </label>
                     <PasswordInput
                       value={passwordForm.newPassword}
                       onChange={(e) =>
@@ -376,11 +383,15 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
                       required
                       minLength={8}
                     />
-                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">Minimum 8 characters</p>
+                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">
+                      Minimum 8 characters
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">Confirm New Password</label>
+                    <label className="block mb-2 text-sm text-[rgba(240,244,250,0.7)]">
+                      Confirm New Password
+                    </label>
                     <PasswordInput
                       value={passwordForm.confirmPassword}
                       onChange={(e) =>

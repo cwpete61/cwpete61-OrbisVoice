@@ -1,4 +1,5 @@
 import { logger } from "../logger";
+import { http } from "../lib/http";
 
 export interface TwilioConfig {
   accountSid: string;
@@ -54,25 +55,23 @@ class TwilioClient {
         });
       }
 
-      const response = await fetch(
+      const result = await http.post<string>(
         `${this.baseUrl}/Accounts/${this.accountSid}/Messages.json`,
+        params.toString(),
         {
-          method: "POST",
           headers: {
             Authorization: this.getAuthHeader(),
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: params.toString(),
         }
       );
 
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Twilio SMS send failed");
-        throw new Error(`Twilio error: ${response.status}`);
+      if (!result.ok) {
+        logger.error({ status: result.status, error: result.error }, "Twilio SMS send failed");
+        throw new Error(`Twilio error: ${result.status}`);
       }
 
-      const data = (await response.json()) as any;
+      const data = result.data as any;
       logger.info({ messageSid: data.sid, to: message.to }, "SMS sent successfully");
       return data.sid;
     } catch (err) {
@@ -111,25 +110,26 @@ class TwilioClient {
         params.append("Record", "true");
       }
 
-      const response = await fetch(
+      const result = await http.post<string>(
         `${this.baseUrl}/Accounts/${this.accountSid}/Calls.json`,
+        params.toString(),
         {
-          method: "POST",
           headers: {
             Authorization: this.getAuthHeader(),
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: params.toString(),
         }
       );
 
-      if (!response.ok) {
-        const error = await response.text();
-        logger.error({ status: response.status, error }, "Twilio call initiation failed");
-        throw new Error(`Twilio error: ${response.status}`);
+      if (!result.ok) {
+        logger.error(
+          { status: result.status, error: result.error },
+          "Twilio call initiation failed"
+        );
+        throw new Error(`Twilio error: ${result.status}`);
       }
 
-      const data = (await response.json()) as any;
+      const data = result.data as any;
       logger.info({ callSid: data.sid, to: config.to }, "Call initiated");
       return data.sid;
     } catch (err) {
@@ -143,22 +143,20 @@ class TwilioClient {
    */
   async getCall(callSid: string): Promise<any> {
     try {
-      const response = await fetch(
+      const result = await http.get<any>(
         `${this.baseUrl}/Accounts/${this.accountSid}/Calls/${callSid}.json`,
         {
-          method: "GET",
           headers: {
             Authorization: this.getAuthHeader(),
           },
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Twilio call retrieval failed: ${response.status}`);
+      if (!result.ok) {
+        throw new Error(`Twilio call retrieval failed: ${result.status}`);
       }
 
-      const data = (await response.json()) as any;
-      return data;
+      return result.data;
     } catch (err) {
       logger.error({ err, callSid }, "Failed to get call information");
       throw err;
@@ -170,21 +168,20 @@ class TwilioClient {
    */
   async getPhoneNumbers(): Promise<any[]> {
     try {
-      const response = await fetch(
+      const result = await http.get<any>(
         `${this.baseUrl}/Accounts/${this.accountSid}/IncomingPhoneNumbers.json`,
         {
-          method: "GET",
           headers: {
             Authorization: this.getAuthHeader(),
           },
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Twilio phone numbers retrieval failed: ${response.status}`);
+      if (!result.ok) {
+        throw new Error(`Twilio phone numbers retrieval failed: ${result.status}`);
       }
 
-      const data = (await response.json()) as any;
+      const data = result.data as any;
       return data.incoming_phone_numbers || [];
     } catch (err) {
       logger.error({ err }, "Failed to get Twilio phone numbers");

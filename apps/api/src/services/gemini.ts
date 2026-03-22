@@ -56,7 +56,7 @@ export interface GeminiAudioResponse {
 
 class GeminiVoiceClient {
   private apiKey: string;
-  private model: string = "gemini-2.0-flash-exp";
+  private model: string = "gemini-2.5-flash";
   private baseUrl: string = "https://generativelanguage.googleapis.com/v1beta/audio:transcribe";
 
   constructor() {

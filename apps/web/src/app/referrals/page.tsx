@@ -3,20 +3,30 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import DashboardShell from "../components/DashboardShell";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 // ─── Shared UI Components ─────────────────────────────────────────────────────
 
 function StatusDot({ ok }: { ok: boolean }) {
   return (
     <span className={`relative flex h-2.5 w-2.5`}>
-      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${ok ? "bg-[#10b981]" : "bg-[#f59e0b]"} opacity-75`}></span>
-      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${ok ? "bg-[#10b981]" : "bg-[#f59e0b]"}`}></span>
+      <span
+        className={`animate-ping absolute inline-flex h-full w-full rounded-full ${ok ? "bg-[#10b981]" : "bg-[#f59e0b]"} opacity-75`}
+      ></span>
+      <span
+        className={`relative inline-flex rounded-full h-2.5 w-2.5 ${ok ? "bg-[#10b981]" : "bg-[#f59e0b]"}`}
+      ></span>
     </span>
   );
 }
 
-function Badge({ children, color = "teal" }: { children: React.ReactNode; color?: "teal" | "green" | "red" | "orange" | "purple" }) {
+function Badge({
+  children,
+  color = "teal",
+}: {
+  children: React.ReactNode;
+  color?: "teal" | "green" | "red" | "orange" | "purple";
+}) {
   const styles = {
     teal: "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20",
     green: "bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20",
@@ -25,7 +35,9 @@ function Badge({ children, color = "teal" }: { children: React.ReactNode; color?
     purple: "bg-[#a78bfa]/10 text-[#a78bfa] border-[#a78bfa]/20",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles[color]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles[color]}`}
+    >
       {children}
     </span>
   );
@@ -51,19 +63,48 @@ const getExpectedPayoutDate = (createdAt: string) => {
 
 function OverviewTab({ referralData, stats, copied, onCopy }: any) {
   const metrics = [
-    { label: "Total Referred", value: stats?.totalReferred ?? 0, desc: "Signups via your link", color: "text-[#14b8a6]" },
-    { label: "Accepted", value: stats?.accepted ?? 0, desc: "Awaiting conversion", color: "text-[#f0f4fa]" },
-    { label: "Converted", value: stats?.completed ?? 0, desc: "Paid customers", color: "text-[#a78bfa]" },
-    { label: "Total Earned", value: stats?.totalRewards ?? 0, desc: "Lifetime rewards", color: "text-[#f59e0b]", isMoney: true },
-    { label: "Available", value: stats?.availableRewards ?? 0, desc: "Ready for payout", color: "text-[#10b981]", isMoney: true },
+    {
+      label: "Total Referred",
+      value: stats?.totalReferred ?? 0,
+      desc: "Signups via your link",
+      color: "text-[#14b8a6]",
+    },
+    {
+      label: "Accepted",
+      value: stats?.accepted ?? 0,
+      desc: "Awaiting conversion",
+      color: "text-[#f0f4fa]",
+    },
+    {
+      label: "Converted",
+      value: stats?.completed ?? 0,
+      desc: "Paid customers",
+      color: "text-[#a78bfa]",
+    },
+    {
+      label: "Total Earned",
+      value: stats?.totalRewards ?? 0,
+      desc: "Lifetime rewards",
+      color: "text-[#f59e0b]",
+      isMoney: true,
+    },
+    {
+      label: "Available",
+      value: stats?.availableRewards ?? 0,
+      desc: "Ready for payout",
+      color: "text-[#10b981]",
+      isMoney: true,
+    },
     {
       label: "Pending (Hold)",
       value: stats?.pendingRewards ?? 0,
-      desc: stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)
-        ? `Est. Payday: ${getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}`
+      desc: stats?.referrals?.some(
+        (r: any) => (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0
+      )
+        ? `Est. Payday: ${getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0).createdAt)}`
         : "30-day verification",
       color: "text-[rgba(240,244,250,0.5)]",
-      isMoney: true
+      isMoney: true,
     },
   ];
 
@@ -76,7 +117,8 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
           <div className="max-w-md">
             <h2 className="text-xl font-bold text-[#f0f4fa]">Invite & Earn</h2>
             <p className="mt-2 text-sm text-[rgba(240,244,250,0.6)] leading-relaxed">
-              Earn a one-time reward when a friend upgrades to a paid plan. There is no limit to how many people you can refer!
+              Earn a one-time reward when a friend upgrades to a paid plan. There is no limit to how
+              many people you can refer!
             </p>
           </div>
           <div className="flex w-full max-w-2xl flex-col sm:flex-row items-stretch gap-3">
@@ -110,13 +152,18 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
                 { icon: "⏳", title: "Wait", desc: "30-day verification period" },
                 { icon: "💰", title: "Payout", desc: "Rewards sent to your bank" },
               ].map((step, i) => (
-                <div key={i} className="relative flex lg:flex-col items-center gap-6 lg:text-center group">
+                <div
+                  key={i}
+                  className="relative flex lg:flex-col items-center gap-6 lg:text-center group"
+                >
                   <div className="z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/[0.1] bg-[#111827] text-xl shadow-xl group-hover:scale-110 transition-transform">
                     {step.icon}
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-[#f0f4fa]">{step.title}</h4>
-                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)] max-w-[140px]">{step.desc}</p>
+                    <p className="mt-1 text-xs text-[rgba(240,244,250,0.45)] max-w-[140px]">
+                      {step.desc}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -133,8 +180,13 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {metrics.map((m) => (
-            <div key={m.label} className="group rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5 hover:border-white/[0.12] transition-all hover:translate-y-[-2px]">
-              <p className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.4)] font-bold mb-2">{m.label}</p>
+            <div
+              key={m.label}
+              className="group rounded-2xl border border-white/[0.06] bg-[#0c111d] p-5 hover:border-white/[0.12] transition-all hover:translate-y-[-2px]"
+            >
+              <p className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.4)] font-bold mb-2">
+                {m.label}
+              </p>
               <p className={`text-2xl font-bold font-mono ${m.color}`}>
                 {m.isMoney ? `$${(m.value || 0).toFixed(2)}` : m.value}
               </p>
@@ -163,11 +215,22 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
                   <th className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-1.5 group/tip relative">
                       Expected Payout
-                      <svg className="h-3 w-3 text-[rgba(240,244,250,0.3)] cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="h-3 w-3 text-[rgba(240,244,250,0.3)] cursor-help"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-3 rounded-xl bg-[#05080f] border border-white/10 text-[10px] normal-case font-medium text-[rgba(240,244,250,0.6)] opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none shadow-2xl z-50">
-                        Funds are released to your bank in the next available bi-monthly window (15th or end of month) after the 30-day verification hold expires.
+                        Funds are released to your bank in the next available bi-monthly window
+                        (15th or end of month) after the 30-day verification hold expires.
                       </div>
                     </div>
                   </th>
@@ -177,31 +240,44 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
               <tbody className="divide-y divide-white/[0.04]">
                 {!stats?.referrals || stats.referrals.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)] font-medium">
+                    <td
+                      colSpan={7}
+                      className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)] font-medium"
+                    >
                       No referral activity found yet.
                     </td>
                   </tr>
                 ) : (
                   stats.referrals.map((ref: any) => (
                     <tr key={ref.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-6 py-5 text-[rgba(240,244,250,0.5)] whitespace-nowrap">{new Date(ref.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-5 text-[rgba(240,244,250,0.6)] font-mono text-[10px]">{ref.referralCodeUsed || "—"}</td>
+                      <td className="px-6 py-5 text-[rgba(240,244,250,0.5)] whitespace-nowrap">
+                        {new Date(ref.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-5 text-[rgba(240,244,250,0.6)] font-mono text-[10px]">
+                        {ref.referralCodeUsed || "—"}
+                      </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-white/[0.05] to-white/[0.01] border border-white/[0.05] flex items-center justify-center text-[10px] font-bold text-[#f0f4fa]">
                             {ref.name?.charAt(0) || "U"}
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[#f0f4fa] font-semibold">{ref.name || "Unknown User"}</span>
-                            <span className="text-[10px] text-[rgba(240,244,250,0.4)]">{ref.email || "No email"}</span>
+                            <span className="text-[#f0f4fa] font-semibold">
+                              {ref.name || "Unknown User"}
+                            </span>
+                            <span className="text-[10px] text-[rgba(240,244,250,0.4)]">
+                              {ref.email || "No email"}
+                            </span>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <Badge color={ref.plan === 'free' ? 'teal' : 'purple'}>{ref.plan}</Badge>
+                        <Badge color={ref.plan === "free" ? "teal" : "purple"}>{ref.plan}</Badge>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <Badge color={ref.status === "completed" ? "green" : "orange"}>{ref.status}</Badge>
+                        <Badge color={ref.status === "completed" ? "green" : "orange"}>
+                          {ref.status}
+                        </Badge>
                       </td>
                       <td className="px-6 py-5 text-center text-[10px] font-medium text-[rgba(240,244,250,0.4)]">
                         {getExpectedPayoutDate(ref.createdAt)}
@@ -221,7 +297,13 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
   );
 }
 
-function BankingTab({ stripeDetails, stripeStatus, loginLinkLoading, onGetLoginLink, onConnect }: any) {
+function BankingTab({
+  stripeDetails,
+  stripeStatus,
+  loginLinkLoading,
+  onGetLoginLink,
+  onConnect,
+}: any) {
   const isActive = stripeDetails?.payoutsEnabled || stripeStatus?.status === "active";
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -230,23 +312,40 @@ function BankingTab({ stripeDetails, stripeStatus, loginLinkLoading, onGetLoginL
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 relative z-10">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635BFF] text-white shadow-lg shadow-[#635BFF]/20 text-lg font-bold">S</div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635BFF] text-white shadow-lg shadow-[#635BFF]/20 text-lg font-bold">
+                S
+              </div>
               <h2 className="text-2xl font-bold text-[#f0f4fa]">Stripe Connect</h2>
             </div>
             <p className="text-sm text-[rgba(240,244,250,0.5)] max-w-lg leading-relaxed">
-              We use Stripe Express to handle secure, automatic payouts. Connect your bank to start receiving your referral rewards.
+              We use Stripe Express to handle secure, automatic payouts. Connect your bank to start
+              receiving your referral rewards.
             </p>
           </div>
           <div className="shrink-0 pt-2">
             {isActive ? (
-              <button onClick={onGetLoginLink} disabled={loginLinkLoading}
-                className="flex items-center gap-2 rounded-2xl bg-[#635BFF] px-8 py-4 text-sm font-bold text-white hover:bg-[#524ae3] transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-[#635BFF]/20">
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              <button
+                onClick={onGetLoginLink}
+                disabled={loginLinkLoading}
+                className="flex items-center gap-2 rounded-2xl bg-[#635BFF] px-8 py-4 text-sm font-bold text-white hover:bg-[#524ae3] transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-[#635BFF]/20"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
                 {loginLinkLoading ? "Opening..." : "Stripe Dashboard"}
               </button>
             ) : (
-              <button onClick={onConnect}
-                className="rounded-2xl bg-[#635BFF] px-8 py-4 text-sm font-bold text-white hover:bg-[#524ae3] transition-all active:scale-95 shadow-xl shadow-[#635BFF]/20">
+              <button
+                onClick={onConnect}
+                className="rounded-2xl bg-[#635BFF] px-8 py-4 text-sm font-bold text-white hover:bg-[#524ae3] transition-all active:scale-95 shadow-xl shadow-[#635BFF]/20"
+              >
                 Set Up Payouts
               </button>
             )}
@@ -260,14 +359,25 @@ function BankingTab({ stripeDetails, stripeStatus, loginLinkLoading, onGetLoginL
             { label: "Payouts", ok: stripeDetails?.payoutsEnabled ?? false },
             { label: "Status", value: isActive ? "Active" : "Action Required" },
           ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-white/[0.04] bg-[#05080f] p-5">
-              <p className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.4)] font-bold mb-3">{item.label}</p>
+            <div
+              key={item.label}
+              className="rounded-2xl border border-white/[0.04] bg-[#05080f] p-5"
+            >
+              <p className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.4)] font-bold mb-3">
+                {item.label}
+              </p>
               {"value" in item ? (
-                <p className={`text-sm font-bold ${isActive ? "text-[#10b981]" : "text-[#f59e0b]"}`}>{item.value}</p>
+                <p
+                  className={`text-sm font-bold ${isActive ? "text-[#10b981]" : "text-[#f59e0b]"}`}
+                >
+                  {item.value}
+                </p>
               ) : (
                 <div className="flex items-center gap-3">
                   <StatusDot ok={item.ok} />
-                  <span className="text-sm font-bold text-[#f0f4fa]">{item.ok ? "Ready" : "Pending"}</span>
+                  <span className="text-sm font-bold text-[#f0f4fa]">
+                    {item.ok ? "Ready" : "Pending"}
+                  </span>
                 </div>
               )}
             </div>
@@ -284,7 +394,9 @@ function PayoutHistoryTab({ payouts }: { payouts: any[] }) {
       <div className="rounded-3xl border border-white/[0.07] bg-[#0c111d] overflow-hidden shadow-2xl">
         <div className="p-8 border-b border-white/[0.05]">
           <h2 className="text-xl font-bold text-[#f0f4fa]">Payout History</h2>
-          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">Direct transfers to your connected Stripe account.</p>
+          <p className="text-sm text-[rgba(240,244,250,0.5)] mt-1">
+            Direct transfers to your connected Stripe account.
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -298,16 +410,32 @@ function PayoutHistoryTab({ payouts }: { payouts: any[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {payouts.length > 0 ? payouts.map((p: any) => (
-                <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
-                  <td className="px-6 py-6 text-[rgba(240,244,250,0.6)]">{new Date(p.createdAt).toLocaleDateString()}</td>
-                  <td className="px-6 py-6 font-mono text-[rgba(240,244,250,0.8)]">${p.amount.toFixed(2)}</td>
-                  <td className="px-6 py-6 font-mono text-[#ef4444]">-${(p.feeAmount ?? 0).toFixed(2)}</td>
-                  <td className="px-6 py-6 font-mono font-bold text-[#14b8a6]">${(p.netAmount ?? p.amount).toFixed(2)}</td>
-                  <td className="px-6 py-6"><Badge color="green">{p.status}</Badge></td>
+              {payouts.length > 0 ? (
+                payouts.map((p: any) => (
+                  <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
+                    <td className="px-6 py-6 text-[rgba(240,244,250,0.6)]">
+                      {new Date(p.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-6 font-mono text-[rgba(240,244,250,0.8)]">
+                      ${p.amount.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-6 font-mono text-[#ef4444]">
+                      -${(p.feeAmount ?? 0).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-6 font-mono font-bold text-[#14b8a6]">
+                      ${(p.netAmount ?? p.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-6">
+                      <Badge color="green">{p.status}</Badge>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)]">
+                    No payouts to show yet.
+                  </td>
                 </tr>
-              )) : (
-                <tr><td colSpan={5} className="px-6 py-20 text-center text-[rgba(240,244,250,0.3)]">No payouts to show yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -326,11 +454,15 @@ function TaxTab({ taxStatus, formData, setFormData, onSave, saving, saveMsg, sav
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="rounded-3xl border border-white/[0.07] bg-[#0c111d] p-8">
         <h2 className="text-xl font-bold text-[#f0f4fa] mb-2">Compliance Tracker</h2>
-        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-8">IRS requires a 1099-NEC form for yearly earnings over $600.</p>
+        <p className="text-sm text-[rgba(240,244,250,0.5)] mb-8">
+          IRS requires a 1099-NEC form for yearly earnings over $600.
+        </p>
 
         <div className="flex justify-between items-end mb-3">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.4)] font-bold">Year-to-Date Earnings</span>
+            <span className="text-[10px] uppercase tracking-widest text-[rgba(240,244,250,0.4)] font-bold">
+              Year-to-Date Earnings
+            </span>
             <p className="text-2xl font-bold font-mono text-[#f0f4fa]">${ytd.toFixed(2)}</p>
           </div>
           <span className="text-xs font-bold text-[rgba(240,244,250,0.3)]">${threshold} Limit</span>
@@ -346,8 +478,16 @@ function TaxTab({ taxStatus, formData, setFormData, onSave, saving, saveMsg, sav
 
       <div className="rounded-3xl border border-white/[0.07] bg-[#0c111d] p-8 lg:p-10">
         <h2 className="text-xl font-bold text-[#f0f4fa] mb-6">Identification Info</h2>
-        {saveErr && <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-400">{saveErr}</div>}
-        {saveMsg && <div className="mb-6 rounded-2xl border border-[#10b981]/30 bg-[#10b981]/10 p-5 text-sm text-[#10b981]">{saveMsg}</div>}
+        {saveErr && (
+          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-400">
+            {saveErr}
+          </div>
+        )}
+        {saveMsg && (
+          <div className="mb-6 rounded-2xl border border-[#10b981]/30 bg-[#10b981]/10 p-5 text-sm text-[#10b981]">
+            {saveMsg}
+          </div>
+        )}
 
         <form onSubmit={onSave} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -358,16 +498,24 @@ function TaxTab({ taxStatus, formData, setFormData, onSave, saving, saveMsg, sav
               { key: "tinSsn", label: "TIN / SSN (Last 4)" },
             ].map(({ key, label }) => (
               <div key={key}>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.4)]">{label}</label>
-                <input type="text" value={(formData as any)[key]}
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-[rgba(240,244,250,0.4)]">
+                  {label}
+                </label>
+                <input
+                  type="text"
+                  value={(formData as any)[key]}
                   onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                  className="w-full rounded-2xl border border-white/[0.1] bg-[#05080f] px-5 py-4 text-sm text-[#f0f4fa] focus:border-[#14b8a6] outline-none transition-all" />
+                  className="w-full rounded-2xl border border-white/[0.1] bg-[#05080f] px-5 py-4 text-sm text-[#f0f4fa] focus:border-[#14b8a6] outline-none transition-all"
+                />
               </div>
             ))}
           </div>
           <div className="pt-4 flex justify-end">
-            <button type="submit" disabled={saving}
-              className="rounded-2xl bg-[#14b8a6] px-10 py-4 text-sm font-bold text-[#05080f] hover:bg-[#2dd4bf] active:scale-95 transition-all shadow-xl shadow-[#14b8a6]/20">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-2xl bg-[#14b8a6] px-10 py-4 text-sm font-bold text-[#05080f] hover:bg-[#2dd4bf] active:scale-95 transition-all shadow-xl shadow-[#14b8a6]/20"
+            >
               {saving ? "Updating..." : "Update Tax Profile"}
             </button>
           </div>
@@ -402,38 +550,35 @@ function ReferralsContent() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
-    if (!token) return setLoading(false);
-    const h = { Authorization: `Bearer ${token}` };
 
     try {
-      const [pRes, cRes, sRes, stRes, sdRes, pyRes, txRes] = await Promise.all([
-        fetch(`${API_BASE}/users/me`, { headers: h }),
-        fetch(`${API_BASE}/users/me/referral-code`, { headers: h }),
-        fetch(`${API_BASE}/users/me/referral-stats`, { headers: h }),
-        fetch(`${API_BASE}/affiliates/stripe/status`, { headers: h }),
-        fetch(`${API_BASE}/affiliates/stripe/account-details`, { headers: h }),
-        fetch(`${API_BASE}/affiliates/me/payouts`, { headers: h }),
-        fetch(`${API_BASE}/affiliates/me/tax-status`, { headers: h }),
+      const [pData, cData, sData, stData, sdData, pyData, txData] = await Promise.all([
+        apiFetch<any>("/users/me"),
+        apiFetch<any>("/users/me/referral-code"),
+        apiFetch<any>("/users/me/referral-stats"),
+        apiFetch<any>("/affiliates/stripe/status"),
+        apiFetch<any>("/affiliates/stripe/account-details"),
+        apiFetch<any>("/affiliates/me/payouts"),
+        apiFetch<any>("/affiliates/me/tax-status"),
       ]);
 
-      if (pRes.ok) {
-        const d = await pRes.json();
+      if (pData.data?.data) {
         setFormData({
-          firstName: d.data.firstName || "",
-          lastName: d.data.lastName || "",
-          phone: d.data.phone || "",
-          tinSsn: d.data.tinSsn || ""
+          firstName: pData.data.data.firstName || "",
+          lastName: pData.data.data.lastName || "",
+          phone: pData.data.data.phone || "",
+          tinSsn: pData.data.data.tinSsn || "",
         });
       }
-      if (cRes.ok) setReferralData((await cRes.json()).data);
-      if (sRes.ok) {
-        const d = await sRes.json();
-        const rawStats = d.data;
+      if (cData.data?.data) setReferralData(cData.data.data);
+      if (sData.data?.data) {
+        const rawStats = sData.data.data;
 
         // Hard-code the "missing" sale for stability (REF_CMM1_MM1SUXS7_JH169 -> lightboxseo24@gmail.com)
         const missingRefereeId = "cmm1sxeqj0006na56f30ie2fa";
-        const hasMissingSaleInAPI = rawStats.referrals?.some((r: any) => r.id === missingRefereeId || r.email === "lightboxseo24@gmail.com");
+        const hasMissingSaleInAPI = rawStats.referrals?.some(
+          (r: any) => r.id === missingRefereeId || r.email === "lightboxseo24@gmail.com"
+        );
 
         if (!hasMissingSaleInAPI) {
           // Add it to the list if not already there
@@ -445,20 +590,20 @@ function ReferralsContent() {
             referralCodeUsed: "REF_CMM1_MM1SUXS7_JH169",
             status: "completed",
             plan: "premium",
-            rewardAmount: 59.10
+            rewardAmount: 59.1,
           };
           rawStats.referrals = [hardCodedSale, ...(rawStats.referrals || [])];
           rawStats.totalReferred = Math.max(rawStats.totalReferred, rawStats.referrals.length);
           rawStats.completed = (rawStats.completed || 0) + 1;
-          rawStats.pendingRewards = (rawStats.pendingRewards || 0) + 59.10;
+          rawStats.pendingRewards = (rawStats.pendingRewards || 0) + 59.1;
         }
 
         setStats(rawStats);
       }
-      if (stRes.ok) setStripeStatus((await stRes.json()).data);
-      if (sdRes.ok) setStripeDetails((await sdRes.json()).data);
-      if (pyRes.ok) setPayouts((await pyRes.json()).data ?? []);
-      if (txRes.ok) setTaxStatus((await txRes.json()).data);
+      if (stData.data?.data) setStripeStatus(stData.data.data);
+      if (sdData.data?.data) setStripeDetails(sdData.data.data);
+      if (pyData.data?.data) setPayouts(pyData.data.data ?? []);
+      if (txData.data?.data) setTaxStatus(txData.data.data);
     } catch (err: any) {
       setError("Unable to sync dashboard data.");
     } finally {
@@ -466,7 +611,9 @@ function ReferralsContent() {
     }
   }, []);
 
-  useEffect(() => { if (tokenLoaded) fetchData(); }, [tokenLoaded, fetchData]);
+  useEffect(() => {
+    if (tokenLoaded) fetchData();
+  }, [tokenLoaded, fetchData]);
 
   const onCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -475,19 +622,19 @@ function ReferralsContent() {
   };
 
   const onConnect = async () => {
-    const token = localStorage.getItem("token");
-    const res = await fetch(`${API_BASE}/affiliates/stripe/onboard`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-    const d = await res.json();
-    if (res.ok && d.data?.url) window.location.href = d.data.url;
+    const { data } = await apiFetch<{ url?: string }>("/affiliates/stripe/onboard", {
+      method: "POST",
+    });
+    if (data?.data?.url) window.location.href = data.data.url;
   };
 
   const onGetLoginLink = async () => {
     setLoginLinkLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/affiliates/stripe/login-link`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-      const d = await res.json();
-      if (res.ok && d.data?.url) window.open(d.data.url, "_blank");
+      const { data } = await apiFetch<{ url?: string }>("/affiliates/stripe/login-link", {
+        method: "POST",
+      });
+      if (data?.data?.url) window.open(data.data.url, "_blank");
     } finally {
       setLoginLinkLoading(false);
     }
@@ -495,16 +642,15 @@ function ReferralsContent() {
 
   const handleSaveTaxInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true); setSaveMsg(null); setSaveErr(null);
+    setSaving(true);
+    setSaveMsg(null);
+    setSaveErr(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
+      const { data } = await apiFetch<{ message?: string }>("/users/me", {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to save");
+      if (!data?.data) throw new Error(data?.data?.message || "Failed to save");
       setSaveMsg("Tax information updated successfully.");
     } catch (err: any) {
       setSaveErr(err.message);
@@ -513,44 +659,65 @@ function ReferralsContent() {
     }
   };
 
-  if (loading) return (
-    <DashboardShell tokenLoaded={tokenLoaded}>
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#14b8a6] border-t-transparent" />
-      </div>
-    </DashboardShell>
-  );
+  if (loading)
+    return (
+      <DashboardShell tokenLoaded={tokenLoaded}>
+        <div className="flex h-[80vh] items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#14b8a6] border-t-transparent" />
+        </div>
+      </DashboardShell>
+    );
 
   const isPayoutsActive = stripeDetails?.payoutsEnabled || stripeStatus?.status === "active";
 
   return (
     <DashboardShell tokenLoaded={tokenLoaded}>
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12">
-
         {/* Header Section */}
         <div className="mb-12 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="h-2 w-8 bg-[#14b8a6] rounded-full"></div>
-              <span className="text-[10px] uppercase tracking-[0.3em] text-[#14b8a6] font-black">Official Program</span>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-[#14b8a6] font-black">
+                Official Program
+              </span>
             </div>
-            <h1 className="text-4xl lg:text-5xl font-black text-[#f0f4fa] tracking-tight">Referrer Program</h1>
+            <h1 className="text-4xl lg:text-5xl font-black text-[#f0f4fa] tracking-tight">
+              Referrer Program
+            </h1>
             <p className="mt-3 text-lg text-[rgba(240,244,250,0.5)] max-w-xl leading-relaxed font-medium">
               Help us grow OrbisVoice and get rewarded for every single successful referral.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <button onClick={fetchData} className="group p-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] transition-all">
-              <svg className="h-5 w-5 text-white/50 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <button
+              onClick={fetchData}
+              className="group p-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] transition-all"
+            >
+              <svg
+                className="h-5 w-5 text-white/50 group-hover:rotate-180 transition-transform duration-500"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
             <div className="flex items-center gap-3 bg-[#0c111d] border border-white/[0.07] px-5 py-3 rounded-2xl">
               <StatusDot ok={isPayoutsActive} />
-              <span className="text-sm font-bold text-[#f0f4fa]">{isPayoutsActive ? "Payouts Active" : "Setup Payouts"}</span>
+              <span className="text-sm font-bold text-[#f0f4fa]">
+                {isPayoutsActive ? "Payouts Active" : "Setup Payouts"}
+              </span>
             </div>
           </div>
         </div>
 
-        {error && <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/5 p-5 text-sm font-medium text-red-400">{error}</div>}
+        {error && (
+          <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/5 p-5 text-sm font-medium text-red-400">
+            {error}
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="mb-10 flex items-center justify-between flex-wrap gap-6">
@@ -571,19 +738,52 @@ function ReferralsContent() {
             ))}
           </div>
 
-          {(stats?.referrals?.some((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0)) && (
+          {stats?.referrals?.some(
+            (r: any) => (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0
+          ) && (
             <div className="bg-red-500/10 border border-red-500/20 px-5 py-3 rounded-2xl text-[20px] font-black text-white animate-pulse tracking-tight shadow-lg shadow-red-500/5">
-              Next Payout: {getExpectedPayoutDate(stats.referrals.find((r: any) => (r.status === 'completed' || r.status === 'pending') && r.rewardAmount > 0).createdAt)}
+              Next Payout:{" "}
+              {getExpectedPayoutDate(
+                stats.referrals.find(
+                  (r: any) =>
+                    (r.status === "completed" || r.status === "pending") && r.rewardAmount > 0
+                ).createdAt
+              )}
             </div>
           )}
         </div>
 
         {/* Tab Viewports */}
         <div className="relative">
-          {activeTab === "overview" && <OverviewTab referralData={referralData} stats={stats} copied={copied} onCopy={onCopy} />}
-          {activeTab === "banking" && <BankingTab stripeDetails={stripeDetails} stripeStatus={stripeStatus} loginLinkLoading={loginLinkLoading} onGetLoginLink={onGetLoginLink} onConnect={onConnect} />}
+          {activeTab === "overview" && (
+            <OverviewTab
+              referralData={referralData}
+              stats={stats}
+              copied={copied}
+              onCopy={onCopy}
+            />
+          )}
+          {activeTab === "banking" && (
+            <BankingTab
+              stripeDetails={stripeDetails}
+              stripeStatus={stripeStatus}
+              loginLinkLoading={loginLinkLoading}
+              onGetLoginLink={onGetLoginLink}
+              onConnect={onConnect}
+            />
+          )}
           {activeTab === "payout-history" && <PayoutHistoryTab payouts={payouts} />}
-          {activeTab === "tax" && <TaxTab taxStatus={taxStatus} formData={formData} setFormData={setFormData} onSave={handleSaveTaxInfo} saving={saving} saveMsg={saveMsg} saveErr={saveErr} />}
+          {activeTab === "tax" && (
+            <TaxTab
+              taxStatus={taxStatus}
+              formData={formData}
+              setFormData={setFormData}
+              onSave={handleSaveTaxInfo}
+              saving={saving}
+              saveMsg={saveMsg}
+              saveErr={saveErr}
+            />
+          )}
         </div>
       </div>
     </DashboardShell>

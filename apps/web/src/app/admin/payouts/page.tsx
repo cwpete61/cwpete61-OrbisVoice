@@ -2,11 +2,10 @@
 
 import { Suspense, useEffect, useState } from "react";
 import DashboardShell from "../../components/DashboardShell";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 function PayoutsContent() {
   const [profile, setProfile] = useState<any>(null);
-  const [affiliates, setAffiliates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [settings, setSettings] = useState<any>(null);
@@ -24,12 +23,8 @@ function PayoutsContent() {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const { data } = await apiFetch<{ data: any }>("/users/me");
+      if (data) {
         setProfile(data.data);
       }
     } catch (err) {
@@ -39,12 +34,8 @@ function PayoutsContent() {
 
   const fetchPlatformSettings = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const { data } = await apiFetch<{ data: any }>("/admin/settings");
+      if (data) {
         setSettings(data.data);
       }
     } catch (err) {
@@ -55,13 +46,9 @@ function PayoutsContent() {
   const fetchPayoutQueue = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/payouts/queue`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPayouts(data.data || []);
+      const { data } = await apiFetch<any[]>("/admin/payouts/queue");
+      if (data?.data) {
+        setPayouts(data.data);
       }
     } catch (err) {
       console.error("Failed to fetch payout queue");
@@ -76,24 +63,13 @@ function PayoutsContent() {
 
     setActionLoading("bulk");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/payouts/bulk`, {
+      const { data } = await apiFetch<{ message: string }>("/admin/payouts/bulk", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ affiliateIds: selectedIds }),
       });
-      if (res.ok) {
-        const result = await res.json();
-        alert(result.message);
-        setSelectedIds([]);
-        fetchPayoutQueue();
-      } else {
-        const d = await res.json();
-        alert(d.message);
-      }
+      alert(data?.message || "Payout processed successfully");
+      setSelectedIds([]);
+      fetchPayoutQueue();
     } catch (err) {
       console.error(err);
     } finally {

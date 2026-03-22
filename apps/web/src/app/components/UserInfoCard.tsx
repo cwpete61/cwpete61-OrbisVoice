@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { API_BASE, User } from "@/lib/api";
+import { apiFetch, User } from "@/lib/api";
 import Image from "next/image";
 
 interface UserInfoCardProps {
@@ -32,18 +32,14 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
 
   const fetchProfile = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<User>("/users/me");
       if (res.status === 401 || res.status === 404) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
 
-      if (res.ok) {
-        const data = await res.json();
+      if (data?.data) {
         setProfile(data.data);
         if (data.data.avatar) {
           setAvatar(data.data.avatar);
@@ -64,12 +60,15 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
     }
   }, [tokenLoaded, fetchProfile]);
 
-  if (loading) return null;
+  if (loading || !tokenLoaded) {
+    return <div className="border-t border-white/[0.07] px-4 py-4 mt-auto h-[72px]" />;
+  }
 
   return (
     <div className="border-t border-white/[0.07] px-4 py-4 mt-auto">
       <button
         onClick={onProfileClick}
+        suppressHydrationWarning
         className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/[0.05] transition group"
       >
         {/* Avatar */}
@@ -86,9 +85,7 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
         {/* User Info */}
         <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2">
-            <div className="text-sm font-semibold text-[#f0f4fa] truncate">
-              {profile?.name}
-            </div>
+            <div className="text-sm font-semibold text-[#f0f4fa] truncate">{profile?.name}</div>
             {profile?.role === "SYSTEM_ADMIN" && (
               <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[9px] font-bold border border-purple-500/20 uppercase tracking-wider">
                 System Admin
@@ -104,9 +101,7 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
             <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">
               @{profile?.username || "user"}
             </div>
-            <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">
-              {profile?.email}
-            </div>
+            <div className="text-xs text-[rgba(240,244,250,0.5)] truncate">{profile?.email}</div>
             {profile?.tenant && profile.tenant.creditBalance > 0 && (
               <div className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-[#14b8a6]/10 text-[#14b8a6] text-[10px] font-bold">
                 {profile.tenant.creditBalance} credits
@@ -133,7 +128,10 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
           Password
         </div>
         <div className="text-xs text-[rgba(240,244,250,0.35)] px-3 mt-2 mb-1">Add login method</div>
-        <button className="w-full text-xs px-3 py-1.5 rounded border border-white/[0.1] text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa] hover:border-white/[0.2] hover:bg-white/[0.02] transition">
+        <button 
+          suppressHydrationWarning
+          className="w-full text-xs px-3 py-1.5 rounded border border-white/[0.1] text-[rgba(240,244,250,0.6)] hover:text-[#f0f4fa] hover:border-white/[0.2] hover:bg-white/[0.02] transition"
+        >
           + Google
         </button>
       </div>

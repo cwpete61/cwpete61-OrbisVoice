@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 interface ChartData {
   date: string;
@@ -21,10 +21,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1f2e]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
-        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">{label}</p>
+        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">
+          {label}
+        </p>
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-[#14b8a6] shadow-[0_0_8px_rgba(20,184,166,0.8)]" />
-          <p className="text-lg font-black text-white">{payload[0].value} <span className="text-[10px] text-gray-500 font-medium lowercase">Convs</span></p>
+          <p className="text-lg font-black text-white">
+            {payload[0].value}{" "}
+            <span className="text-[10px] text-gray-500 font-medium lowercase">Convs</span>
+          </p>
         </div>
       </div>
     );
@@ -39,22 +44,18 @@ export default function UsageChart() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/stats/usage-trend`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const result = await res.json();
+        const { data } = await apiFetch<ChartData[]>("/stats/usage-trend");
+        if (data?.data) {
           // Pad data if too short for a nice graph
-          let chartData = result.data || [];
+          let chartData = data.data || [];
           if (chartData.length < 5 && chartData.length > 0) {
             // Add some zero points for visual flow if it's very new data
-             const firstDate = new Date(chartData[0].date);
-             for(let i=1; i<=5; i++) {
-                const prev = new Date(firstDate);
-                prev.setDate(prev.getDate() - i);
-                chartData.unshift({ date: prev.toLocaleDateString(), count: 0 });
-             }
+            const firstDate = new Date(chartData[0].date);
+            for (let i = 1; i <= 5; i++) {
+              const prev = new Date(firstDate);
+              prev.setDate(prev.getDate() - i);
+              chartData.unshift({ date: prev.toLocaleDateString(), count: 0 });
+            }
           }
           setData(chartData);
         }
@@ -81,7 +82,7 @@ export default function UsageChart() {
     );
   }
 
-  const maxVal = Math.max(...data.map(d => d.count), 0);
+  const maxVal = Math.max(...data.map((d) => d.count), 0);
   const totalConvs = data.reduce((acc, curr) => acc + curr.count, 0);
 
   return (
@@ -89,18 +90,28 @@ export default function UsageChart() {
       {/* Background Decorative Elements */}
       <div className="absolute -right-20 -top-20 w-64 h-64 bg-[#14b8a6]/5 rounded-full blur-[80px] group-hover/chart:bg-[#14b8a6]/10 transition-colors duration-700" />
       <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/5 rounded-full blur-[80px]" />
-      
+
       <div className="flex items-start justify-between mb-8 relative z-10">
         <div>
           <div className="flex items-center gap-3 mb-1">
-             <h3 className="text-sm font-black text-white uppercase tracking-wider">Conversation Volume</h3>
-             <span className="px-2 py-0.5 rounded-full bg-[#14b8a6]/10 border border-[#14b8a6]/20 text-[#14b8a6] text-[8px] font-black uppercase">Live</span>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+              Conversation Volume
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-[#14b8a6]/10 border border-[#14b8a6]/20 text-[#14b8a6] text-[8px] font-black uppercase">
+              Live
+            </span>
           </div>
-          <p className="text-[11px] text-gray-500 font-medium">Daily operational transparency over 30 days</p>
+          <p className="text-[11px] text-gray-500 font-medium">
+            Daily operational transparency over 30 days
+          </p>
         </div>
         <div className="text-right">
-           <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-0.5">Total Payload</p>
-           <p className="text-xl font-black text-white tracking-tighter">{totalConvs.toLocaleString()}</p>
+          <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-0.5">
+            Total Payload
+          </p>
+          <p className="text-xl font-black text-white tracking-tighter">
+            {totalConvs.toLocaleString()}
+          </p>
         </div>
       </div>
 
@@ -114,19 +125,16 @@ export default function UsageChart() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="4 4" stroke="#ffffff03" vertical={false} />
-            <XAxis 
-              dataKey="date" 
-              hide 
-            />
-            <YAxis 
-              stroke="#ffffff10" 
-              fontSize={9} 
-              tickLine={false} 
-              axisLine={false} 
+            <XAxis dataKey="date" hide />
+            <YAxis
+              stroke="#ffffff10"
+              fontSize={9}
+              tickLine={false}
+              axisLine={false}
               tickFormatter={(val) => `${val}`}
               width={25}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ffffff10', strokeWidth: 1 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#ffffff10", strokeWidth: 1 }} />
             <Area
               type="monotone"
               dataKey="count"
@@ -136,20 +144,20 @@ export default function UsageChart() {
               fill="url(#colorCount)"
               animationDuration={1500}
               dot={{ r: 0 }}
-              activeDot={{ r: 4, fill: '#14b8a6', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: "#14b8a6", stroke: "#fff", strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      
+
       <div className="mt-4 flex justify-between items-center text-[9px] text-gray-600 font-black uppercase tracking-[0.2em] px-1 relative z-10">
         <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-white/10" />
-            <span>{data[0]?.date || 'History Start'}</span>
+          <div className="h-1.5 w-1.5 rounded-full bg-white/10" />
+          <span>{data[0]?.date || "History Start"}</span>
         </div>
         <div className="flex items-center gap-2">
-            <span>Today</span>
-            <div className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
+          <span>Today</span>
+          <div className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
         </div>
       </div>
     </div>

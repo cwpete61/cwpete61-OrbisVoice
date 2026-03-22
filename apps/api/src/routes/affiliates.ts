@@ -8,7 +8,6 @@ import { ApiResponse, AuthPayload } from "../types";
 import { z } from "zod";
 import Stripe from "stripe";
 import * as bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
 
 const PublicApplySchema = z.object({
   email: z
@@ -99,12 +98,10 @@ export async function affiliateRoutes(fastify: FastifyInstance) {
         const body = PublicApplySchema.parse(request.body);
         const isGmail = body.email.toLowerCase().endsWith("@gmail.com");
         if (!isGmail) {
-          return reply
-            .code(400)
-            .send({
-              ok: false,
-              message: "Only @gmail.com accounts are allowed for partner applications",
-            });
+          return reply.code(400).send({
+            ok: false,
+            message: "Only @gmail.com accounts are allowed for partner applications",
+          });
         }
         let user = await prisma.user.findUnique({ where: { email: body.email } });
 
