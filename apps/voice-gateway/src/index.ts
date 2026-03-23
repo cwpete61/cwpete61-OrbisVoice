@@ -490,14 +490,14 @@ class VoiceGateway {
           }
         }
 
-        // Forward Audio Part to client (only if not Twilio CR!)
-        const base64Audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-        if (base64Audio) {
-          logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk");
-          
-          if (!client.isTwilio) {
-            // Standard custom protocol (PCM)
-            ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+        // Forward Audio Parts to client (only if not Twilio CR!)
+        if (msg.serverContent?.modelTurn?.parts) {
+          for (const part of msg.serverContent.modelTurn.parts) {
+            const base64Audio = part.inlineData?.data;
+            if (base64Audio && !client.isTwilio) {
+              logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk to web client");
+              ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+            }
           }
         }
 
