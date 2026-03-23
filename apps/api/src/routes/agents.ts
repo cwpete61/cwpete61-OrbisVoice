@@ -243,7 +243,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
           const targets = Array.isArray(metaTarget) ? metaTarget : metaTarget ? [metaTarget] : [];
           if (targets.includes("phoneNumber")) {
             logger.warn(
-              { agentId: id, phoneNumber: updateData?.phoneNumber },
+              { agentId: (request.params as any).id, phoneNumber: updateData?.phoneNumber },
               "Phone number conflict during agent update"
             );
             return reply.code(409).send({
