@@ -155,41 +155,58 @@
   fetchConfig();
 
   // Expansion logic
-  const openWidget = async () => {
+  const openWidget = () => {
     isOpen = true;
-    widgetContainer.style.width = "320px";
-    widgetContainer.style.height = "420px";
+    
+    // Create iframe if it doesn't exist
+    let iframe = document.getElementById("orbis-voice-iframe");
+    if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.id = "orbis-voice-iframe";
+        const baseUrl = script?.src ? new URL(script.src).origin : window.location.origin;
+        iframe.src = `${baseUrl}/widget/${agentId}`;
+        iframe.style.cssText = `
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 24px;
+            background: #05080f;
+            display: block;
+        `;
+        widgetContainer.appendChild(iframe);
+    }
+    
+    // Hide original bubble icon
+    innerContent.style.display = "none";
+    
+    // Animate container to full widget size
+    widgetContainer.style.width = "360px";
+    widgetContainer.style.height = "560px";
     widgetContainer.style.borderRadius = "24px";
     widgetContainer.style.background = "#05080f";
-    widgetContainer.style.border = "1px solid rgba(255,255,255,0.1)";
-
-    // Initialize AudioContext on first click
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      ringerBuffer = await loadAudio(`${apiBase}/assets/audio/ringer.mp3`);
-      touchtoneBuffer = await loadAudio(`${apiBase}/assets/audio/touchtone.mp3`);
-    }
-
-    renderContent();
-
-    // Auto-start if enabled
-    if (agentConfig?.autoStart) {
-      setTimeout(() => {
-        startConversation();
-      }, 500);
-    }
+    widgetContainer.style.border = "1px solid rgba(255,255,255,0.15)";
+    widgetContainer.style.boxShadow = "0 24px 80px rgba(0,0,0,0.6), 0 0 20px rgba(20,184,166,0.1)";
+    iframe.style.display = "block";
   };
 
   const closeWidget = () => {
     isOpen = false;
+    
+    // Hide iframe
+    const iframe = document.getElementById("orbis-voice-iframe");
+    if (iframe) iframe.style.display = "none";
+    
+    // Restore bubble size and style
     widgetContainer.style.width = "64px";
     widgetContainer.style.height = "64px";
     widgetContainer.style.borderRadius = "50%";
     widgetContainer.style.background = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)";
     const color = agentConfig?.widgetPrimaryColor || "#14b8a6";
-    widgetContainer.style.boxShadow = `0 4px 20px ${color}4d`;
+    widgetContainer.style.boxShadow = `0 8px 30px ${color}4d`;
     widgetContainer.style.border = `2px solid ${color}66`;
 
+    // Restore original bubble icon
+    innerContent.style.display = "flex";
     if (agentConfig?.avatarUrl) {
       innerContent.innerHTML = `<img src="${agentConfig.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`;
     } else {
@@ -197,79 +214,8 @@
     }
   };
 
-  const renderContent = () => {
-    innerContent.innerHTML = `
-      <div style="width: 100%; height: 100%; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
-          <div>
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4);">OrbisVoice AI</div>
-            <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">${agentConfig?.name || "Assistant"}</div>
-          </div>
-          <div id="close-btn" style="cursor: pointer; opacity: 0.5; hover: opacity: 1;">✕</div>
-        </div>
-
-        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-          <div style="position: relative; margin-bottom: 24px;">
-            <div style="width: 100px; height: 100px; border-radius: 30px; background: rgba(255,255,255,0.05); display: flex; items-center; justify-content: center; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-              ${agentConfig?.avatarUrl ? `<img src="${agentConfig.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `<span style="font-size: 40px; margin-top: 25px;">🤖</span>`}
-            </div>
-            <div style="position: absolute; bottom: -5px; right: -5px; width: 14px; height: 14px; background: #14b8a6; border-radius: 50%; border: 3px solid #05080f;"></div>
-          </div>
-          
-          <div id="status-text" style="font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 30px; line-height: 1.5; max-width: 200px;">
-            Ready to help with your voice requests.
-          </div>
-
-          <button id="main-action-btn" style="width: 100%; padding: 14px; border-radius: 14px; border: none; background: ${agentConfig?.widgetPrimaryColor || "#14b8a6"}; color: white; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);">
-            ${agentConfig?.autoStart ? "Connecting..." : "Start Conversation"}
-          </button>
-        </div>
-        
-        <div style="margin-top: 20px; font-size: 10px; text-align: center; color: rgba(255,255,255,0.2);">
-          Powered by <b>OrbisVoice</b>
-        </div>
-      </div>
-    `;
-
-    document.getElementById("close-btn").onclick = (e) => {
-      e.stopPropagation();
-      closeWidget();
-    };
-
-    document.getElementById("main-action-btn").onclick = (e) => {
-      e.stopPropagation();
-      playSound(touchtoneBuffer);
-      startConversation();
-    };
-  };
-
   const startConversation = () => {
-    const btn = document.getElementById("main-action-btn");
-    const status = document.getElementById("status-text");
-    if (!btn || !status) return;
-
-    playSound(ringerBuffer);
-    status.innerText = "Connecting to voice gateway...";
-    btn.innerText = "Connecting...";
-    btn.style.opacity = "0.7";
-    btn.disabled = true;
-
-    // Actual voice connection logic would go here
-    // For now, we simulate success
-    setTimeout(() => {
-      status.innerHTML = `<span style="color: #14b8a6; font-weight: bold;">Agent is listening...</span>`;
-      btn.innerText = "End Conversation";
-      btn.style.background = "rgba(239, 68, 68, 0.2)";
-      btn.style.color = "#ef4444";
-      btn.style.border = "1px solid rgba(239, 68, 68, 0.4)";
-      btn.style.boxShadow = "none";
-      btn.disabled = false;
-
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        closeWidget();
-      };
-    }, 1500);
+    openWidget();
   };
 
   // Interactions

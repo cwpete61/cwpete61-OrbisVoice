@@ -30,6 +30,8 @@ export async function publicRoutes(fastify: FastifyInstance) {
             widgetPosition: true,
             widgetPrimaryColor: true,
             widgetDefaultOpen: true,
+            systemPrompt: true,
+            voiceGender: true,
           },
         });
 
