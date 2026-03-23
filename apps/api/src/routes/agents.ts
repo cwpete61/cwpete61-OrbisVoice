@@ -195,13 +195,13 @@ export async function agentRoutes(fastify: FastifyInstance) {
     "/agents/:id",
     { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
+      const { id } = request.params as { id: string };
+      const body = UpdateAgentSchema.parse(request.body);
+      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+
       let updateData: Record<string, any> | undefined;
       try {
-        const { id } = request.params as { id: string };
-        const body = UpdateAgentSchema.parse(request.body);
-        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
         const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
-
         updateData = mapAgentData(body);
 
         logger.info({ agentId: id, updateData, body }, "Updating agent - DEBUG");
@@ -243,7 +243,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
           const targets = Array.isArray(metaTarget) ? metaTarget : metaTarget ? [metaTarget] : [];
           if (targets.includes("phoneNumber")) {
             logger.warn(
-              { agentId: (request.params as any).id, phoneNumber: updateData?.phoneNumber },
+              { agentId: id, phoneNumber: updateData?.phoneNumber },
               "Phone number conflict during agent update"
             );
             return reply.code(409).send({
@@ -262,7 +262,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
               code: err.code,
               meta: err.meta,
             },
-            agentId: request.params ? (request.params as any).id : "unknown",
+            agentId: id,
           },
           "Failed to update agent"
         );
