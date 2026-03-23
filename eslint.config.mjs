@@ -11,6 +11,7 @@ export default tseslint.config(
       "**/build/**",
       "**/coverage/**",
       "**/prisma/client/**",
+      "**/generated/**",
       "**/*.js", // Ignore JS files if we only want to lint TS in the root
     ],
   },

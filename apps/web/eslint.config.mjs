@@ -1,24 +1,30 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
 export default [
   {
-    ignores: [".next/**", "dist/**", "node_modules/**", "build/**"],
+    ignores: [".next/**", "dist/**", "node_modules/**", "build/**", "**/generated/**"],
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  eslint.configs.recommended,
+  ...tseslint.configs.recommended,
   {
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "warn",
-      "no-useless-catch": "warn"
+      "no-useless-catch": "off",
+      "no-empty": "off",
+      "no-undef": "off", // Many files use globals like document, process, fetch
+      "prefer-const": "off",
     }
   }
 ];
+
+

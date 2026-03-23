@@ -46,6 +46,7 @@ export default function EditAgentPage() {
                         widgetPosition: data.data.widgetPosition,
                         widgetPrimaryColor: data.data.widgetPrimaryColor,
                         widgetDefaultOpen: data.data.widgetDefaultOpen,
+                        phoneNumber: data.data.phoneNumber,
                     });
                 }
             } catch (e: any) {

@@ -7,7 +7,7 @@ export interface AuditLogData {
   toolName: string;
   toolInput: unknown;
   toolOutput?: unknown;
-  status: "pending" | "success" | "failed";
+  status: "pending" | "success" | "failed" | "blocked";
   errorMessage?: string;
   executionTimeMs?: number;
 }

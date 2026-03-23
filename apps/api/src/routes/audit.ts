@@ -187,4 +187,51 @@ export async function auditRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Create a new audit log (used by Voice Gateway)
+  fastify.post(
+    "/audit-logs",
+    { onRequest: [requireNotBlocked] },
+    async (request: FastifyRequest, reply) => {
+      try {
+        const tenantId = (request as any).user.tenantId;
+        const body = request.body as any;
+
+        // Verify agent belongs to tenant
+        const agent = await prisma.agent.findFirst({
+          where: { id: body.agentId, tenantId },
+        });
+
+        if (!agent) {
+          return reply.code(404).send({
+            ok: false,
+            message: "Agent not found",
+          } as ApiResponse);
+        }
+
+        const logId = await toolAuditLogger.log({
+          agentId: body.agentId,
+          userId: body.userId,
+          toolName: body.toolName,
+          toolInput: body.toolInput,
+          toolOutput: body.toolOutput,
+          status: body.status,
+          errorMessage: body.errorMessage,
+          executionTimeMs: body.executionTimeMs,
+        });
+
+        return reply.code(201).send({
+          ok: true,
+          message: "Audit log created",
+          data: { logId },
+        } as ApiResponse);
+      } catch (err) {
+        logger.error(err, "Failed to create audit log");
+        return reply.code(500).send({
+          ok: false,
+          message: "Internal server error",
+        } as ApiResponse);
+      }
+    }
+  );
 }

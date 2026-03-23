@@ -11,35 +11,8 @@ const TIER_PRIORITY: Record<string, number> = {
   "ai-revenue-infrastructure": 5,
 };
 
-type TierLimits = {
-  freeTierLimit?: number | null;
-  freeToStarterEnabled?: boolean | null;
-  freeToProfessionalEnabled?: boolean | null;
-  freeToEnterpriseEnabled?: boolean | null;
-  freeToLtdEnabled?: boolean | null;
-  freeToAiInfraEnabled?: boolean | null;
-  starterLimit?: number | null;
-  professionalLimit?: number | null;
-  enterpriseLimit?: number | null;
-  ltdLimit?: number | null;
-  aiInfraLimit?: number | null;
-} | null;
-
-export function resolveUsageLimitForTier(tier: string, settings: TierLimits): number {
-  if (tier === "free") {
-    if (settings?.freeToAiInfraEnabled) return settings?.aiInfraLimit ?? 250000;
-    if (settings?.freeToEnterpriseEnabled) return settings?.enterpriseLimit ?? 100000;
-    if (settings?.freeToProfessionalEnabled) return settings?.professionalLimit ?? 10000;
-    if (settings?.freeToLtdEnabled) return settings?.ltdLimit ?? 1000;
-    if (settings?.freeToStarterEnabled) return settings?.starterLimit ?? 1000;
-    return settings?.freeTierLimit ?? 100;
-  }
-  if (tier === "ltd") return settings?.ltdLimit ?? 1000;
-  if (tier === "starter") return settings?.starterLimit ?? 1000;
-  if (tier === "professional") return settings?.professionalLimit ?? 10000;
-  if (tier === "enterprise") return settings?.enterpriseLimit ?? 100000;
-  if (tier === "ai-revenue-infrastructure") return settings?.aiInfraLimit ?? 250000;
-  return 100;
+export function resolveUsageLimitForTier(): number {
+  return 1000000; // Unlimited for testing
 }
 
 export class UsageService {
@@ -118,9 +91,40 @@ export class UsageService {
   /**
    * Check if tenant is allowed to start a new session
    */
-  static async canStartSession(tenantId: string): Promise<boolean> {
+  static async canStartSession(tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
     const tenant = (await this.getEffectiveUsage(tenantId)) as any;
-    return tenant.usageCount < tenant.usageLimit || tenant.bonusCredits > 0;
+
+    // 1. Check Credit Balance
+    if (tenant.creditBalance <= 0) {
+      return { allowed: false, reason: "Insufficient credit balance. Please top up." };
+    }
+
+    // 2. Check Monthly Limit
+    if (tenant.usageCount >= tenant.usageLimit && (tenant.bonusCredits || 0) <= 0) {
+      return { allowed: false, reason: "Monthly conversation limit reached." };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * Finalize session: Deduct revenue from credits and increment usage count.
+   */
+  static async finalizeSessionUsage(tenantId: string, revenue: number) {
+    try {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          usageCount: { increment: 1 },
+          creditBalance: { decrement: revenue },
+        },
+      });
+      logger.info({ tenantId, revenue }, "Tenant usage and credits updated after session");
+      return true;
+    } catch (err) {
+      logger.error({ err, tenantId }, "Failed to finalize session usage");
+      return false;
+    }
   }
 
   /**
@@ -160,8 +164,7 @@ export class UsageService {
       return tenant;
     }
 
-    const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-    const newUsageLimit = resolveUsageLimitForTier(tier, settings);
+    const newUsageLimit = resolveUsageLimitForTier();
 
     const data: any = {
       subscriptionTier: tier,

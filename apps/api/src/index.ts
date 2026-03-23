@@ -4,6 +4,7 @@ import jwt from "@fastify/jwt";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import bcrypt from "bcryptjs";
+import formbody from "@fastify/formbody";
 import { env } from "./env";
 import { logger } from "./logger";
 import { authRoutes } from "./routes/auth";
@@ -31,11 +32,18 @@ import { notificationRoutes } from "./routes/notifications";
 import { helpRoutes } from "./routes/help";
 import { commerceBridgeRoutes } from "./routes/commerce-bridge";
 import { publicRoutes } from "./routes/public";
+import { voiceRoutes } from "./routes/voice";
 import { prisma } from "./db";
+import fs from "fs";
+import path from "path";
+
 
 const fastify = Fastify({
   loggerInstance: logger.child({ context: "fastify" }) as any,
 });
+
+// Register Formbody for URL-encoded forms (Twilio)
+fastify.register(formbody);
 
 // Register CORS
 fastify.register(cors, {
@@ -103,10 +111,8 @@ fastify.get("/health", async () => {
 // Base API endpoint
 fastify.get("/api", async () => {
   try {
-    const fs = require("fs");
-    const path = require("path");
     const versionData = JSON.parse(
-      fs.readFileSync(path.join(__dirname, "../../../version.json"), "utf8")
+      fs.readFileSync(path.join(process.cwd(), "./version.json"), "utf8")
     );
     return {
       message: "OrbisVoice API v1",
@@ -142,6 +148,7 @@ fastify.register(notificationRoutes);
 fastify.register(helpRoutes);
 fastify.register(commerceBridgeRoutes);
 fastify.register(publicRoutes);
+fastify.register(voiceRoutes);
 
 // Start server
 const start = async () => {

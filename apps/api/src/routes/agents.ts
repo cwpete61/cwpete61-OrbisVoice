@@ -18,6 +18,7 @@ const CreateAgentSchema = z.object({
   widgetPosition: z.string().optional(),
   widgetPrimaryColor: z.string().optional(),
   widgetDefaultOpen: z.boolean().optional(),
+  phoneNumber: z.string().optional().nullable(),
 });
 
 const UpdateAgentSchema = z.object({
@@ -33,7 +34,43 @@ const UpdateAgentSchema = z.object({
   widgetPosition: z.string().optional(),
   widgetPrimaryColor: z.string().optional(),
   widgetDefaultOpen: z.boolean().optional(),
+  phoneNumber: z.string().optional().nullable(),
 });
+
+type CreateAgentInput = z.infer<typeof CreateAgentSchema>;
+type UpdateAgentInput = z.infer<typeof UpdateAgentSchema>;
+
+/**
+ * Maps incoming schema data to Prisma Agent model fields.
+ * Centralizes the translation of UI fields (like voiceModel) to DB fields (voiceId).
+ */
+function mapAgentData(body: CreateAgentInput | UpdateAgentInput) {
+  const data: Record<string, any> = {};
+  
+  // Field-to-field translations
+  const fieldMapping: Record<string, string> = {
+    voiceModel: "voiceId",
+  };
+
+  Object.entries(body).forEach(([key, value]) => {
+    if (value !== undefined) {
+      const prismaKey = fieldMapping[key] || key;
+      
+      // Normalized defaults for common fields
+      if (prismaKey === "systemPrompt" && (value === null || value === "")) {
+        data[prismaKey] = "";
+      } else if (prismaKey === "voiceId" && !value) {
+        data[prismaKey] = "aoede";
+      } else if (prismaKey === "type" && !value) {
+        data[prismaKey] = "WIDGET";
+      } else {
+        data[prismaKey] = value;
+      }
+    }
+  });
+
+  return data;
+}
 
 export async function agentRoutes(fastify: FastifyInstance) {
   // List agents from admin-scoped tenant for all accounts
@@ -84,20 +121,12 @@ export async function agentRoutes(fastify: FastifyInstance) {
         // This allows all users to save drafts freely. Live usage is guarded by the Voice Gateway.
         const agent = await prisma.agent.create({
           data: {
+            ...mapAgentData(body),
+            name: body.name!, // Guaranteed by Zod validation for CreateAgentSchema
+            systemPrompt: body.systemPrompt ?? "",
             tenantId: effectiveTenantId,
             userId,
-            name: body.name,
-            systemPrompt: body.systemPrompt || "",
-            voiceId: body.voiceModel || "default",
-            type: (body.type as any) || "WIDGET",
-            voiceGender: body.voiceGender as any,
-            avatarUrl: body.avatarUrl,
-            autoStart: body.autoStart !== undefined ? body.autoStart : true,
             isActive: true,
-            widgetIsVisible: body.widgetIsVisible ?? true,
-            widgetPosition: body.widgetPosition || "bottom-right",
-            widgetPrimaryColor: body.widgetPrimaryColor || "#14b8a6",
-            widgetDefaultOpen: body.widgetDefaultOpen ?? false,
           },
         });
 
@@ -171,22 +200,9 @@ export async function agentRoutes(fastify: FastifyInstance) {
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
         const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
 
-        // Explicitly build update data to avoid passing undefined properties that Prisma might reject
-        const updateData: any = {};
-        if (body.name !== undefined) updateData.name = body.name;
-        if (body.systemPrompt !== undefined) updateData.systemPrompt = body.systemPrompt || "";
-        if (body.voiceModel !== undefined) updateData.voiceId = body.voiceModel || "aoede";
-        if (body.type !== undefined) updateData.type = body.type || "WIDGET";
-        if (body.voiceGender !== undefined) updateData.voiceGender = body.voiceGender;
-        if (body.avatarUrl !== undefined) updateData.avatarUrl = body.avatarUrl;
-        if (body.autoStart !== undefined) updateData.autoStart = body.autoStart;
-        if (body.isActive !== undefined) updateData.isActive = body.isActive;
-        if (body.widgetIsVisible !== undefined) updateData.widgetIsVisible = body.widgetIsVisible;
-        if (body.widgetPosition !== undefined) updateData.widgetPosition = body.widgetPosition;
-        if (body.widgetPrimaryColor !== undefined) updateData.widgetPrimaryColor = body.widgetPrimaryColor;
-        if (body.widgetDefaultOpen !== undefined) updateData.widgetDefaultOpen = body.widgetDefaultOpen;
+        const updateData = mapAgentData(body);
 
-        logger.debug({ agentId: id, updateData, tenantId: effectiveTenantId }, "Updating agent");
+        logger.info({ agentId: id, updateData, body }, "Updating agent - DEBUG");
 
         const agent = await prisma.agent.updateMany({
           where: { id, tenantId: effectiveTenantId },

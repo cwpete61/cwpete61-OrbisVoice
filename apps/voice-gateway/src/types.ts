@@ -15,6 +15,11 @@ export interface GatewayClient {
   apiKey?: string;
   token?: string;
   liveSession?: any; // Using any for now to avoid complex type exports from SDK
+  inputTokens: number;
+  outputTokens: number;
+  toolsCalled: number;
+  isTwilio?: boolean;
+  streamSid?: string;
 }
 
 export interface GeminiResponse {

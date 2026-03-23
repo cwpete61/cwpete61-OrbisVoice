@@ -17,6 +17,23 @@ class VoiceGateway {
     this.setupListeners();
   }
 
+  private sendError(ws: WebSocket.WebSocket, error: string, details?: any, sessionId?: string) {
+    const isDev = env.NODE_ENV === "development";
+    const errorMsg = isDev ? (details?.message || String(details || "")) : "Something went wrong in the gateway.";
+    
+    logger.error({ 
+      error, 
+      actualDetails: details?.message || String(details || ""), 
+      sessionId 
+    }, "Gateway error sent to client");
+
+    ws.send(JSON.stringify({ 
+      error, 
+      details: errorMsg, 
+      sessionId 
+    }));
+  }
+
   private setupListeners() {
     this.wss.on("connection", (ws) => {
       const sessionId = uuidv4();
@@ -24,11 +41,18 @@ class VoiceGateway {
 
       ws.on("message", (data) => {
         try {
-          const message: AudioMessage = JSON.parse(data.toString());
-          this.handleMessage(ws, message, sessionId);
+          const rawMessage = JSON.parse(data.toString());
+          
+          // Detect Twilio Protocol
+          if (rawMessage.event) {
+            this.handleTwilioEvent(ws, rawMessage, sessionId);
+            return;
+          }
+
+          // Default OrbisVoice Custom Protocol
+          this.handleMessage(ws, rawMessage as AudioMessage, sessionId);
         } catch (err) {
-          logger.error({ err }, "Failed to parse message");
-          ws.send(JSON.stringify({ error: "Invalid message format" }));
+          this.sendError(ws, "Invalid message format", err, sessionId);
         }
       });
 
@@ -64,6 +88,9 @@ class VoiceGateway {
                   agentId: client.agentId,
                   content: client.transcript,
                   duration: duration,
+                  inputTokens: client.inputTokens,
+                  outputTokens: client.outputTokens,
+                  toolsCalled: client.toolsCalled,
                 }),
               });
             } catch (err) {
@@ -82,298 +109,444 @@ class VoiceGateway {
   }
 
   private async handleMessage(ws: WebSocket.WebSocket, message: AudioMessage, sessionId: string) {
-    logger.info({ type: message.type, data: message.data?.slice(0, 100), sessionId }, "Incoming message from client");
-    if (message.type === "control") {
-      if (message.data.startsWith("{")) {
-        // Handle init with JSON payload containing token
-        try {
-          const payload = JSON.parse(message.data);
-          if (payload.event === "init" && payload.token) {
-            const token = payload.token;
+    logger.info({ type: message.type, length: message.data?.length, sessionId }, "Incoming message from client");
+    
+    try {
+      if (message.type === "control") {
+        await this.handleControlMessage(ws, message, sessionId);
+      } else if (message.type === "audio") {
+        await this.handleAudioMessage(ws, message, sessionId);
+      } else if (message.type === "text") {
+        await this.handleTextMessage(ws, message, sessionId);
+      }
+    } catch (err) {
+      this.sendError(ws, "Internal gateway error", err, sessionId);
+    }
+  }
 
-            // Fetch config from API (Google API Keys)
-            let apiKey: string | undefined;
-            try {
-              const response = await fetch(
-                `${env.API_URL}/settings/google-config?include_secrets=true`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                }
-              );
+  private async handleTwilioEvent(ws: WebSocket.WebSocket, event: any, sessionId: string) {
+    const { event: type } = event;
+    logger.debug({ type, sessionId }, "Incoming Twilio event");
 
-              if (response.status === 401) {
-                ws.send(JSON.stringify({ error: "Unauthorized" }));
-                return;
-              }
+    try {
+      switch (type) {
+        case "start":
+          await this.initializeTwilioSession(ws, event.start, sessionId);
+          break;
+        case "media":
+          await this.handleTwilioAudio(ws, event.media, sessionId);
+          break;
+        case "stop":
+          logger.info({ sessionId }, "Twilio stop event received");
+          ws.close();
+          break;
+        case "mark":
+          // Used for synchronization, ignore for now
+          break;
+        default:
+          logger.warn({ type, sessionId }, "Unhandled Twilio event type");
+      }
+    } catch (err) {
+      this.sendError(ws, "Twilio event processing failed", err, sessionId);
+    }
+  }
 
-              if (response.ok) {
-                const configResponse = (await response.json()) as any;
-                if (configResponse.ok && configResponse.data) {
-                  apiKey = configResponse.data.geminiApiKey;
-                }
-              }
-            } catch (err) {
-              logger.error({ err }, "Failed to fetch google config");
-            }
+  private async initializeTwilioSession(ws: WebSocket.WebSocket, start: any, sessionId: string) {
+    const streamSid = start.streamSid;
+    const callSid = start.callSid;
+    const customParameters = start.customParameters || {};
+    const token = customParameters.token;
+    const agentId = customParameters.agentId || "default-agent";
 
-            // Decode token to get userId/agentId
-            const decoded = jwt.decode(token) as any;
-            if (!decoded || !decoded.userId) {
-              ws.send(JSON.stringify({ error: "Invalid token" }));
-              return;
-            }
+    if (!token) {
+      this.sendError(ws, "Unauthorized", "No token provided in Twilio customParameters", sessionId);
+      ws.close();
+      return;
+    }
 
-            const agentId = payload.agentId || decoded.agentId || "default-agent";
+    try {
+      const decoded: any = jwt.verify(token, env.JWT_SECRET);
+      const apiKey = await this.fetchGoogleConfig(token);
 
-            // Fetch Agent specific config (System Prompt, Voice)
-            let systemPrompt = "You are a helpful AI assistant.";
-            let voiceName = "Charon";
-            try {
-              const agentRes = await fetch(`${env.API_URL}/agents/${agentId}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
+      // Fetch configs like in normal session
+      const { systemPrompt, voiceName } = await this.fetchAgentConfig(token, agentId, customParameters);
+      const enabledToolNames = await this.fetchToolConfig(token);
+      const sessionTools = buildToolsForNames(enabledToolNames);
+
+      const client: GatewayClient = {
+        sessionId,
+        userId: decoded.userId || "twilio-system",
+        agentId,
+        connectedAt: new Date(),
+        startTime: Date.now(),
+        transcript: "",
+        apiKey,
+        token,
+        liveSession: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolsCalled: 0,
+        isTwilio: true,
+        streamSid,
+      };
+
+      const liveSession = await geminiVoiceClient.connectLive(
+        apiKey,
+        { systemPrompt, voiceName, tools: sessionTools },
+        this.createGeminiHandlers(ws, client)
+      );
+
+      client.liveSession = liveSession;
+      this.clients.set(sessionId, client);
+      
+      logger.info({ sessionId, streamSid, callSid, agentId }, "Twilio Inbound Session Initialized");
+    } catch (err) {
+      this.sendError(ws, "Twilio session initialization failed", err, sessionId);
+      ws.close();
+    }
+  }
+
+  private async handleTwilioAudio(ws: WebSocket.WebSocket, media: any, sessionId: string) {
+    const client = this.clients.get(sessionId);
+    if (!client || !client.liveSession) return;
+
+    // Twilio sends mulaw (usually). We tell Gemini it's mulaw or we transcode.
+    // Gemini Multimodal Live API supports "audio/mulaw;rate=8000" in some versions, 
+    // but the @google/genai SDK often expects "audio/pcm;rate=16000".
+    // Let's try sending as mulaw first.
+    try {
+      client.liveSession.sendRealtimeInput({
+        media: { mimeType: "audio/mulaw;rate=8000", data: media.payload },
+      });
+    } catch (err) {
+      logger.error({ err, sessionId }, "Failed to send Twilio audio to Gemini");
+    }
+  }
+
+  private async handleControlMessage(ws: WebSocket.WebSocket, message: AudioMessage, sessionId: string) {
+    if (message.data.startsWith("{")) {
+      await this.initializeSession(ws, message, sessionId);
+    } else if (message.data === "init") {
+      this.initializeTestSession(ws, sessionId);
+    }
+  }
+
+  private async initializeSession(ws: WebSocket.WebSocket, message: AudioMessage, sessionId: string) {
+    try {
+      const payload = JSON.parse(message.data);
+      if (payload.event !== "init" || !payload.token) {
+        return;
+      }
+
+      const token = payload.token;
+
+      // 1. Verify Identity (Security Hardening)
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, env.JWT_SECRET);
+      } catch (err) {
+        this.sendError(ws, "Unauthorized", "Invalid or expired session token", sessionId);
+        return;
+      }
+
+      if (!decoded || !decoded.userId) {
+        this.sendError(ws, "Invalid identity", "Token does not contain user identification", sessionId);
+        return;
+      }
+
+      // 2. Fetch Google Config (Secrets)
+      const apiKey = await this.fetchGoogleConfig(token);
+
+      // 3. Verify Usage Allowance (Phase 9 Hard Gating)
+      try {
+        const canStartRes = await fetch(`${env.API_URL}/billing/can-start-session`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const canStartData = await canStartRes.json() as any;
+        if (!canStartRes.ok) {
+          this.sendError(ws, "Usage Restricted", canStartData.message || "Insufficient Credits", sessionId);
+          ws.close();
+          return;
+        }
+      } catch (err) {
+        logger.error({ err, sessionId }, "Failed to verify usage allowance");
+      }
+
+      const agentId = payload.agentId || decoded.agentId || "default-agent";
+
+      // 3. Fetch Agent Configuration
+      const { systemPrompt, voiceName } = await this.fetchAgentConfig(token, agentId, payload);
+
+      // 4. Fetch Tool Configuration
+      const enabledToolNames = await this.fetchToolConfig(token);
+      const sessionTools = buildToolsForNames(enabledToolNames);
+
+      // 5. Establish Gemini Multimodal Live Session
+      logger.info({ 
+        model: "gemini-2.5-flash-native-audio-latest", 
+        apiKeySet: !!apiKey,
+        voiceName,
+        toolsCount: sessionTools.length,
+        sessionId 
+      }, "Connecting to Gemini Multimodal Live API");
+
+      const client: GatewayClient = {
+        sessionId,
+        userId: decoded.userId,
+        agentId,
+        connectedAt: new Date(),
+        startTime: Date.now(),
+        transcript: "",
+        apiKey,
+        token,
+        liveSession: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        toolsCalled: 0,
+      };
+
+      const liveSession = await geminiVoiceClient.connectLive(
+        apiKey,
+        { systemPrompt, voiceName, tools: sessionTools },
+        this.createGeminiHandlers(ws, client)
+      );
+
+      client.liveSession = liveSession;
+      this.clients.set(sessionId, client);
+      
+      logger.info({ sessionId, userId: client.userId, agentId }, "Client initialized, waiting for setupComplete");
+    } catch (err) {
+      this.sendError(ws, "Session initialization failed", err, sessionId);
+    }
+  }
+
+  private async fetchGoogleConfig(token: string): Promise<string | undefined> {
+    try {
+      const response = await fetch(`${env.API_URL}/settings/google-config?include_secrets=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const configResponse = (await response.json()) as any;
+        return configResponse.data?.geminiApiKey;
+      }
+    } catch (err) {
+      logger.error({ err }, "Failed to fetch google config");
+    }
+    return undefined;
+  }
+
+  private async fetchAgentConfig(token: string, agentId: string, payload: any) {
+    let systemPrompt = "You are a helpful AI assistant.";
+    let voiceName = "Charon";
+
+    try {
+      const agentRes = await fetch(`${env.API_URL}/agents/${agentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const agentData = agentRes.ok ? ((await agentRes.json()) as any).data : null;
+      if (agentData) {
+        systemPrompt = agentData.systemPrompt || systemPrompt;
+      }
+
+      const rawVoiceId = payload.voiceId || agentData?.voiceId || agentData?.voiceModel || "aoede";
+      const voiceGender = payload.voiceGender || agentData?.voiceGender || "MALE";
+          
+      const voiceMapping: Record<string, string> = {
+        aoede: "Aoede", autonoe: "Aoede", callirrhoe: "Aoede", kore: "Kore", leda: "Kore", zephyr: "Aoede",
+        charon: "Charon", enceladus: "Charon", fenrir: "Fenrir", lapetus: "Charon", orus: "Puck", puck: "Puck", umbriel: "Puck",
+        default: voiceGender === "FEMALE" ? "Aoede" : "Charon",
+        professional: "Kore", friendly: "Aoede", concise: "Charon",
+      };
+      
+      voiceName = voiceMapping[rawVoiceId.toLowerCase()] || (voiceGender === "FEMALE" ? "Aoede" : "Charon");
+    } catch (err) {
+      logger.error({ err, agentId }, "Failed to fetch agent config, using defaults");
+    }
+
+    return { systemPrompt, voiceName };
+  }
+
+  private async fetchToolConfig(token: string): Promise<string[]> {
+    try {
+      const response = await fetch(`${env.API_URL}/settings/agent-tool-config`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const configResponse = (await response.json()) as any;
+        return configResponse.data?.enabledTools || [];
+      }
+    } catch (err) {
+      logger.error({ err }, "Failed to fetch tool config");
+    }
+    // Default to all tools enabled if fetch fails (fallback behavior)
+    return ALL_VOICE_TOOL_NAMES.slice() as unknown as string[];
+  }
+
+  private createGeminiHandlers(ws: WebSocket.WebSocket, client: GatewayClient) {
+    return {
+      onmessage: async (msg: any) => {
+        const { sessionId } = client;
+        
+        if (msg.setupComplete) {
+          logger.info({ sessionId }, "Gemini setup complete");
+          ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+          return;
+        }
+
+        // Handle Tool Calls (Function Calls)
+        const modelTurn = msg.serverContent?.modelTurn;
+        if (modelTurn?.parts) {
+          for (const part of modelTurn.parts) {
+            if (part.functionCall) {
+              const { name, args, id } = part.functionCall;
+              logger.info({ sessionId, name, args }, "Gemini requested tool call");
+              client.toolsCalled++;
               
-              const agentData = agentRes.ok ? ((await agentRes.json()) as any).data : null;
-              if (agentData) {
-                systemPrompt = agentData.systemPrompt || systemPrompt;
-              }
-
-              // Preference order for selection: 1. Manual payload override (frontend) 2. Database 3. Defaults
-              const rawVoiceId = payload.voiceId || agentData?.voiceId || agentData?.voiceModel || "aoede";
-              const voiceGender = payload.voiceGender || agentData?.voiceGender || "MALE";
-                  
-                  // Mapping all 13 possible UI voices to the 5 actual Gemini prebuilt voices
-                  const voiceMapping: Record<string, string> = {
-                    // Females -> Aoede or Kore
-                    aoede: "Aoede",
-                    autonoe: "Aoede",
-                    callirrhoe: "Aoede",
-                    kore: "Kore",
-                    leda: "Kore",
-                    zephyr: "Aoede",
-                    
-                    // Males -> Charon, Fenrir or Puck
-                    charon: "Charon",
-                    enceladus: "Charon",
-                    fenrir: "Fenrir",
-                    lapetus: "Charon",
-                    orus: "Puck",
-                    puck: "Puck",
-                    umbriel: "Puck",
-                    
-                    // Old mapping support
-                    default: voiceGender === "FEMALE" ? "Aoede" : "Charon",
-                    professional: "Kore",
-                    friendly: "Aoede",
-                    concise: "Charon",
-                  };
-                  
-                  voiceName = voiceMapping[rawVoiceId.toLowerCase()] || (voiceGender === "FEMALE" ? "Aoede" : "Charon");
-            } catch (err) {
-              logger.error({ err, agentId }, "Failed to fetch agent config, using defaults");
-            }
-
-            // Establish Gemini Multimodal Live Session
-            let liveSession: any;
-            try {
-              logger.info({ 
-                model: "gemini-2.5-flash-native-audio-latest", 
-                apiKeySet: !!apiKey,
-                voiceName,
-                sessionId 
-              }, "Attempting to connect to Gemini Live");
-              
-              liveSession = await geminiVoiceClient.connectLive(
-                apiKey,
-                {
-                  systemPrompt: "You are a helpful assistant.", // Minimal prompt for testing
-                  voiceName,
-                  tools: undefined, // Disabling tools for debugging
-                },
-                {
-                  onmessage: async (msg: any) => {
-                    logger.debug({ msg }, "Raw Gemini message");
-                    if (msg.setupComplete) {
-                      logger.info({ sessionId }, "Gemini setup complete, signaling ready to client");
-                      ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
-                      return;
-                    }
-
-                    // Forward all Gemini messages to client
-                    ws.send(JSON.stringify({ type: "gemini", data: msg }));
-
-                    // Handle Transcripts
-                    const modelParts = msg.serverContent?.modelTurn?.parts || [];
-                    for (const part of modelParts) {
-                      if (part.text) {
-                        client.transcript += `AI: ${part.text}\n`;
-                      }
-                    }
-
-                    // Handle User turns if transcription is present
-                    const userParts = msg.serverContent?.userTurn?.parts || [];
-                    for (const part of userParts) {
-                      if (part.text) {
-                        client.transcript += `User: ${part.text}\n`;
-                      }
-                    }
-
-                    // If it's audio, also send it in a way the client-side AudioPlayer expects
-                    const base64Audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-                    if (base64Audio) {
-                      ws.send(
-                        JSON.stringify({
-                          type: "audio",
-                          data: base64Audio,
-                        })
-                      );
-                    }
-
-                    // Handle Tool Calls
-                    const toolParts = msg.serverContent?.modelTurn?.parts || [];
-                    for (const part of toolParts) {
-                      if (part.toolCall) {
-                        const functionCalls = part.toolCall.functionCalls;
-                        if (functionCalls) {
-                          for (const call of functionCalls) {
-                            const result = await ToolExecutor.execute(call.name, call.args, token);
-
-                            // Send ToolResponse back to Gemini session
-                            if (liveSession) {
-                              liveSession.sendToolResponse({
-                                functionResponses: [
-                                  {
-                                    name: call.name,
-                                    id: call.id,
-                                    response: result,
-                                  },
-                                ],
-                              });
-                            }
-                          }
-                        }
-                      }
-                    }
-
-                    // Handle interruption signal for client to stop its player
-                    if (msg.serverContent?.interrupted) {
-                      ws.send(JSON.stringify({ type: "control", data: "interrupted" }));
-                    }
-                  },
-                  onclose: (event?: any) => {
-                    logger.info({ 
-                      sessionId, 
-                      code: event?.code, 
-                      reason: event?.reason 
-                    }, "Gemini session closed");
-                    ws.send(JSON.stringify({ type: "control", data: "closed" }));
-                  },
-                  onerror: (err: any) => {
-                    const errorMsg = err?.message || String(err);
-                    logger.error({ 
-                      err, 
-                      errorMsg, 
-                      sessionId,
-                      code: err?.code,
-                      reason: err?.reason
-                    }, "Gemini session error occurred");
-                    ws.send(
-                      JSON.stringify({ error: "Gemini connection error", details: errorMsg })
-                    );
-                  },
-                }
-              );
-            } catch (err: any) {
-              logger.error({ err, message: err.message, stack: err.stack }, "Failed to connect to Gemini Live");
+              // 1. Send status to frontend (optional but good for UI)
               ws.send(JSON.stringify({ 
-                error: "Gemini connection failed", 
-                details: err.message,
-                stack: err.stack 
+                type: "tool_call", 
+                data: { name, args } 
               }));
-              return;
+
+              // 2. Execute the tool
+              try {
+                const response = await ToolExecutor.execute(name, args, client.token || "", { 
+                  agentId: client.agentId, 
+                  userId: client.userId 
+                });
+                logger.info({ sessionId, name, response }, "Tool execution complete, sending back to Gemini");
+
+                // 3. Send response back to Gemini
+                if (client.liveSession) {
+                  client.liveSession.send([
+                    {
+                      functionResponse: {
+                        name,
+                        id,
+                        response: { result: response },
+                      },
+                    },
+                  ]);
+                }
+              } catch (toolErr) {
+                logger.error({ toolErr, name, sessionId }, "Tool execution failed");
+                if (client.liveSession) {
+                  client.liveSession.send([
+                    {
+                      functionResponse: {
+                        name,
+                        id,
+                        response: { error: String(toolErr) },
+                      },
+                    },
+                  ]);
+                }
+              }
             }
-
-            const client: GatewayClient = {
-              sessionId,
-              userId: decoded.userId,
-              agentId,
-              connectedAt: new Date(),
-              startTime: Date.now(),
-              transcript: "",
-              apiKey,
-              token,
-              liveSession,
-            };
-
-            this.clients.set(sessionId, client);
-            logger.info(
-              { sessionId, userId: client.userId, agentId },
-              "Client initialized, waiting for Gemini setupComplete"
-            );
           }
-        } catch (e) {
-          logger.error({ err: e }, "Failed to handle init message");
-          ws.send(JSON.stringify({ error: "Initialization failed" }));
         }
-      } else if (message.data === "init") {
-        // Legacy/Test init
-        const client: GatewayClient = {
-          sessionId,
-          userId: "test-user", // TODO: extract from JWT header
-          agentId: "test-agent", // TODO: extract from message
-          connectedAt: new Date(),
-          startTime: Date.now(),
-          transcript: "",
-          token: "test-token", // Dummy token for test mode
-          apiKey: "test-api-key", // Dummy API key for test mode
-        };
-        this.clients.set(sessionId, client);
-        logger.info({ client }, "Client initialized (test mode)");
-        ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
-      }
-    } else if (message.type === "audio") {
-      const client = this.clients.get(sessionId);
-      if (!client) {
-        ws.send(JSON.stringify({ error: "Session not initialized" }));
-        return;
-      }
 
-      try {
-        // Forward to Gemini Multimodal Live API
-        if (client.liveSession) {
-          client.liveSession.sendRealtimeInput({
-            media: {
-              mimeType: "audio/pcm;rate=16000",
-              data: message.data,
-            },
-          });
+        // Update Usage (Token Tracking)
+        if (msg.usageMetadata) {
+          client.inputTokens = msg.usageMetadata.promptTokenCount;
+          client.outputTokens = msg.usageMetadata.candidatesTokenCount;
+          logger.info({ sessionId, usage: msg.usageMetadata }, "Updated token usage");
         }
-      } catch (err) {
-        logger.error({ err }, "Failed to process audio via live session");
-        ws.send(JSON.stringify({ error: "Failed to process audio", details: String(err) }));
-      }
-    } else if (message.type === "text") {
-      const client = this.clients.get(sessionId);
-      if (!client) {
-        ws.send(JSON.stringify({ error: "Session not initialized" }));
-        return;
-      }
 
-      try {
-        // Forward text to Gemini Multimodal Live API
-        if (client.liveSession) {
-          client.liveSession.sendRealtimeInput({
-            text: message.data,
-          });
+        // Update Transcript
+        const modelParts = msg.serverContent?.modelTurn?.parts || [];
+        for (const part of modelParts) {
+          if (part.text) {
+            logger.info({ sessionId, text: part.text }, "Received text from Gemini");
+            client.transcript += `AI: ${part.text}\n`;
+          }
         }
-      } catch (err) {
-        logger.error({ err }, "Failed to process text via live session");
-        ws.send(JSON.stringify({ error: "Failed to process text", details: String(err) }));
-      }
+
+        const userParts = msg.serverContent?.userTurn?.parts || [];
+        for (const part of userParts) {
+          if (part.text) {
+            client.transcript += `User: ${part.text}\n`;
+          }
+        }
+
+        // Forward Audio Part to client
+        const base64Audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+        if (base64Audio) {
+          logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk");
+          
+          if (client.isTwilio && client.streamSid) {
+            // Forward back to Twilio stream
+            ws.send(JSON.stringify({ 
+              event: "media", 
+              streamSid: client.streamSid, 
+              media: { payload: base64Audio } 
+            }));
+          } else {
+            // Standard custom protocol (PCM)
+            ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+          }
+        }
+
+        // Handle interruptions
+        if (msg.serverContent?.interrupted) {
+          ws.send(JSON.stringify({ type: "control", data: "interrupted" }));
+        }
+      },
+      onclose: (event?: any) => {
+        logger.info({ sessionId: client.sessionId, code: event?.code, reason: event?.reason }, "Gemini session closed");
+        ws.send(JSON.stringify({ type: "control", data: "closed" }));
+      },
+      onerror: (err: any) => {
+        this.sendError(ws, "Gemini session error", err, client.sessionId);
+      },
+    };
+  }
+
+  private initializeTestSession(ws: WebSocket.WebSocket, sessionId: string) {
+    const client: GatewayClient = {
+      sessionId,
+      userId: "test-user",
+      agentId: "test-agent",
+      connectedAt: new Date(),
+      startTime: Date.now(),
+      transcript: "",
+      token: "test-token",
+      apiKey: "test-api-key",
+      liveSession: null,
+      inputTokens: 0,
+      outputTokens: 0,
+      toolsCalled: 0,
+    };
+    this.clients.set(sessionId, client);
+    logger.info({ sessionId }, "Client initialized (test mode)");
+    ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+  }
+
+  private async handleAudioMessage(ws: WebSocket.WebSocket, message: AudioMessage, sessionId: string) {
+    const client = this.clients.get(sessionId);
+    if (!client || !client.liveSession) return;
+
+    try {
+      logger.debug({ sessionId, length: message.data?.length }, "Forwarding audio to Gemini");
+      client.liveSession.sendRealtimeInput({
+        media: { mimeType: "audio/pcm;rate=16000", data: message.data },
+      });
+    } catch (err) {
+      this.sendError(ws, "Failed to process audio", err, sessionId);
+    }
+  }
+
+  private async handleTextMessage(ws: WebSocket.WebSocket, message: AudioMessage, sessionId: string) {
+    const client = this.clients.get(sessionId);
+    if (!client || !client.liveSession) return;
+
+    try {
+      client.liveSession.sendRealtimeInput({ text: message.data });
+    } catch (err) {
+      this.sendError(ws, "Failed to process text", err, sessionId);
     }
   }
 

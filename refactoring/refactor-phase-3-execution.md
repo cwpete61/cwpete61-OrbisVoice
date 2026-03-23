@@ -521,6 +521,10 @@ Preserve behavior first.
 | **B008**  | `web/DashboardShell.tsx`                             | Extracted 5-level nested nav visibility conditional → `shouldShowNavItem()` pure function | ✅ Complete |
 | **B009**  | `web/admin/users/page.tsx`                           | Refactored 10 handlers to use `apiFetch`; standardized loading keys; bulk ops → parallel  | ✅ Complete |
 | **B010**  | `web/stats/page.tsx`                                 | Added `unwrapJson` helper; replaced 3× repeated unwrap pattern with parallel calls        | ✅ Complete |
+| **B011**  | `api/src/services/session-finalize.ts`               | Removed unused `maxAgeMinutes` parameter from `cleanupStaleSessions`                      | ✅ Complete |
+| **B012**  | `web/admin/payouts/page.tsx`                         | Extracted `fetchWithAuth` helper; consolidated redundant API fetch logic                  | ✅ Complete |
+| **B013**  | `web/src/lib/api.ts`                                 | Consolidated and organized API helper functions and constants                             | ✅ Complete |
+| **B014**  | `voice-gateway/src/index.ts`                         | Refactored `VoiceGateway` logic into delegator pattern; improved error visibility         | ✅ Complete |
 
 ### Pass 1 Status: ✅ COMPLETE
 
@@ -528,9 +532,12 @@ Pass 1 (Low-Risk Cleanup) is complete for both `apps/web` and `apps/api`. Ready 
 
 ### Pass 2 Status: 🔄 IN PROGRESS
 
-| Batch    | Scope                | Changes                                                                       | Status      |
-| -------- | -------------------- | ----------------------------------------------------------------------------- | ----------- |
-| **B008** | `DashboardShell.tsx` | Extracted 5-level nested nav visibility → `shouldShowNavItem()` pure function | ✅ Complete |
+| Batch    | Scope                    | Changes                                                                       | Status      |
+| -------- | ------------------------ | ----------------------------------------------------------------------------- | ----------- |
+| **B008** | `DashboardShell.tsx`     | Extracted 5-level nested nav visibility → `shouldShowNavItem()` pure function | ✅ Complete |
+| **B011** | `session-finalize.ts`    | Simplified stale session cleanup signature                                    | ✅ Complete |
+| **B012** | `admin/payouts/page.tsx` | Consolidated fetch logic                                                      | ✅ Complete |
+| **B014** | `voice-gateway/index.ts` | Extracted session initialization and Gemini message handling                  | ✅ Complete |
 
 ### Deferred (Pass 2+)
 

@@ -5,6 +5,8 @@ import { ApiResponse } from "../types";
 import { requireNotBlocked } from "../middleware/auth";
 import { FastifyRequest } from "fastify";
 import { resolveAdminScopedTenantId } from "../services/admin-scope";
+import { pricingService } from "../services/pricing";
+import { UsageService } from "../services/usage-service";
 
 export async function transcriptRoutes(fastify: FastifyInstance) {
   // Get conversation history for agent
@@ -128,14 +130,38 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
+        // Calculate Estimated Cost & Revenue
+        const inputTokens = body.inputTokens || 0;
+        const outputTokens = body.outputTokens || 0;
+        const toolsCalled = body.toolsCalled || 0;
+        const durationSeconds = body.duration || 0;
+
+        const sessionFinance = await pricingService.calculateSessionFinance({
+          inputTokens,
+          outputTokens,
+          toolsCalled,
+          durationSeconds,
+        });
+
         const transcript = await prisma.transcript.create({
           data: {
             agentId: body.agentId,
+            tenantId: effectiveTenantId,
             userId: body.userId || userId,
             content: body.content,
-            duration: body.duration,
+            duration: durationSeconds,
+            inputTokens,
+            outputTokens,
+            toolsCalled,
+            estimatedCost: sessionFinance.cost,
+            revenue: sessionFinance.revenue,
+            margin: sessionFinance.margin,
+            isLowMargin: sessionFinance.isLowMargin,
           },
         });
+
+        // Update Tenant Usage/Credits
+        await UsageService.finalizeSessionUsage(effectiveTenantId, sessionFinance.revenue);
 
         return reply.code(201).send({
           ok: true,

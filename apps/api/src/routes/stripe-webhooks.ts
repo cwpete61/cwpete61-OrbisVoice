@@ -343,8 +343,7 @@ export default async function stripeWebhookRoutes(fastify: FastifyInstance) {
             break;
           }
 
-          const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-          const freeUsageLimit = resolveUsageLimitForTier("free", settings);
+          const freeUsageLimit = resolveUsageLimitForTier();
           await prisma.tenant.update({
             where: { id: tenant.id },
             data: {

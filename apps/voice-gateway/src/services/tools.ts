@@ -10,6 +10,7 @@ export const ALL_VOICE_TOOL_NAMES = [
   "create_checkout_session",
   "send_sms",
   "make_call",
+  "send_reminder_sms",
 ] as const;
 
 export const COMMERCE_TOOLS: Tool[] = [
@@ -133,6 +134,28 @@ export const COMMERCE_TOOLS: Tool[] = [
             },
           },
           required: ["to", "message"],
+        },
+      },
+      {
+        name: "send_reminder_sms",
+        description: "Send a reminder SMS message for an appointment or follow-up.",
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            to: {
+              type: Type.STRING,
+              description: "The destination phone number in E.164 format.",
+            },
+            reminderText: {
+              type: Type.STRING,
+              description: "The specific reminder content.",
+            },
+            appointmentDate: {
+              type: Type.STRING,
+              description: "The date and time of the appointment (optional).",
+            },
+          },
+          required: ["to", "reminderText"],
         },
       },
     ],

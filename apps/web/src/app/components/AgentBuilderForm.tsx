@@ -232,6 +232,7 @@ export interface AgentData {
   widgetPosition?: string;
   widgetPrimaryColor?: string;
   widgetDefaultOpen?: boolean;
+  phoneNumber?: string | null;
 }
 
 export default function AgentBuilderForm({
@@ -265,6 +266,7 @@ export default function AgentBuilderForm({
   const isCreatingRef = useRef(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "error" | "">("");
   const [error, setError] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(initialData?.phoneNumber || "");
   const [animatingVoice, setAnimatingVoice] = useState<string | null>(null);
 
   // Audio Streaming State
@@ -286,7 +288,7 @@ export default function AgentBuilderForm({
   const steps = [
     { n: 1, label: "Identity" },
     { n: 2, label: "Persona" },
-    { n: 3, label: "Widget & Embed" },
+    ...(agentType === "WIDGET" ? [{ n: 3, label: "Widget & Embed" }] : []),
   ];
 
   // Background auto-save triggered when inputs change
@@ -297,7 +299,8 @@ export default function AgentBuilderForm({
     type: string,
     gender: string,
     avatar: string | null,
-    autostart: boolean
+    autostart: boolean,
+    phoneNum: string
   ): Promise<boolean> => {
     if (!currentName.trim()) return false; // Name is required to save
 
@@ -315,7 +318,8 @@ export default function AgentBuilderForm({
         widgetIsVisible: widgetIsVisible,
         widgetPosition: widgetPosition,
         widgetPrimaryColor: widgetPrimaryColor,
-        widgetDefaultOpen: widgetDefaultOpen
+        widgetDefaultOpen: widgetDefaultOpen,
+        phoneNumber: phoneNum
       };
       
       if (!agentId) {
@@ -368,10 +372,10 @@ export default function AgentBuilderForm({
   };
 
   // Debounce the system prompt text-area typing
-  const debouncedAutoSave = (nameVal: string, promptVal: string, voiceVal: string, typeVal: string, genderVal: string, avatarVal: string | null, autostartVal: boolean) => {
+  const debouncedAutoSave = (nameVal: string, promptVal: string, voiceVal: string, typeVal: string, genderVal: string, avatarVal: string | null, autostartVal: boolean, phoneNumVal: string) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      triggerAutoSave(nameVal, promptVal, voiceVal, typeVal, genderVal, avatarVal, autostartVal);
+      triggerAutoSave(nameVal, promptVal, voiceVal, typeVal, genderVal, avatarVal, autostartVal, phoneNumVal);
     }, 1500); // Wait 1.5 seconds after typing stops
   };
 
@@ -379,7 +383,7 @@ export default function AgentBuilderForm({
     setSelectedTemplate(t.id);
     if (t.prompt) {
       setSystemPrompt(t.prompt);
-      debouncedAutoSave(name, t.prompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+      debouncedAutoSave(name, t.prompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
     }
   };
 
@@ -388,7 +392,7 @@ export default function AgentBuilderForm({
     setSelectedVoice(voiceId);
     setIsVoiceDropdownOpen(false);
     setTimeout(() => setAnimatingVoice(null), 800);
-    triggerAutoSave(name, systemPrompt, voiceId, agentType, voiceGender, avatarUrl, autoStart);
+    triggerAutoSave(name, systemPrompt, voiceId, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
   };
 
   const playVoiceSample = (voiceId: string) => {
@@ -437,7 +441,7 @@ export default function AgentBuilderForm({
     setActiveStep(2);
     // Force an initial save if moving to step 2 for the first time
     if (!agentId) {
-      triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+      triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
     }
   };
 
@@ -457,7 +461,7 @@ export default function AgentBuilderForm({
       return;
     }
     setSaving(true);
-    triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart).then((ok) => {
+    triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber).then((ok) => {
       if (ok) {
         router.push("/dashboard");
       } else {
@@ -475,7 +479,7 @@ export default function AgentBuilderForm({
 
     setError("");
     setSavingDraft(true);
-    const ok = await triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+    const ok = await triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
     if (!ok) {
       setError("Could not save right now. Please try again.");
     }
@@ -571,6 +575,11 @@ export default function AgentBuilderForm({
               const audioBuffer = base64ToArrayBuffer(msg.data);
               playerRef.current.play(audioBuffer);
             }
+          }
+
+          if (msg.type === "tool_call") {
+            const { name, args } = msg.data;
+            console.log(`[Tool Call] ${name}`, args);
           }
 
           if (msg.type === "control") {
@@ -832,7 +841,7 @@ export default function AgentBuilderForm({
                         value={name}
                         onChange={(e) => {
                           setName(e.target.value);
-                          debouncedAutoSave(e.target.value, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                          debouncedAutoSave(e.target.value, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
                         }}
                         placeholder="e.g., Sales Pro, Support Ally, Booking Bot..."
                         className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-[rgba(240,244,250,0.2)] focus:outline-none focus:border-[#14b8a6]/50 focus:ring-1 focus:ring-[#14b8a6]/20 transition text-sm"
@@ -853,7 +862,7 @@ export default function AgentBuilderForm({
                             suppressHydrationWarning
                             onClick={() => {
                               setAgentType(t.id as any);
-                              triggerAutoSave(name, systemPrompt, selectedVoice, t.id, voiceGender, avatarUrl, autoStart);
+                              triggerAutoSave(name, systemPrompt, selectedVoice, t.id, voiceGender, avatarUrl, autoStart, phoneNumber);
                             }}
                             className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 ${
                               agentType === t.id
@@ -878,169 +887,192 @@ export default function AgentBuilderForm({
                           </button>
                         ))}
                       </div>
+                      
+                      { (agentType === "INBOUND_TWILIO" || agentType === "OUTBOUND_TWILIO") && (
+                        <div className="mt-6 fade-slide-up">
+                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
+                            Twilio Phone Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={phoneNumber || ""}
+                            onChange={(e) => {
+                              setPhoneNumber(e.target.value);
+                              debouncedAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, e.target.value);
+                            }}
+                            placeholder="+1234567890"
+                            className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-[rgba(240,244,250,0.2)] focus:outline-none focus:border-[#14b8a6]/50 focus:ring-1 focus:ring-[#14b8a6]/20 transition text-sm"
+                            suppressHydrationWarning
+                          />
+                          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.25)]">
+                            The phone number configured in Twilio that points to this agent
+                          </p>
+                        </div>
+                      )}
 
                       <button
-                        onClick={handleStep2Continue}
-                        className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
+                        onClick={handleStep1Continue}
+                        className="w-full mt-6 bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
                         suppressHydrationWarning
                       >
-                        Continue to Widget Settings →
+                        Continue to Persona →
                       </button>
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Step 3: Widget & Embed */}
-              <div
-                className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 3 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
-              >
-                <button
-                  onClick={() => { if (isStepComplete(1) && isStepComplete(2)) setActiveStep(3); }}
-                  suppressHydrationWarning
-                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
+                    {/* Step 3: Widget & Embed */}
+              {agentType === "WIDGET" && (
+                <div
+                  className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 3 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
                 >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      activeStep === 3
-                        ? "bg-[#14b8a6] text-white"
-                        : isStepComplete(3)
-                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                          : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
-                    }`}
+                  <button
+                    onClick={() => { if (isStepComplete(1) && isStepComplete(2)) setActiveStep(3); }}
+                    suppressHydrationWarning
+                    className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
                   >
-                    3
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-semibold text-white">Widget & Embed</div>
-                    <div className="text-xs text-[rgba(240,244,250,0.35)]">
-                      Embed the voice agent on your website
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        activeStep === 3
+                          ? "bg-[#14b8a6] text-white"
+                          : isStepComplete(3)
+                            ? "bg-[#14b8a6]/20 text-[#14b8a6]"
+                            : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
+                      }`}
+                    >
+                      3
                     </div>
-                  </div>
-                </button>
-
-                {activeStep === 3 && (
-                  <div className="px-6 pb-6 fade-slide-up">
-                    <div className="border-t border-white/[0.05] pt-5 space-y-6">
-                      {/* Embed Code Section */}
-                      <div>
-                        <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-3">
-                          Website Embed Code
-                        </label>
-                        <div className="relative group/copy">
-                          <pre className="bg-[#0a0e1a] border border-white/[0.08] rounded-xl p-4 text-[11px] text-[#14b8a6] font-mono overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
-                            {`<script 
-  src="${typeof window !== 'undefined' ? window.location.origin : 'https://myorbisvoice.com'}/widget.js" 
-  data-agent-id="${agentId || 'save-to-generate'}" 
-  defer
-></script>`}
-                          </pre>
-                          <button
-                            onClick={() => {
-                              const code = `<script src="${window.location.origin}/widget.js" data-agent-id="${agentId}" defer></script>`;
-                              navigator.clipboard.writeText(code);
-                              const btn = document.getElementById('copy-btn');
-                              if (btn) btn.innerText = 'Copied!';
-                              setTimeout(() => { if (btn) btn.innerText = 'Copy Code'; }, 2000);
-                            }}
-                            id="copy-btn"
-                            className="absolute top-2 right-2 px-3 py-1.5 bg-[#14b8a6]/20 hover:bg-[#14b8a6]/30 text-[#14b8a6] text-[10px] font-bold rounded-lg transition-all opacity-0 group-hover/copy:opacity-100"
-                          >
-                            Copy Code
-                          </button>
-                        </div>
-                        <p className="mt-2.5 text-[10px] text-[rgba(240,244,250,0.3)] leading-relaxed">
-                          Paste this code right before the closing <code className="bg-white/5 px-1 rounded">{"</body>"}</code> tag of your website.
-                        </p>
+                    <div className="text-left">
+                      <div className="text-sm font-semibold text-white">Widget & Embed</div>
+                      <div className="text-xs text-[rgba(240,244,250,0.35)]">
+                        Embed the voice agent on your website
                       </div>
+                    </div>
+                  </button>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Position */}
+                  {activeStep === 3 && (
+                    <div className="px-6 pb-6 fade-slide-up">
+                      <div className="border-t border-white/[0.05] pt-5 space-y-6">
+                        {/* Embed Code Section */}
                         <div>
-                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                            Position
+                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-3">
+                            Website Embed Code
                           </label>
-                          <select 
-                            value={widgetPosition}
-                            onChange={(e) => {
-                              setWidgetPosition(e.target.value);
-                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
-                            }}
-                            className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#14b8a6]/50"
-                          >
-                            <option value="bottom-right">Bottom Right</option>
-                            <option value="bottom-left">Bottom Left</option>
-                            <option value="top-right">Top Right</option>
-                            <option value="top-left">Top Left</option>
-                          </select>
-                        </div>
-
-                        {/* Theme Color */}
-                        <div>
-                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                            Theme Color
-                          </label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="color"
-                              value={widgetPrimaryColor}
-                              onChange={(e) => {
-                                setWidgetPrimaryColor(e.target.value);
-                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                          <div className="relative group/copy">
+                            <pre className="bg-[#0a0e1a] border border-white/[0.08] rounded-xl p-4 text-[11px] text-[#14b8a6] font-mono overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
+                              {`<script 
+    src="${typeof window !== 'undefined' ? window.location.origin : 'https://myorbisvoice.com'}/widget.js" 
+    data-agent-id="${agentId || 'save-to-generate'}" 
+    defer
+  ></script>`}
+                            </pre>
+                            <button
+                              onClick={() => {
+                                const code = `<script src="${window.location.origin}/widget.js" data-agent-id="${agentId}" defer></script>`;
+                                navigator.clipboard.writeText(code);
+                                const btn = document.getElementById('copy-btn');
+                                if (btn) btn.innerText = 'Copied!';
+                                setTimeout(() => { if (btn) btn.innerText = 'Copy Code'; }, 2000);
                               }}
-                              className="w-10 h-10 bg-transparent border-0 rounded cursor-pointer"
-                            />
-                            <input 
-                              type="text"
-                              value={widgetPrimaryColor}
-                              onChange={(e) => setWidgetPrimaryColor(e.target.value)}
-                              onBlur={() => triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart)}
-                              className="flex-1 bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 text-xs text-white"
-                            />
+                              id="copy-btn"
+                              className="absolute top-2 right-2 px-3 py-1.5 bg-[#14b8a6]/20 hover:bg-[#14b8a6]/30 text-[#14b8a6] text-[10px] font-bold rounded-lg transition-all opacity-0 group-hover/copy:opacity-100"
+                            >
+                              Copy Code
+                            </button>
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Toggles */}
-                      <div className="space-y-4 pt-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-white">Visible on site</div>
-                            <div className="text-[10px] text-white/30">Instantly show or hide the widget icon</div>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const val = !widgetIsVisible;
-                              setWidgetIsVisible(val);
-                               triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
-                            }}
-                            className={`w-11 h-6 rounded-full transition-colors relative ${widgetIsVisible ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
-                          >
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetIsVisible ? 'left-6' : 'left-1'}`} />
-                          </button>
+                          <p className="mt-2.5 text-[10px] text-[rgba(240,244,250,0.3)] leading-relaxed">
+                            Paste this code right before the closing <code className="bg-white/5 px-1 rounded">{"</body>"}</code> tag of your website.
+                          </p>
                         </div>
 
-                        <div className="flex items-center justify-between">
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Position */}
                           <div>
-                            <div className="text-sm font-semibold text-white">Default Opened</div>
-                            <div className="text-[10px] text-white/30">Start with the chat window already open</div>
+                            <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
+                              Position
+                            </label>
+                            <select 
+                              value={widgetPosition}
+                              onChange={(e) => {
+                                setWidgetPosition(e.target.value);
+                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+                              }}
+                              className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#14b8a6]/50"
+                            >
+                              <option value="bottom-right">Bottom Right</option>
+                              <option value="bottom-left">Bottom Left</option>
+                              <option value="top-right">Top Right</option>
+                              <option value="top-left">Top Left</option>
+                            </select>
                           </div>
-                          <button
-                           onClick={() => {
-                              const val = !widgetDefaultOpen;
-                              setWidgetDefaultOpen(val);
-                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
-                            }}
-                            className={`w-11 h-6 rounded-full transition-colors relative ${widgetDefaultOpen ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
-                          >
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetDefaultOpen ? 'left-6' : 'left-1'}`} />
-                          </button>
+
+                          {/* Theme Color */}
+                          <div>
+                            <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
+                              Theme Color
+                            </label>
+                            <div className="flex gap-2">
+                              <input 
+                                type="color"
+                                value={widgetPrimaryColor}
+                                onChange={(e) => {
+                                  setWidgetPrimaryColor(e.target.value);
+                                  triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+                                }}
+                                className="w-10 h-10 bg-transparent border-0 rounded cursor-pointer"
+                              />
+                              <input 
+                                type="text"
+                                value={widgetPrimaryColor}
+                                onChange={(e) => setWidgetPrimaryColor(e.target.value)}
+                                onBlur={() => triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber)}
+                                className="flex-1 bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 text-xs text-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="space-y-4 pt-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-semibold text-white">Visible on site</div>
+                              <div className="text-[10px] text-white/30">Instantly show or hide the widget icon</div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const val = !widgetIsVisible;
+                                setWidgetIsVisible(val);
+                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+                              }}
+                              className={`w-11 h-6 rounded-full transition-colors relative ${widgetIsVisible ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetIsVisible ? 'left-6' : 'left-1'}`} />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-semibold text-white">Default Opened</div>
+                              <div className="text-[10px] text-white/30">Start with the chat window already open</div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const val = !widgetDefaultOpen;
+                                setWidgetDefaultOpen(val);
+                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+                              }}
+                              className={`w-11 h-6 rounded-full transition-colors relative ${widgetDefaultOpen ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
+                            >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetDefaultOpen ? 'left-6' : 'left-1'}`} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
+         </div>
 
               {/* Step 2: Persona */}
               <div
@@ -1106,7 +1138,7 @@ export default function AgentBuilderForm({
                         value={systemPrompt}
                         onChange={(e) => {
                           setSystemPrompt(e.target.value.slice(0, maxChars));
-                          debouncedAutoSave(name, e.target.value.slice(0, maxChars), selectedVoice, agentType, voiceGender, avatarUrl, autoStart);
+                          debouncedAutoSave(name, e.target.value.slice(0, maxChars), selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
                         }}
                         placeholder="Define how your agent should behave, its tone, goals, and how it should handle different scenarios..."
                         rows={7}
@@ -1123,6 +1155,13 @@ export default function AgentBuilderForm({
                         </span>
                       </div>
 
+                      <button
+                        onClick={handleStep2Continue}
+                        className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
+                        suppressHydrationWarning
+                      >
+                        Continue to Widget Settings →
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1281,7 +1320,7 @@ export default function AgentBuilderForm({
                                 setAvatarUrl(defaultAvatar);
                                 const defaultVoice = g === "MALE" ? "charon" : "aoede";
                                 setSelectedVoice(defaultVoice);
-                                triggerAutoSave(name, systemPrompt, defaultVoice, agentType, g, defaultAvatar, autoStart);
+                                triggerAutoSave(name, systemPrompt, defaultVoice, agentType, g, defaultAvatar, autoStart, phoneNumber);
                               }}
                               className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${
                                 voiceGender === g
@@ -1369,7 +1408,7 @@ export default function AgentBuilderForm({
                             suppressHydrationWarning
                             onClick={() => {
                               setAvatarUrl(avatar.url);
-                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatar.url, autoStart);
+                              triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatar.url, autoStart, phoneNumber);
                             }}
                             className={`relative w-10 h-10 rounded-xl overflow-hidden border transition-all ${
                               avatarUrl === avatar.url

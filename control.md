@@ -175,12 +175,11 @@ deferred\_goals:
 \---
 
 
-
 \## Execution Phase Control
 
 
 
-current\_phase: discovery
+current\_phase: migration
 
 
 

@@ -1,0 +1,527 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  output        = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                   String              @id @default(cuid())
+  name                 String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  stripeCustomerId     String?             @unique
+  stripeSubscriptionId String?             @unique
+  subscriptionStatus   String?
+  subscriptionTier     String              @default("starter")
+  subscriptionEnds     DateTime?
+  usageLimit           Int                 @default(100)
+  usageCount           Int                 @default(0)
+  usageResetAt         DateTime            @default(now())
+  billingEmail         String?
+  creditBalance        Float               @default(1.0)
+  bonusCredits         Int                 @default(0)
+  agents               Agent[]
+  agentToolConfig      AgentToolConfig?
+  apiKeys              ApiKey[]
+  leads                Lead[]
+  googleConfig         TenantGoogleConfig?
+  twilioConfig         TenantTwilioConfig?
+  users                User[]
+}
+
+model TenantTwilioConfig {
+  id          String   @id @default(cuid())
+  tenantId    String   @unique
+  accountSid  String
+  authToken   String
+  phoneNumber String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model AgentToolConfig {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  enabledTools String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                     String                  @id @default(cuid())
+  tenantId               String
+  email                  String                  @unique
+  name                   String
+  passwordHash           String?
+  referralCodeUsed       String?
+  referralRewardTotal    Float                   @default(0)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  isAdmin                Boolean                 @default(false)
+  avatar                 String?
+  username               String?                 @unique
+  googleId               String?                 @unique
+  googleEmail            String?
+  googleName             String?
+  googleProfilePicture   String?
+  googleAuthProvider     String?
+  role                   UserRole                @default(USER)
+  isBlocked              Boolean                 @default(false)
+  address                String?
+  businessName           String?
+  city                   String?
+  commissionLevel        CommissionLevel         @default(LOW)
+  emailNotifications     Boolean                 @default(true)
+  emailVerificationToken String?
+  emailVerified          DateTime?
+  firstName              String?
+  isAffiliate            Boolean                 @default(false)
+  isEmailVerifiedByAdmin Boolean                 @default(false)
+  lastName               String?
+  phone                  String?
+  resetPasswordExpires   DateTime?
+  resetPasswordToken     String?
+  state                  String?
+  taxFormUrl             String?
+  tinSsn                 String?
+  unit                   String?
+  zip                    String?
+  affiliate              Affiliate?
+  agentsCreated          Agent[]
+  notifications          Notification[]
+  notifPreference        NotificationPreference?
+  referralsCreated       Referral[]              @relation("referrer")
+  rewardsReceived        RewardTransaction[]     @relation("referee_rewards")
+  rewards                RewardTransaction[]     @relation("referrer_rewards")
+  tenant                 Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+}
+
+model Agent {
+  id                 String               @id @default(cuid())
+  tenantId           String
+  name               String
+  systemPrompt       String
+  voiceId            String               @default("default")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  isActive           Boolean              @default(true)
+  autoStart          Boolean              @default(true)
+  avatarUrl          String?
+  type               AgentType            @default(WIDGET)
+  voiceGender        VoiceGender?
+  userId             String?
+  widgetPosition     String               @default("bottom-right")
+  widgetPrimaryColor String               @default("#3b82f6")
+  widgetDefaultOpen  Boolean              @default(false)
+  widgetIsVisible    Boolean              @default(true)
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator            User?                @relation(fields: [userId], references: [id])
+  leads              Lead[]
+  toolAudits         ToolExecutionAudit[]
+  transcripts        Transcript[]
+  phoneNumber        String?              @unique
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  tenantId  String
+  key       String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Transcript {
+  id            String   @id @default(cuid())
+  agentId       String
+  tenantId      String?
+  userId        String?
+  content       String
+  duration      Int      @default(0)
+  inputTokens   Int      @default(0)
+  outputTokens  Int      @default(0)
+  toolsCalled   Int      @default(0)
+  createdAt     DateTime @default(now())
+  estimatedCost Float    @default(0)
+  revenue       Float    @default(0)
+  margin        Float    @default(0)
+  isLowMargin   Boolean  @default(false)
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model Referral {
+  id             String   @id @default(cuid())
+  referrerId     String
+  refereeId      String?
+  code           String   @unique
+  status         String   @default("pending")
+  rewardAmount   Float    @default(10)
+  rewardCurrency String   @default("USD")
+  expiresAt      DateTime @default(dbgenerated("(now() + '90 days'::interval)"))
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  referrer       User     @relation("referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+}
+
+model RewardTransaction {
+  id              String    @id @default(cuid())
+  referrerId      String
+  refereeId       String?
+  amount          Float
+  status          String    @default("pending")
+  sourcePaymentId String?
+  holdEndsAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  referee         User?     @relation("referee_rewards", fields: [refereeId], references: [id])
+  referrer        User      @relation("referrer_rewards", fields: [referrerId], references: [id], onDelete: Cascade)
+}
+
+model ToolExecutionAudit {
+  id              String   @id @default(cuid())
+  agentId         String
+  userId          String?
+  toolName        String
+  toolInput       String
+  toolOutput      String?
+  status          String   @default("pending")
+  errorMessage    String?
+  executionTimeMs Int      @default(0)
+  createdAt       DateTime @default(now())
+  agent           Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model GoogleAuthConfig {
+  id           String   @id @default(cuid())
+  clientId     String?
+  clientSecret String?
+  redirectUri  String?
+  enabled      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemEmailConfig {
+  id           String   @id @default("global")
+  username     String?
+  password     String?
+  imapServer   String?
+  imapPort     String?
+  imapSecurity String?  @default("SSL")
+  smtpServer   String?
+  smtpPort     String?
+  smtpSecurity String?  @default("SSL")
+  pop3Server   String?
+  pop3Port     String?
+  pop3Security String?  @default("SSL")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model StripeConnectConfig {
+  id                String   @id @default("global")
+  accountId         String?
+  publishableKey    String?
+  secretKey         String?
+  clientId          String?
+  enabled           Boolean  @default(false)
+  minimumPayout     Float    @default(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  priceStarter      String?
+  priceProfessional String?
+  priceEnterprise   String?
+  priceLtd          String?
+  priceAiInfra      String?
+  webhookSecret     String?
+}
+
+model TenantGoogleConfig {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  clientId     String
+  clientSecret String
+  geminiApiKey String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model CalendarCredentials {
+  id            String    @id @default(cuid())
+  userId        String
+  tenantId      String
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  calendarEmail String?
+  scope         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, tenantId])
+}
+
+model GmailCredentials {
+  id           String    @id @default(cuid())
+  userId       String
+  tenantId     String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  gmailEmail   String?
+  scope        String?
+  verified     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, tenantId])
+}
+
+model PlatformSettings {
+  id                                   String          @id @default("global")
+  lowCommission                        Float           @default(10)
+  medCommission                        Float           @default(20)
+  highCommission                       Float           @default(30)
+  commissionDurationMonths             Int             @default(0)
+  defaultCommissionLevel               CommissionLevel @default(LOW)
+  payoutMinimum                        Float           @default(100)
+  refundHoldDays                       Int             @default(14)
+  payoutCycleDelayMonths               Int             @default(1)
+  transactionFeePercent                Float           @default(3.4)
+  starterLimit                         Int             @default(1000)
+  professionalLimit                    Int             @default(10000)
+  enterpriseLimit                      Int             @default(100000)
+  ltdLimit                             Int             @default(1000)
+  aiInfraLimit                         Int             @default(250000)
+  emailVerificationEnabled             Boolean         @default(false)
+  globalEmailEnabled                   Boolean         @default(true)
+  updatedAt                            DateTime        @updatedAt
+  costPerMinute                        Float           @default(0.013)
+  freeTierLimit                        Int             @default(100)
+  freeToAiInfraEnabled                 Boolean         @default(false)
+  freeToEnterpriseEnabled              Boolean         @default(false)
+  freeToLtdEnabled                     Boolean         @default(false)
+  freeToProfessionalEnabled            Boolean         @default(false)
+  freeToStarterEnabled                 Boolean         @default(false)
+  freeToolAddToCartEnabled             Boolean         @default(true)
+  freeToolClearCartEnabled             Boolean         @default(true)
+  freeToolCreateCheckoutSessionEnabled Boolean         @default(true)
+  freeToolGetCartEnabled               Boolean         @default(true)
+  freeToolListProductsEnabled          Boolean         @default(true)
+  freeToolMakeCallEnabled              Boolean         @default(true)
+  freeToolRemoveFromCartEnabled        Boolean         @default(true)
+  freeToolSearchProductsEnabled        Boolean         @default(true)
+  freeToolSendSmsEnabled               Boolean         @default(true)
+}
+
+model Affiliate {
+  id                   String              @id @default(cuid())
+  userId               String              @unique
+  status               AffiliateStatus     @default(PENDING)
+  slug                 String              @unique
+  paymentInfo          String?
+  payoutMethod         String?
+  payoutEmail          String?
+  payoutPhone          String?
+  stripeAccountId      String?             @unique
+  stripeAccountStatus  String?
+  taxFormCompleted     Boolean             @default(false)
+  tax1099Uploaded      Boolean             @default(false)
+  lastPayoutAt         DateTime?
+  lockedCommissionRate Float?
+  customCommissionRate Float?
+  totalEarnings        Float               @default(0)
+  totalPaid            Float               @default(0)
+  balance              Float               @default(0)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  payoutHeld           Boolean             @default(false)
+  payoutHoldLiftedAt   DateTime?
+  payoutHoldLiftedBy   String?
+  payoutHoldReason     String?
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payouts              AffiliatePayout[]
+  referrals            AffiliateReferral[]
+}
+
+model AffiliateReferral {
+  id               String                  @id @default(cuid())
+  affiliateId      String
+  refereeId        String?                 @unique
+  status           AffiliateReferralStatus @default(PENDING)
+  commissionAmount Float                   @default(0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  affiliate        Affiliate               @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+}
+
+model AffiliatePayout {
+  id            String       @id @default(cuid())
+  affiliateId   String
+  amount        Float
+  feeAmount     Float?
+  netAmount     Float?
+  status        PayoutStatus @default(PENDING)
+  method        String       @default("stripe")
+  transactionId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  affiliate     Affiliate    @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  tenantId  String
+  agentId   String
+  name      String
+  phone     String
+  email     String?
+  summary   String?
+  isBooked  Boolean  @default(false)
+  metadata  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  data      Json?
+  read      Boolean  @default(false)
+  emailSent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationPreference {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  commissions   Boolean @default(true)
+  payouts       Boolean @default(true)
+  leads         Boolean @default(true)
+  usageWarnings Boolean @default(true)
+  announcements Boolean @default(true)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique
+  subject   String
+  bodyHtml  String
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model FaqEntry {
+  id         String                 @id @default(cuid())
+  question   String
+  answer     String
+  category   String                 @default("general")
+  helpful    Int                    @default(0)
+  notHelpful Int                    @default(0)
+  published  Boolean                @default(true)
+  source     String                 @default("admin")
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  embedding  Unsupported("vector")?
+  questions  FaqQuestion[]
+}
+
+model FaqQuestion {
+  id              String    @id @default(cuid())
+  question        String
+  suggestedAnswer String?
+  status          String    @default("pending")
+  faqEntryId      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  faqEntry        FaqEntry? @relation(fields: [faqEntryId], references: [id])
+}
+
+model ConversationPackage {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  credits   Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PricingRegistry {
+  id                     String   @id @default("global")
+  inputTokenPrice        Float    @default(0.00000035) // $0.35 per 1,000,000 input tokens
+  outputTokenPrice       Float    @default(0.00000105) // $1.05 per 1,000,000 output tokens
+  minutePrice            Float    @default(0.015) // $0.015 per minute (STT/TTS logic)
+  smsPrice               Float    @default(0.05) // $0.05 per SMS sent
+  toolCallPrice          Float    @default(0.005) // $0.005 base cost for logic per tool call
+  minMarginPercent       Float    @default(40.0) // Alert if margin falls below 40%
+  // Retail Prices (what the customer pays)
+  retailInputTokenPrice  Float    @default(0.000001) // $1.0 per 1M (3x Markup)
+  retailOutputTokenPrice Float    @default(0.000003) // $3.0 per 1M (3x Markup)
+  retailMinutePrice      Float    @default(0.15) // $0.15/min (Industry standard)
+  retailSmsPrice         Float    @default(0.12) // $0.12/SMS
+  retailToolCallPrice    Float    @default(0.05) // $0.05 per tool execution
+  currency               String   @default("USD")
+  updatedAt              DateTime @updatedAt
+  createdAt              DateTime @default(now())
+}
+
+enum AgentType {
+  WIDGET
+  INBOUND_TWILIO
+  OUTBOUND_TWILIO
+}
+
+enum VoiceGender {
+  MALE
+  FEMALE
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  SYSTEM_ADMIN
+}
+
+enum CommissionLevel {
+  LOW
+  MED
+  HIGH
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum AffiliateReferralStatus {
+  PENDING
+  CONVERTED
+  REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
+}

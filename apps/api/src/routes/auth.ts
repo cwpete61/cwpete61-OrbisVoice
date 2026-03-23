@@ -101,7 +101,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       const settings = await prisma.platformSettings.findUnique({
         where: { id: "global" },
       });
-      const freeUsageLimit = resolveUsageLimitForTier("free", settings);
+      const freeUsageLimit = resolveUsageLimitForTier();
 
       // Create tenant (for free signup, each user gets their own tenant)
       // No subscription assigned until upgrade, with trial credits.

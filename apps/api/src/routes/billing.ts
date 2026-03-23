@@ -64,6 +64,30 @@ async function billingRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Verify if session can start (used by Voice Gateway)
+  fastify.get(
+    "/billing/can-start-session",
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply) => {
+      const { tenantId } = request.user as any;
+      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
+      
+      const check = await UsageService.canStartSession(scopedTenantId);
+      
+      if (!check.allowed) {
+        return reply.code(403).send({
+          ok: false,
+          message: check.reason,
+        });
+      }
+
+      return {
+        ok: true,
+        message: "Session allowed",
+      };
+    }
+  );
+
   // Get current subscription status
   fastify.get(
     "/billing/subscription",
@@ -258,8 +282,7 @@ async function billingRoutes(fastify: FastifyInstance) {
 
       // If they are on a paid tier but no sub ID (e.g. legacy or manual), just reset them
       if (!tenant.stripeSubscriptionId) {
-        const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-        const freeUsageLimit = resolveUsageLimitForTier("free", settings);
+        const freeUsageLimit = resolveUsageLimitForTier();
         await prisma.tenant.update({
           where: { id: scopedTenantId },
           data: {

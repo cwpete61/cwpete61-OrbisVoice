@@ -219,7 +219,7 @@ export default async function googleAuthRoutes(fastify: FastifyInstance) {
             const settings = await prisma.platformSettings.findUnique({
               where: { id: "global" },
             });
-            const freeUsageLimit = resolveUsageLimitForTier("free", settings);
+            const freeUsageLimit = resolveUsageLimitForTier();
             const tenant = await prisma.tenant.create({
               data: {
                 name: `${googleName}'s Workspace`,

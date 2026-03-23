@@ -34,7 +34,7 @@ class GeminiVoiceClient {
     },
     callbacks: {
       onmessage: (message: any) => void;
-      onclose: () => void;
+      onclose: (event?: any) => void;
       onerror: (err: any) => void;
     }
   ) {
