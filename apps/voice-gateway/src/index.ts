@@ -289,7 +289,7 @@ class VoiceGateway {
 
       // 5. Establish Gemini Multimodal Live Session
       logger.info({ 
-        model: "gemini-2.0-flash-exp", 
+        model: "gemini-2.5-flash-native-audio-latest", 
         apiKeySet: !!apiKey,
         voiceName,
         toolsCount: sessionTools.length,
