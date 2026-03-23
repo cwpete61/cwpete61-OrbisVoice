@@ -89,7 +89,14 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
       socket.onopen = () => {
         socket.send(JSON.stringify({
           type: "control",
-          data: JSON.stringify({ event: "init", token, agentId, voiceId: selectedVoice, voiceGender }),
+          data: JSON.stringify({ 
+            event: "init", 
+            token, 
+            agentId, 
+            voiceId: selectedVoice, 
+            voiceGender,
+            systemPrompt // Pass the current state for live preview support
+          }),
           timestamp: Date.now(),
         }));
       };
