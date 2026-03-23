@@ -8,8 +8,8 @@ export interface GeminiAudioResponse {
 }
 
 class GeminiVoiceClient {
-  private model: string = "models/gemini-2.5-flash-native-audio-latest"; 
-  private liveModel: string = "models/gemini-2.5-flash-native-audio-latest";
+  private model: string = "gemini-live-2.5-flash-native-audio"; 
+  private liveModel: string = "gemini-live-2.5-flash-native-audio";
 
   constructor() {
     if (!env.GEMINI_API_KEY) {
