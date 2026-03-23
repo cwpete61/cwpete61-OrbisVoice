@@ -51,10 +51,10 @@ export async function voiceRoutes(fastify: FastifyInstance) {
       // We use <Connect><Stream> to bridge to our WebSocket Gateway
       const gatewayUrl = env.VOICE_GATEWAY_URL.replace("http", "ws"); // Ensure it uses ws/wss
       
-      const twiml = `
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
         <Response>
           <Connect>
-            <ConversationRelay url="${gatewayUrl}" ttsProvider="Google" voice="en-US-Journey-F">
+            <ConversationRelay url="${gatewayUrl}" ttsProvider="google" voice="en-US-Journey-F">
               <Parameter name="token" value="${sessionToken}" />
               <Parameter name="agentId" value="${agent.id}" />
               <Parameter name="inbound" value="true" />
