@@ -325,47 +325,32 @@ class VoiceGateway {
 
   private async fetchGoogleConfig(token: string): Promise<string | undefined> {
     try {
-      if (token) {
-        const response = await fetch(`${env.API_URL}/settings/google-config?include_secrets=true`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const response = await fetch(`${env.API_URL}/settings/google-config?include_secrets=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (response.ok) {
-          const configResponse = (await response.json()) as any;
-          if (configResponse.data?.geminiApiKey) {
-            return configResponse.data.geminiApiKey;
-          }
-        }
+      if (response.ok) {
+        const configResponse = (await response.json()) as any;
+        return configResponse.data?.geminiApiKey;
       }
     } catch (err) {
       logger.error({ err }, "Failed to fetch google config");
     }
-    return env.GEMINI_API_KEY;
+    return undefined;
   }
 
   private async fetchAgentConfig(token: string, agentId: string, payload: any) {
-    let systemPrompt = payload.systemPrompt || "You are a helpful AI assistant.";
+    let systemPrompt = "You are a helpful AI assistant.";
     let voiceName = "Charon";
 
     try {
-      // 1. Try public route first if it's a widget request (no token usually)
-      let agentData = null;
+      const agentRes = await fetch(`${env.API_URL}/agents/${agentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       
-      const publicRes = await fetch(`${env.API_URL}/public/agents/${agentId}`);
-      if (publicRes.ok) {
-        agentData = ((await publicRes.json()) as any).data;
-      } else if (token) {
-        // 2. Fallback to private route if token exists
-        const agentRes = await fetch(`${env.API_URL}/agents/${agentId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (agentRes.ok) {
-          agentData = ((await agentRes.json()) as any).data;
-        }
-      }
-
+      const agentData = agentRes.ok ? ((await agentRes.json()) as any).data : null;
       if (agentData) {
-        systemPrompt = payload.systemPrompt || agentData.systemPrompt || systemPrompt;
+        systemPrompt = agentData.systemPrompt || systemPrompt;
       }
 
       const CALL_RULES = `\n\nYou are a helpful and friendly voice assistant. This conversation is happening over a phone call, so your responses will be spoken aloud.\nPlease adhere to the following rules:\n1. Provide clear, concise, and direct answers.\n2. Spell out all numbers (e.g., say 'one thousand two hundred' instead of 1200).\n3. Do not use any special characters like asterisks, bullet points, or emojis.\n4. Keep the conversation natural and engaging.`;
