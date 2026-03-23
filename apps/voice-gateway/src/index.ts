@@ -194,9 +194,6 @@ class VoiceGateway {
 
       client.liveSession = liveSession;
       this.clients.set(sessionId, client);
-      
-      // Send initial greeting trigger
-      (liveSession as any).send([{ parts: [{ text: "Introduce yourself and ask how you can help." }] }]);
 
       logger.info({ sessionId, callSid, agentId }, "Twilio ConversationRelay Session Initialized");
     } catch (err) {
@@ -401,7 +398,13 @@ class VoiceGateway {
         
         if (msg.setupComplete) {
           logger.info({ sessionId }, "Gemini setup complete");
-          ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+          
+          if (!client.isTwilio) {
+            ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+          } else if (client.liveSession) {
+            // For Twilio, we send the initial greeting NOW after setup is confirmed
+            (client.liveSession as any).send([{ parts: [{ text: "Introduce yourself and ask how you can help." }] }]);
+          }
           return;
         }
 
