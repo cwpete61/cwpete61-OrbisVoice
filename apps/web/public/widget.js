@@ -19,6 +19,7 @@
   };
   const apiBase = script?.getAttribute("data-api-base")?.trim() || deriveApiBase();
   const position = script?.getAttribute("data-position") || "bottom-right";
+  const themeColor = script?.getAttribute("data-theme-color") || "#14b8a6";
 
   if (!agentId) {
     console.warn("[OrbisVoice] data-agent-id attribute is required");
@@ -38,14 +39,14 @@
     height: 64px;
     border-radius: 50%;
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    box-shadow: 0 4px 20px rgba(20, 184, 166, 0.3);
+    box-shadow: 0 4px 20px ${themeColor}4d;
     cursor: pointer;
     z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    border: 2px solid rgba(20, 184, 166, 0.4);
+    border: 2px solid ${themeColor}66;
     overflow: hidden;
   `;
 
@@ -157,6 +158,7 @@
   // Expansion logic
   const openWidget = () => {
     isOpen = true;
+    const color = agentConfig?.widgetPrimaryColor || "#14b8a6";
     
     // Create iframe if it doesn't exist
     let iframe = document.getElementById("orbis-voice-iframe");
@@ -164,54 +166,64 @@
         iframe = document.createElement("iframe");
         iframe.id = "orbis-voice-iframe";
         const baseUrl = script?.src ? new URL(script.src).origin : window.location.origin;
-        iframe.src = `${baseUrl}/widget/${agentId}`;
+        // Pass color to help initial pulse match theme
+        iframe.src = `${baseUrl}/widget/${agentId}?color=${encodeURIComponent(color)}`;
         iframe.style.cssText = `
             width: 100%;
             height: 100%;
             border: none;
-            border-radius: 24px;
+            border-radius: 20px;
             background: #05080f;
-            display: block;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
         `;
         widgetContainer.appendChild(iframe);
     }
     
     // Hide original bubble icon
-    innerContent.style.display = "none";
+    innerContent.style.opacity = "0";
+    setTimeout(() => { 
+        innerContent.style.display = "none";
+        iframe.style.display = "block";
+        setTimeout(() => { iframe.style.opacity = "1"; }, 50);
+    }, 200);
     
     // Animate container to full widget size
-    widgetContainer.style.width = "360px";
+    widgetContainer.style.width = "370px";
     widgetContainer.style.height = "560px";
     widgetContainer.style.borderRadius = "24px";
     widgetContainer.style.background = "#05080f";
-    widgetContainer.style.border = "1px solid rgba(255,255,255,0.15)";
-    widgetContainer.style.boxShadow = "0 24px 80px rgba(0,0,0,0.6), 0 0 20px rgba(20,184,166,0.1)";
-    iframe.style.display = "block";
+    widgetContainer.style.border = "1px solid rgba(255,255,255,0.12)";
+    widgetContainer.style.boxShadow = `0 24px 80px rgba(0,0,0,0.6), 0 0 40px ${color}20`;
+    widgetContainer.style.cursor = "default";
   };
 
   const closeWidget = () => {
     isOpen = false;
+    const color = agentConfig?.widgetPrimaryColor || "#14b8a6";
     
     // Hide iframe
     const iframe = document.getElementById("orbis-voice-iframe");
-    if (iframe) iframe.style.display = "none";
+    if (iframe) {
+        iframe.style.opacity = "0";
+        setTimeout(() => { iframe.style.display = "none"; }, 500);
+    }
     
     // Restore bubble size and style
     widgetContainer.style.width = "64px";
     widgetContainer.style.height = "64px";
     widgetContainer.style.borderRadius = "50%";
     widgetContainer.style.background = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)";
-    const color = agentConfig?.widgetPrimaryColor || "#14b8a6";
     widgetContainer.style.boxShadow = `0 8px 30px ${color}4d`;
     widgetContainer.style.border = `2px solid ${color}66`;
+    widgetContainer.style.cursor = "pointer";
 
     // Restore original bubble icon
-    innerContent.style.display = "flex";
-    if (agentConfig?.avatarUrl) {
-      innerContent.innerHTML = `<img src="${agentConfig.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`;
-    } else {
-      innerContent.innerHTML = defaultIcon;
-    }
+    setTimeout(() => {
+        innerContent.style.display = "flex";
+        setTimeout(() => { innerContent.style.opacity = "1"; }, 50);
+    }, 300);
   };
 
   const startConversation = () => {
@@ -239,6 +251,13 @@
 
   // Inject widget into page
   document.body.appendChild(widgetContainer);
+
+  // Listen for close/minimize events from iframe
+  window.addEventListener("message", (event) => {
+    if (event.data?.type === "orbis-voice-close") {
+      closeWidget();
+    }
+  });
 
   // Log initialization
   console.log(`[OrbisVoice] Widget initialized for agent: ${agentId}`);

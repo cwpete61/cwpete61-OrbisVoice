@@ -799,12 +799,13 @@ export default function AgentBuilderForm({
                               {`<script 
     src="${typeof window !== 'undefined' ? window.location.origin : 'https://myorbisvoice.com'}/widget.js" 
     data-agent-id="${agentId || 'save-to-generate'}" 
+    data-theme-color="${widgetPrimaryColor}"
     defer
   ></script>`}
                             </pre>
                             <button
                               onClick={() => {
-                                const code = `<script src="${window.location.origin}/widget.js" data-agent-id="${agentId}" defer></script>`;
+                                                                 const code = `<script src="${window.location.origin}/widget.js" data-agent-id="${agentId}" data-theme-color="${widgetPrimaryColor}" defer></script>`;
                                 navigator.clipboard.writeText(code);
                                 const btn = document.getElementById('copy-btn');
                                 if (btn) btn.innerText = 'Copied!';

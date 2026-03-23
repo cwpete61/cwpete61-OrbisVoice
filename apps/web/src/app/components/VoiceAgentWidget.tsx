@@ -147,7 +147,39 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
   };
 
   return (
-    <div className={`flex flex-col h-full bg-[#05080f] text-white ${isWidget ? '' : 'rounded-2xl overflow-hidden'}`}>
+    <div className={`flex flex-col h-full bg-[#05080f] text-white relative transition-all duration-500 ${isWidget ? '' : 'rounded-2xl overflow-hidden'}`}>
+      <style>{`
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .wave-bar {
+            animation: waveBar 1.2s ease-in-out infinite;
+            transform-origin: bottom;
+        }
+        @keyframes waveBar {
+            0%, 100% { transform: scaleY(0.4); }
+            50% { transform: scaleY(1); }
+        }
+      `}</style>
+      {isWidget && (
+        <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: primaryColor }} />
+            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">OrbisVoice Live</span>
+          </div>
+          <button 
+            onClick={() => window.parent.postMessage({ type: 'orbis-voice-close' }, '*')}
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/30 hover:text-white"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {!isWidget && (
         <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-2">

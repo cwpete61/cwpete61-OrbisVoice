@@ -1,11 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import VoiceAgentWidget from "@/app/components/VoiceAgentWidget";
 import { API_BASE } from "@/lib/api";
 
 export default function WidgetPage() {
     const params = useParams();
+    const searchParams = useSearchParams();
+    const fallbackColor = searchParams.get("color") || "#14b8a6";
     const agentId = params.agentId as string;
     const [agent, setAgent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -48,7 +50,13 @@ export default function WidgetPage() {
     if (loading) {
         return (
             <div className="flex h-screen items-center justify-center bg-[#05080f]">
-                <div className="w-8 h-8 border-2 border-[#14b8a6]/30 border-t-[#14b8a6] rounded-full animate-spin" />
+                <div 
+                    className="w-8 h-8 border-2 rounded-full animate-spin" 
+                    style={{ 
+                        borderColor: `${fallbackColor}30`, 
+                        borderTopColor: fallbackColor 
+                    }} 
+                />
             </div>
         );
     }
