@@ -206,6 +206,12 @@ class VoiceGateway {
     const client = this.clients.get(sessionId);
     if (!client || !client.liveSession) return;
 
+    // Prevent cross talk with Unique SIDs
+    if (client.streamSid !== promptEvent.callSid) {
+        logger.warn({ expected: client.streamSid, actual: promptEvent.callSid }, "Blocked cross-talk from mismatched callSid");
+        return;
+    }
+
     const userPrompt = promptEvent.voicePrompt;
     if (!userPrompt) return;
 
@@ -346,6 +352,9 @@ class VoiceGateway {
       if (agentData) {
         systemPrompt = agentData.systemPrompt || systemPrompt;
       }
+
+      const CALL_RULES = `\n\nYou are a helpful and friendly voice assistant. This conversation is happening over a phone call, so your responses will be spoken aloud.\nPlease adhere to the following rules:\n1. Provide clear, concise, and direct answers.\n2. Spell out all numbers (e.g., say 'one thousand two hundred' instead of 1200).\n3. Do not use any special characters like asterisks, bullet points, or emojis.\n4. Keep the conversation natural and engaging.`;
+      systemPrompt += CALL_RULES;
 
       const rawVoiceId = payload.voiceId || agentData?.voiceId || agentData?.voiceModel || "aoede";
       const voiceGender = payload.voiceGender || agentData?.voiceGender || "MALE";
