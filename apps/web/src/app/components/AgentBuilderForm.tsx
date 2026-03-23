@@ -573,7 +573,7 @@ export default function AgentBuilderForm({
               </button>
               <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl glass-card">
                 <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-[rgba(240,244,250,0.5)] text-xs">Gemini 2.5 Flash</span>
+                <span className="text-[rgba(240,244,250,0.5)] text-xs">Gemini 2.0 Flash</span>
               </div>
             </div>
           </div>
