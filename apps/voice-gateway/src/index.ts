@@ -43,8 +43,8 @@ class VoiceGateway {
         try {
           const rawMessage = JSON.parse(data.toString());
           
-          // Detect Twilio Protocol
-          if (rawMessage.event) {
+          // Detect Twilio ConversationRelay Protocol
+          if (rawMessage.type === "setup" || rawMessage.type === "prompt" || rawMessage.type === "interrupt") {
             this.handleTwilioEvent(ws, rawMessage, sessionId);
             return;
           }
@@ -125,23 +125,20 @@ class VoiceGateway {
   }
 
   private async handleTwilioEvent(ws: WebSocket.WebSocket, event: any, sessionId: string) {
-    const { event: type } = event;
-    logger.debug({ type, sessionId }, "Incoming Twilio event");
+    const { type } = event;
+    logger.debug({ type, sessionId }, "Incoming Twilio ConversationRelay event");
 
     try {
       switch (type) {
-        case "start":
-          await this.initializeTwilioSession(ws, event.start, sessionId);
+        case "setup":
+          await this.initializeTwilioSession(ws, event, sessionId);
           break;
-        case "media":
-          await this.handleTwilioAudio(ws, event.media, sessionId);
+        case "prompt":
+          await this.handleTwilioPrompt(ws, event, sessionId);
           break;
-        case "stop":
-          logger.info({ sessionId }, "Twilio stop event received");
-          ws.close();
-          break;
-        case "mark":
-          // Used for synchronization, ignore for now
+        case "interrupt":
+          logger.info({ sessionId }, "Twilio interrupt event received");
+          // Optionally trigger interruptions on Gemini Live session here
           break;
         default:
           logger.warn({ type, sessionId }, "Unhandled Twilio event type");
@@ -151,10 +148,9 @@ class VoiceGateway {
     }
   }
 
-  private async initializeTwilioSession(ws: WebSocket.WebSocket, start: any, sessionId: string) {
-    const streamSid = start.streamSid;
-    const callSid = start.callSid;
-    const customParameters = start.customParameters || {};
+  private async initializeTwilioSession(ws: WebSocket.WebSocket, setupEvent: any, sessionId: string) {
+    const callSid = setupEvent.callSid;
+    const customParameters = setupEvent.customParameters || {};
     const token = customParameters.token;
     const agentId = customParameters.agentId || "default-agent";
 
@@ -187,7 +183,7 @@ class VoiceGateway {
         outputTokens: 0,
         toolsCalled: 0,
         isTwilio: true,
-        streamSid,
+        streamSid: callSid,
       };
 
       const liveSession = await geminiVoiceClient.connectLive(
@@ -199,27 +195,28 @@ class VoiceGateway {
       client.liveSession = liveSession;
       this.clients.set(sessionId, client);
       
-      logger.info({ sessionId, streamSid, callSid, agentId }, "Twilio Inbound Session Initialized");
+      logger.info({ sessionId, callSid, agentId }, "Twilio ConversationRelay Session Initialized");
     } catch (err) {
       this.sendError(ws, "Twilio session initialization failed", err, sessionId);
       ws.close();
     }
   }
 
-  private async handleTwilioAudio(ws: WebSocket.WebSocket, media: any, sessionId: string) {
+  private async handleTwilioPrompt(ws: WebSocket.WebSocket, promptEvent: any, sessionId: string) {
     const client = this.clients.get(sessionId);
     if (!client || !client.liveSession) return;
 
-    // Twilio sends mulaw (usually). We tell Gemini it's mulaw or we transcode.
-    // Gemini Multimodal Live API supports "audio/mulaw;rate=8000" in some versions, 
-    // but the @google/genai SDK often expects "audio/pcm;rate=16000".
-    // Let's try sending as mulaw first.
+    const userPrompt = promptEvent.voicePrompt;
+    if (!userPrompt) return;
+
+    logger.info({ sessionId, userPrompt }, "Twilio STT recognized user prompt");
+
     try {
-      client.liveSession.sendRealtimeInput({
-        media: { mimeType: "audio/mulaw;rate=8000", data: media.payload },
-      });
+      client.liveSession.sendRealtimeInput([{
+        text: userPrompt
+      }]);
     } catch (err) {
-      logger.error({ err, sessionId }, "Failed to send Twilio audio to Gemini");
+      logger.error({ err, sessionId }, "Failed to send Twilio text prompt to Gemini");
     }
   }
 
@@ -462,7 +459,16 @@ class VoiceGateway {
           if (part.text) {
             logger.info({ sessionId, text: part.text }, "Received text from Gemini");
             client.transcript += `AI: ${part.text}\n`;
+            if (client.isTwilio) {
+              // Standard ConversationRelay text forwarding
+              ws.send(JSON.stringify({ type: "text", token: part.text, last: false }));
+            }
           }
+        }
+
+        // Trigger TTS flush on turn complete
+        if (msg.serverContent?.turnComplete && client.isTwilio) {
+          ws.send(JSON.stringify({ type: "text", token: " ", last: true }));
         }
 
         const userParts = msg.serverContent?.userTurn?.parts || [];
@@ -472,19 +478,12 @@ class VoiceGateway {
           }
         }
 
-        // Forward Audio Part to client
+        // Forward Audio Part to client (only if not Twilio CR!)
         const base64Audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
         if (base64Audio) {
           logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk");
           
-          if (client.isTwilio && client.streamSid) {
-            // Forward back to Twilio stream
-            ws.send(JSON.stringify({ 
-              event: "media", 
-              streamSid: client.streamSid, 
-              media: { payload: base64Audio } 
-            }));
-          } else {
+          if (!client.isTwilio) {
             // Standard custom protocol (PCM)
             ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
           }
