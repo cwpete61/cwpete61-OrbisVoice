@@ -328,11 +328,11 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
           ) : (
             <button
               onClick={startTalking}
-              disabled={!systemPrompt.trim() || !agentId || agentId === "save-to-generate"}
+              disabled={isWidget ? (!agentId || agentId === "save-to-generate") : (!systemPrompt.trim() || !agentId || agentId === "save-to-generate")}
               className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-bold text-base text-white transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed group shadow-xl"
               style={{
-                background: (!systemPrompt.trim() || !agentId || agentId === "save-to-generate") ? "rgba(255,255,255,0.05)" : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`,
-                boxShadow: (!systemPrompt.trim() || !agentId || agentId === "save-to-generate") ? "none" : `0 8px 30px ${primaryColor}40`,
+                background: (isWidget ? (!agentId || agentId === "save-to-generate") : (!systemPrompt.trim() || !agentId || agentId === "save-to-generate")) ? "rgba(255,255,255,0.05)" : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`,
+                boxShadow: (isWidget ? (!agentId || agentId === "save-to-generate") : (!systemPrompt.trim() || !agentId || agentId === "save-to-generate")) ? "none" : `0 8px 30px ${primaryColor}40`,
               }}
             >
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="group-hover:scale-110 transition-transform">
