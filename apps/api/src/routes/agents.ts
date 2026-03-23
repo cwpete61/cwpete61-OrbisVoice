@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { Prisma } from "../generated/prisma";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
@@ -239,7 +239,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        if ((err as any).code === "P2002") {
           const metaTarget = (err.meta as any)?.target;
           const targets = Array.isArray(metaTarget) ? metaTarget : metaTarget ? [metaTarget] : [];
           if (targets.includes("phoneNumber")) {
