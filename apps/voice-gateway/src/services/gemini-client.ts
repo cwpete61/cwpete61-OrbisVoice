@@ -45,7 +45,7 @@ class GeminiVoiceClient {
     const session = await client.live.connect({
       model: this.liveModel,
       config: {
-        responseModalities: ["audio"] as any,
+        responseModalities: ["audio", "text"] as any,
         speechConfig: {
            voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voiceName || "Puck" } },
         },

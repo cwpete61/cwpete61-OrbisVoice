@@ -195,6 +195,9 @@ class VoiceGateway {
       client.liveSession = liveSession;
       this.clients.set(sessionId, client);
       
+      // Send initial greeting trigger
+      (liveSession as any).send([{ parts: [{ text: "Introduce yourself and ask how you can help." }] }]);
+
       logger.info({ sessionId, callSid, agentId }, "Twilio ConversationRelay Session Initialized");
     } catch (err) {
       this.sendError(ws, "Twilio session initialization failed", err, sessionId);
@@ -218,9 +221,9 @@ class VoiceGateway {
     logger.info({ sessionId, userPrompt }, "Twilio STT recognized user prompt");
 
     try {
-      client.liveSession.sendRealtimeInput([{
+      (client.liveSession as any).send([{ parts: [{
         text: userPrompt
-      }]);
+      }] }]);
     } catch (err) {
       logger.error({ err, sessionId }, "Failed to send Twilio text prompt to Gemini");
     }
