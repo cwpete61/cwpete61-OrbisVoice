@@ -15,6 +15,7 @@ export interface VoiceAgentWidgetProps {
         widgetPrimaryColor?: string | null;
     };
     isWidget?: boolean;
+    agentType?: "WIDGET" | "INBOUND_TWILIO" | "OUTBOUND_TWILIO";
 }
 
 const VOICE_MODELS = [
@@ -36,7 +37,7 @@ const AVATARS = [
   { id: "female4", url: "/avatars/female4.png", gender: "FEMALE" },
 ];
 
-export default function VoiceAgentWidget({ agentId, initialData, isWidget = false }: VoiceAgentWidgetProps) {
+export default function VoiceAgentWidget({ agentId, initialData, isWidget = false, agentType }: VoiceAgentWidgetProps) {
   const [name, setName] = useState(initialData.name || "");
   const [systemPrompt, setSystemPrompt] = useState(initialData.systemPrompt || "");
   const [selectedVoice, setSelectedVoice] = useState(initialData.voiceId || "aoede");
@@ -191,7 +192,12 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
         <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
-            <span className="text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider">Live Preview</span>
+            <span className="text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider">
+              {agentType === "WIDGET" ? "Web Widget" : 
+               agentType === "INBOUND_TWILIO" ? "Inbound Phone" : 
+               agentType === "OUTBOUND_TWILIO" ? "Outbound Phone" : 
+               "Live Preview"}
+            </span>
           </div>
           <span className="text-[10px] text-[rgba(240,244,250,0.2)] font-mono">v0.1-draft</span>
         </div>
@@ -199,28 +205,30 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
 
       <div className="p-6 flex-1 flex flex-col">
         {/* Avatar + Name */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="relative">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)`,
-                border: `1px solid ${primaryColor}30`,
-              }}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                name.trim() ? name.trim()[0].toUpperCase() : "?"
-              )}
+        <div className={`flex items-center gap-4 mb-6 ${agentType !== "WIDGET" && agentType !== undefined ? 'justify-start' : ''}`}>
+          {(agentType === "WIDGET" || agentType === undefined) && (
+            <div className="relative">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}10)`,
+                  border: `1px solid ${primaryColor}30`,
+                }}
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  name.trim() ? name.trim()[0].toUpperCase() : "?"
+                )}
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#05080f]" style={{ background: primaryColor }}>
+                <svg width="10" height="10" fill="white" viewBox="0 0 24 24">
+                  <path d="M12 2a3 3 0 013 3v7a3 3 0 01-6 0V5a3 3 0 013-3z" />
+                  <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v3M8 22h8" />
+                </svg>
+              </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#05080f]" style={{ background: primaryColor }}>
-              <svg width="10" height="10" fill="white" viewBox="0 0 24 24">
-                <path d="M12 2a3 3 0 013 3v7a3 3 0 01-6 0V5a3 3 0 013-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v3M8 22h8" />
-              </svg>
-            </div>
-          </div>
+          )}
           <div>
             <h3 className="font-bold text-white text-lg leading-tight">{name.trim() || <span className="text-white/20">Agent Name</span>}</h3>
             <div className="flex items-center gap-2 mt-1">
@@ -285,20 +293,22 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
         </div>
 
         {/* Avatar Swap */}
-        <div className="mb-8 px-1">
-          <label className="text-[10px] font-semibold text-white/30 uppercase tracking-wider block mb-3">Quick Avatar Swap</label>
-          <div className="flex gap-2.5">
-            {AVATARS.filter(a => a.gender === voiceGender).map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() => setAvatarUrl(avatar.url)}
-                className={`relative w-11 h-11 rounded-xl border-2 transition-all ${avatarUrl === avatar.url ? "border-[#14b8a6] scale-110 shadow-lg shadow-[#14b8a6]/20" : "border-white/5 hover:border-white/20"}`}
-              >
-                <img src={avatar.url} alt="Avatar" className="w-full h-full object-cover rounded-lg" />
-              </button>
-            ))}
+        {(agentType === "WIDGET" || agentType === undefined) && (
+          <div className="mb-8 px-1">
+            <label className="text-[10px] font-semibold text-white/30 uppercase tracking-wider block mb-3">Quick Avatar Swap</label>
+            <div className="flex gap-2.5">
+              {AVATARS.filter(a => a.gender === voiceGender).map((avatar) => (
+                <button
+                  key={avatar.id}
+                  onClick={() => setAvatarUrl(avatar.url)}
+                  className={`relative w-11 h-11 rounded-xl border-2 transition-all ${avatarUrl === avatar.url ? "border-[#14b8a6] scale-110 shadow-lg shadow-[#14b8a6]/20" : "border-white/5 hover:border-white/20"}`}
+                >
+                  <img src={avatar.url} alt="Avatar" className="w-full h-full object-cover rounded-lg" />
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Waveform */}
         <div className="flex items-center justify-center gap-1.5 h-16 mb-6 rounded-2xl bg-white/[0.03] border border-white/[0.06]">

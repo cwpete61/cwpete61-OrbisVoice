@@ -1081,6 +1081,7 @@ export default function AgentBuilderForm({
               <div className="sticky top-0">
                 <VoiceAgentWidget 
                   agentId={(agentId as string) || "save-to-generate"}
+                  agentType={agentType}
                   initialData={{
                     name,
                     systemPrompt,

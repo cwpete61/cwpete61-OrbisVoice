@@ -237,45 +237,46 @@ class VoiceGateway {
   private async initializeSession(ws: WebSocket.WebSocket, message: AudioMessage, sessionId: string) {
     try {
       const payload = JSON.parse(message.data);
-      if (payload.event !== "init" || !payload.token) {
+      if (payload.event !== "init") {
         return;
       }
 
-      const token = payload.token;
+      const token = payload.token || "";
 
-      // 1. Verify Identity (Security Hardening)
-      let decoded: any;
-      try {
-        decoded = jwt.verify(token, env.JWT_SECRET);
-      } catch (err) {
-        this.sendError(ws, "Unauthorized", "Invalid or expired session token", sessionId);
-        return;
+      let decoded: any = null;
+
+      // 1. Verify Identity if token is provided
+      if (token) {
+        try {
+          decoded = jwt.verify(token, env.JWT_SECRET);
+        } catch (err) {
+          logger.warn({ err, sessionId }, "Incoming token verification failed");
+        }
       }
 
-      if (!decoded || !decoded.userId) {
-        this.sendError(ws, "Invalid identity", "Token does not contain user identification", sessionId);
-        return;
-      }
+      const userId = decoded?.userId || "anonymous";
 
       // 2. Fetch Google Config (Secrets)
       const apiKey = await this.fetchGoogleConfig(token);
 
-      // 3. Verify Usage Allowance (Phase 9 Hard Gating)
-      try {
-        const canStartRes = await fetch(`${env.API_URL}/billing/can-start-session`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const canStartData = await canStartRes.json() as any;
-        if (!canStartRes.ok) {
-          this.sendError(ws, "Usage Restricted", canStartData.message || "Insufficient Credits", sessionId);
-          ws.close();
-          return;
+      // 3. Verify Usage Allowance (Only if token is provided and valid)
+      if (token && decoded) {
+        try {
+          const canStartRes = await fetch(`${env.API_URL}/billing/can-start-session`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const canStartData = await canStartRes.json() as any;
+          if (!canStartRes.ok) {
+            this.sendError(ws, "Usage Restricted", canStartData.message || "Insufficient Credits", sessionId);
+            ws.close();
+            return;
+          }
+        } catch (err) {
+          logger.error({ err, sessionId }, "Failed to verify usage allowance");
         }
-      } catch (err) {
-        logger.error({ err, sessionId }, "Failed to verify usage allowance");
       }
 
-      const agentId = payload.agentId || decoded.agentId || "default-agent";
+      const agentId = payload.agentId || decoded?.agentId || "default-agent";
 
       // 3. Fetch Agent Configuration
       const { systemPrompt, voiceName } = await this.fetchAgentConfig(token, agentId, payload);
@@ -295,7 +296,7 @@ class VoiceGateway {
 
       const client: GatewayClient = {
         sessionId,
-        userId: decoded.userId,
+        userId,
         agentId,
         connectedAt: new Date(),
         startTime: Date.now(),
