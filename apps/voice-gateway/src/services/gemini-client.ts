@@ -31,6 +31,7 @@ class GeminiVoiceClient {
       systemPrompt: string;
       voiceName?: string;
       tools?: Tool[];
+      modalities?: ("audio" | "text" | "image")[];
     },
     callbacks: {
       onmessage: (message: any) => void;
@@ -40,12 +41,16 @@ class GeminiVoiceClient {
   ) {
     const client = this.getClient(apiKey);
     
-    logger.info({ model: this.liveModel, toolsCount: config.tools?.length || 0 }, "Connecting to Gemini Multimodal Live API");
+    logger.info({ 
+        model: this.liveModel, 
+        toolsCount: config.tools?.length || 0,
+        modalities: config.modalities || ["audio"] 
+    }, "Connecting to Gemini Multimodal Live API");
 
     const session = await client.live.connect({
       model: this.liveModel,
       config: {
-        responseModalities: ["audio", "text"] as any,
+        responseModalities: (config.modalities || ["audio"]) as any,
         speechConfig: {
            voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voiceName || "Puck" } },
         },

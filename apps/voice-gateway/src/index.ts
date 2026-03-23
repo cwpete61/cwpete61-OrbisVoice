@@ -188,7 +188,7 @@ class VoiceGateway {
 
       const liveSession = await geminiVoiceClient.connectLive(
         apiKey,
-        { systemPrompt, voiceName, tools: sessionTools },
+        { systemPrompt, voiceName, tools: sessionTools, modalities: ["audio", "text"] },
         this.createGeminiHandlers(ws, client)
       );
 
@@ -289,7 +289,7 @@ class VoiceGateway {
 
       // 5. Establish Gemini Multimodal Live Session
       logger.info({ 
-        model: "gemini-2.5-flash-native-audio-latest", 
+        model: "gemini-2.0-flash-exp", 
         apiKeySet: !!apiKey,
         voiceName,
         toolsCount: sessionTools.length,
@@ -313,7 +313,7 @@ class VoiceGateway {
 
       const liveSession = await geminiVoiceClient.connectLive(
         apiKey,
-        { systemPrompt, voiceName, tools: sessionTools },
+        { systemPrompt, voiceName, tools: sessionTools, modalities: ["audio"] },
         this.createGeminiHandlers(ws, client)
       );
 
