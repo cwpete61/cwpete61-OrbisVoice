@@ -37,11 +37,11 @@ const AVATARS = [
 ];
 
 export default function VoiceAgentWidget({ agentId, initialData, isWidget = false }: VoiceAgentWidgetProps) {
-  const [name, setName] = useState(initialData.name);
-  const [systemPrompt, setSystemPrompt] = useState(initialData.systemPrompt);
-  const [selectedVoice, setSelectedVoice] = useState(initialData.voiceId);
-  const [voiceGender, setVoiceGender] = useState(initialData.voiceGender);
-  const [avatarUrl, setAvatarUrl] = useState(initialData.avatarUrl);
+  const [name, setName] = useState(initialData.name || "");
+  const [systemPrompt, setSystemPrompt] = useState(initialData.systemPrompt || "");
+  const [selectedVoice, setSelectedVoice] = useState(initialData.voiceId || "aoede");
+  const [voiceGender, setVoiceGender] = useState(initialData.voiceGender || "FEMALE");
+  const [avatarUrl, setAvatarUrl] = useState(initialData.avatarUrl || "");
   const [isTalking, setIsTalking] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState("");
@@ -58,11 +58,11 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
   const primaryColor = initialData.widgetPrimaryColor || voiceModel.color;
 
   useEffect(() => {
-    setName(initialData.name);
-    setSystemPrompt(initialData.systemPrompt);
-    setSelectedVoice(initialData.voiceId);
-    setVoiceGender(initialData.voiceGender);
-    setAvatarUrl(initialData.avatarUrl);
+    setName(initialData.name || "");
+    setSystemPrompt(initialData.systemPrompt || "");
+    setSelectedVoice(initialData.voiceId || "aoede");
+    setVoiceGender(initialData.voiceGender || "FEMALE");
+    setAvatarUrl(initialData.avatarUrl || "");
   }, [initialData]);
 
   const stopTalking = () => {
