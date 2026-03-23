@@ -4,7 +4,20 @@
 (function () {
   const script = document.currentScript;
   const agentId = script?.getAttribute("data-agent-id");
-  const apiBase = script?.getAttribute("data-api-base") || "http://localhost:4001";
+  const DEFAULT_API_BASE = "https://api.myorbisvoice.com";
+  const deriveApiBase = () => {
+    const src = script?.src;
+    if (src) {
+      try {
+        const url = new URL(src, window.location.origin);
+        return `${url.origin}/api`;
+      } catch (err) {
+        console.warn("[OrbisVoice] Failed to parse script src for API base", err);
+      }
+    }
+    return DEFAULT_API_BASE;
+  };
+  const apiBase = script?.getAttribute("data-api-base")?.trim() || deriveApiBase();
   const position = script?.getAttribute("data-position") || "bottom-right";
 
   if (!agentId) {
@@ -92,7 +105,7 @@
       const json = await resp.json();
       if (json.ok) {
         agentConfig = json.data;
-        
+
         // Apply visibility
         if (agentConfig.widgetIsVisible === false) {
           widgetContainer.style.display = "none";
@@ -105,15 +118,24 @@
         widgetContainer.style.left = "auto";
         widgetContainer.style.top = "auto";
         widgetContainer.style.bottom = "auto";
-        if (pos === "bottom-right") { widgetContainer.style.right = "20px"; widgetContainer.style.bottom = "20px"; }
-        else if (pos === "bottom-left") { widgetContainer.style.left = "20px"; widgetContainer.style.bottom = "20px"; }
-        else if (pos === "top-right") { widgetContainer.style.right = "20px"; widgetContainer.style.top = "20px"; }
-        else if (pos === "top-left") { widgetContainer.style.left = "20px"; widgetContainer.style.top = "20px"; }
+        if (pos === "bottom-right") {
+          widgetContainer.style.right = "20px";
+          widgetContainer.style.bottom = "20px";
+        } else if (pos === "bottom-left") {
+          widgetContainer.style.left = "20px";
+          widgetContainer.style.bottom = "20px";
+        } else if (pos === "top-right") {
+          widgetContainer.style.right = "20px";
+          widgetContainer.style.top = "20px";
+        } else if (pos === "top-left") {
+          widgetContainer.style.left = "20px";
+          widgetContainer.style.top = "20px";
+        }
 
         // Apply theme color
         if (agentConfig.widgetPrimaryColor) {
-           widgetContainer.style.boxShadow = `0 4px 20px ${agentConfig.widgetPrimaryColor}4d`;
-           widgetContainer.style.borderColor = `${agentConfig.widgetPrimaryColor}66`;
+          widgetContainer.style.boxShadow = `0 4px 20px ${agentConfig.widgetPrimaryColor}4d`;
+          widgetContainer.style.borderColor = `${agentConfig.widgetPrimaryColor}66`;
         }
 
         if (agentConfig.avatarUrl) {
@@ -140,7 +162,7 @@
     widgetContainer.style.borderRadius = "24px";
     widgetContainer.style.background = "#05080f";
     widgetContainer.style.border = "1px solid rgba(255,255,255,0.1)";
-    
+
     // Initialize AudioContext on first click
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -167,7 +189,7 @@
     const color = agentConfig?.widgetPrimaryColor || "#14b8a6";
     widgetContainer.style.boxShadow = `0 4px 20px ${color}4d`;
     widgetContainer.style.border = `2px solid ${color}66`;
-    
+
     if (agentConfig?.avatarUrl) {
       innerContent.innerHTML = `<img src="${agentConfig.avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`;
     } else {
@@ -242,7 +264,7 @@
       btn.style.border = "1px solid rgba(239, 68, 68, 0.4)";
       btn.style.boxShadow = "none";
       btn.disabled = false;
-      
+
       btn.onclick = (e) => {
         e.stopPropagation();
         closeWidget();

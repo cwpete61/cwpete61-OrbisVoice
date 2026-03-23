@@ -31,10 +31,17 @@ export const COMMERCE_BASE = (() => {
 export const VOICE_GATEWAY_URL = (() => {
   if (process.env.NEXT_PUBLIC_VOICE_GATEWAY_URL) return process.env.NEXT_PUBLIC_VOICE_GATEWAY_URL;
   if (typeof window !== "undefined") {
+    // Check if we are on localhost for development debugging
+    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    if (isLocalhost) {
+      return "ws://localhost:4011";
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    // Remove trailing slash if desired, but here we add it as /voice/ to match Nginx
     return `${protocol}//${window.location.host}/voice/`;
   }
-  return "ws://localhost:4010";
+  return "ws://localhost:4011";
 })();
 
 export interface User {
