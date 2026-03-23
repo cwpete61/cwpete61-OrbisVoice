@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
