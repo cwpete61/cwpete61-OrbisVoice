@@ -121,6 +121,8 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-orbis-secret-change-me}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      API_URL: http://api:4001
+      COMMERCE_URL: http://commerce-agent:4005
       PORT: 4002
     depends_on:
       postgres:
