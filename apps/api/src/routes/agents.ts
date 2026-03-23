@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
@@ -46,7 +47,7 @@ type UpdateAgentInput = z.infer<typeof UpdateAgentSchema>;
  */
 function mapAgentData(body: CreateAgentInput | UpdateAgentInput) {
   const data: Record<string, any> = {};
-  
+
   // Field-to-field translations
   const fieldMapping: Record<string, string> = {
     voiceModel: "voiceId",
@@ -55,7 +56,7 @@ function mapAgentData(body: CreateAgentInput | UpdateAgentInput) {
   Object.entries(body).forEach(([key, value]) => {
     if (value !== undefined) {
       const prismaKey = fieldMapping[key] || key;
-      
+
       // Normalized defaults for common fields
       if (prismaKey === "systemPrompt" && (value === null || value === "")) {
         data[prismaKey] = "";
@@ -84,9 +85,9 @@ export async function agentRoutes(fastify: FastifyInstance) {
 
         const agents = await prisma.agent.findMany({
           where: { tenantId: effectiveTenantId },
-          include: { 
+          include: {
             tenant: { select: { name: true } },
-            creator: { select: { username: true } }
+            creator: { select: { username: true } },
           },
           orderBy: { createdAt: "desc" },
         });
@@ -194,22 +195,21 @@ export async function agentRoutes(fastify: FastifyInstance) {
     "/agents/:id",
     { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
+      let updateData: Record<string, any> | undefined;
       try {
         const { id } = request.params as { id: string };
         const body = UpdateAgentSchema.parse(request.body);
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
         const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
 
-        const updateData = mapAgentData(body);
+        updateData = mapAgentData(body);
 
         logger.info({ agentId: id, updateData, body }, "Updating agent - DEBUG");
 
-        const agent = await prisma.agent.updateMany({
+        const existingAgent = await prisma.agent.findFirst({
           where: { id, tenantId: effectiveTenantId },
-          data: updateData,
         });
-
-        if (agent.count === 0) {
+        if (!existingAgent) {
           logger.warn({ agentId: id, tenantId: effectiveTenantId }, "Agent not found for update");
           return reply.code(404).send({
             ok: false,
@@ -217,7 +217,11 @@ export async function agentRoutes(fastify: FastifyInstance) {
           } as ApiResponse);
         }
 
-        const updated = await prisma.agent.findUnique({ where: { id } });
+        const updated = await prisma.agent.update({
+          where: { id },
+          data: updateData!,
+        });
+
         logger.info({ agentId: id, tenantId: effectiveTenantId }, "Agent updated successfully");
         return reply.code(200).send({
           ok: true,
@@ -233,23 +237,41 @@ export async function agentRoutes(fastify: FastifyInstance) {
             data: err.errors,
           } as ApiResponse);
         }
-        
+
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          const metaTarget = (err.meta as any)?.target;
+          const targets = Array.isArray(metaTarget) ? metaTarget : metaTarget ? [metaTarget] : [];
+          if (targets.includes("phoneNumber")) {
+            logger.warn(
+              { agentId: id, phoneNumber: updateData?.phoneNumber },
+              "Phone number conflict during agent update"
+            );
+            return reply.code(409).send({
+              ok: false,
+              message: "Phone number already in use",
+            } as ApiResponse);
+          }
+        }
+
         // Log detailed error for server-side debugging
-        logger.error({ 
-          err: {
-            message: err.message,
-            stack: err.stack,
-            code: err.code,
-            meta: err.meta
-          }, 
-          agentId: request.params ? (request.params as any).id : "unknown" 
-        }, "Failed to update agent");
+        logger.error(
+          {
+            err: {
+              message: err.message,
+              stack: err.stack,
+              code: err.code,
+              meta: err.meta,
+            },
+            agentId: request.params ? (request.params as any).id : "unknown",
+          },
+          "Failed to update agent"
+        );
 
         // Return error details to help understand terminal failures
         return reply.code(500).send({
           ok: false,
           message: `Internal server error: ${err.message}`,
-          details: process.env.NODE_ENV === "development" ? err.stack : undefined
+          details: process.env.NODE_ENV === "development" ? err.stack : undefined,
         } as ApiResponse);
       }
     }
