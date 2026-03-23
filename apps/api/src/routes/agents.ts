@@ -195,6 +195,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
     "/agents/:id",
     { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
+      // Corrected scope for production stability
       const { id } = request.params as { id: string };
       const body = UpdateAgentSchema.parse(request.body);
       const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
