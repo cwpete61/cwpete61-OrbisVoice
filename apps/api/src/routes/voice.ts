@@ -48,8 +48,9 @@ export async function voiceRoutes(fastify: FastifyInstance) {
       );
 
       // 3. Construct TwiML
-      // We use <Connect><Stream> to bridge to our WebSocket Gateway
-      const gatewayUrl = env.VOICE_GATEWAY_URL.replace("http", "ws"); // Ensure it uses ws/wss
+      // We use <Connect><ConversationRelay> to bridge to our WebSocket Gateway
+      const rawGatewayUrl = String((env as any).VOICE_GATEWAY_URL || `${env.WEB_URL}/voice/`);
+      const gatewayUrl = rawGatewayUrl.replace("http", "ws"); // Ensure it uses ws/wss
       
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
         <Response>
