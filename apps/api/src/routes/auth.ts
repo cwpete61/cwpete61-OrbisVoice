@@ -31,6 +31,22 @@ const isAdminEmail = (email: string) => {
   return ADMIN_EMAILS.includes(email.toLowerCase()) || isSystemAdminEmail(email);
 };
 
+async function promoteIfAdminEmail(user: any) {
+  if (isAdminEmail(user.email) && (!user.isAdmin || user.role === "USER")) {
+    logger.info({ email: user.email }, "Auto-promoting existing user to Admin on login");
+    const isSystem = isSystemAdminEmail(user.email);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isAdmin: true,
+        role: isSystem ? "SYSTEM_ADMIN" : "ADMIN",
+      },
+    });
+    user.isAdmin = true;
+    user.role = isSystem ? "SYSTEM_ADMIN" : "ADMIN";
+  }
+}
+
 const SignupSchema = z.object({
   email: z.string().email().refine(isGmail, {
     message: "Only @gmail.com accounts are allowed at this time",
@@ -62,14 +78,11 @@ export async function authRoutes(fastify: FastifyInstance) {
       const body = SignupSchema.parse(request.body);
 
       // Verify Turnstile
-      if (body.captchaToken) {
-        const valid = await verifyTurnstileToken(body.captchaToken);
-        if (!valid) {
-          return reply.code(400).send({
-            ok: false,
-            message: "Security check failed. Please try again.",
-          } as ApiResponse);
-        }
+      if (body.captchaToken && !(await verifyTurnstileToken(body.captchaToken))) {
+        return reply.code(400).send({
+          ok: false,
+          message: "Security check failed. Please try again.",
+        } as ApiResponse);
       }
 
       // Check if user exists
@@ -237,14 +250,11 @@ export async function authRoutes(fastify: FastifyInstance) {
       const body = LoginSchema.parse(request.body);
 
       // Verify Turnstile
-      if (body.captchaToken) {
-        const valid = await verifyTurnstileToken(body.captchaToken);
-        if (!valid) {
-          return reply.code(400).send({
-            ok: false,
-            message: "Security check failed. Please try again.",
-          } as ApiResponse);
-        }
+      if (body.captchaToken && !(await verifyTurnstileToken(body.captchaToken))) {
+        return reply.code(400).send({
+          ok: false,
+          message: "Security check failed. Please try again.",
+        } as ApiResponse);
       }
 
       // Find user
@@ -276,24 +286,9 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       // Auto-promote hardcoded admin on login (Safe-guarded)
       try {
-        if (isAdminEmail(user.email) && (!user.isAdmin || user.role === "USER")) {
-          logger.info({ email: user.email }, "Auto-promoting existing user to Admin on login");
-          const isSystem = isSystemAdminEmail(user.email);
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              isAdmin: true,
-              role: isSystem ? "SYSTEM_ADMIN" : "ADMIN",
-            },
-          });
-          user.isAdmin = true;
-          user.role = isSystem ? "SYSTEM_ADMIN" : "ADMIN";
-        }
+        await promoteIfAdminEmail(user);
       } catch (promoErr) {
-        logger.error(
-          { promoErr, email: user.email },
-          "Promotion logic failed but login proceeding"
-        );
+        logger.error({ promoErr, email: user.email }, "Promotion logic failed but login proceeding");
       }
 
       // Enforce Gmail-only for the account (skip for admins)
@@ -338,7 +333,6 @@ export async function authRoutes(fastify: FastifyInstance) {
         } as ApiResponse);
       }
 
-      // Check if blocked
       // Check if blocked
       if (user.isBlocked) {
         return reply.code(403).send({

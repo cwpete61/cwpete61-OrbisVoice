@@ -188,7 +188,7 @@ class VoiceGateway {
 
       const liveSession = await geminiVoiceClient.connectLive(
         apiKey,
-        { systemPrompt, voiceName, tools: sessionTools, modalities: ["audio", "text"] },
+        { systemPrompt, voiceName, tools: sessionTools, modalities: ["AUDIO", "TEXT"] },
         this.createGeminiHandlers(ws, client)
       );
 
@@ -287,7 +287,7 @@ class VoiceGateway {
 
       // 5. Establish Gemini Multimodal Live Session
       logger.info({ 
-        model: "gemini-2.5-flash-native-audio-latest", 
+        model: "gemini-2.0-flash-exp", 
         apiKeySet: !!apiKey,
         voiceName,
         toolsCount: sessionTools.length,
@@ -311,7 +311,7 @@ class VoiceGateway {
 
       const liveSession = await geminiVoiceClient.connectLive(
         apiKey,
-        { systemPrompt, voiceName, tools: sessionTools, modalities: ["audio"] },
+        { systemPrompt, voiceName, tools: sessionTools, modalities: ["AUDIO"] },
         this.createGeminiHandlers(ws, client)
       );
 
@@ -409,7 +409,7 @@ class VoiceGateway {
 
   private createGeminiHandlers(ws: WebSocket.WebSocket, client: GatewayClient) {
     return {
-      onmessage: async (msg: any) => {
+      onMessage: async (msg: any) => {
         const { sessionId } = client;
         
         if (msg.setupComplete) {
@@ -525,11 +525,11 @@ class VoiceGateway {
           ws.send(JSON.stringify({ type: "control", data: "interrupted" }));
         }
       },
-      onclose: (event?: any) => {
+      onClose: (event?: any) => {
         logger.info({ sessionId: client.sessionId, code: event?.code, reason: event?.reason }, "Gemini session closed");
         ws.send(JSON.stringify({ type: "control", data: "closed" }));
       },
-      onerror: (err: any) => {
+      onError: (err: any) => {
         this.sendError(ws, "Gemini session error", err, client.sessionId);
       },
     };

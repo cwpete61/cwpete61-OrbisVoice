@@ -525,6 +525,12 @@ Preserve behavior first.
 | **B012**  | `web/admin/payouts/page.tsx`                         | Extracted `fetchWithAuth` helper; consolidated redundant API fetch logic                  | ✅ Complete |
 | **B013**  | `web/src/lib/api.ts`                                 | Consolidated and organized API helper functions and constants                             | ✅ Complete |
 | **B014**  | `voice-gateway/src/index.ts`                         | Refactored `VoiceGateway` logic into delegator pattern; improved error visibility         | ✅ Complete |
+| **B015**  | `web/VoiceAgentWidget.tsx`, `web/hooks/useVoiceSession.ts` | Extracted `useVoiceSession` hook; decoupled UI from WebSocket/Audio lifecycle logic   | ✅ Complete |
+| **B016**  | `web/AgentBuilderForm.tsx`                           | Simplified `triggerAutoSave` to use state-first overrides; removed positional sprawl      | ✅ Complete |
+| **B017**  | `web/types/agent.ts`, `web UI components`            | Centralized `AgentType`, `VoiceGender` enums and `VOICE_MODELS` data array                | ✅ Complete |
+| **B018**  | `api/src/routes/auth.ts`                             | Refactored `signup` and `login` handlers; extracted Turnstile and admin promotion helpers  | ✅ Complete |
+| **B019**  | `api/src/routes/billing.ts`                          | Extracted helpers for tier config, tenant scoping, and Stripe customer resolution           | ✅ Complete |
+| **B020**  | `web/src/app/components/UsageChart.tsx`             | Extracted `useUsageTrend` hook; decoupled sub-components (Tooltip, Skeleton)               | ✅ Complete |
 
 ### Pass 1 Status: ✅ COMPLETE
 
@@ -538,6 +544,9 @@ Pass 1 (Low-Risk Cleanup) is complete for both `apps/web` and `apps/api`. Ready 
 | **B011** | `session-finalize.ts`    | Simplified stale session cleanup signature                                    | ✅ Complete |
 | **B012** | `admin/payouts/page.tsx` | Consolidated fetch logic                                                      | ✅ Complete |
 | **B014** | `voice-gateway/index.ts` | Extracted session initialization and Gemini message handling                  | ✅ Complete |
+| **B018** | `auth.ts`                | Refactored login/signup handlers with guard clauses and helper extraction      | ✅ Complete |
+| **B019** | `billing.ts`             | Normalized tenant scoping and Stripe customer creation helpers                | ✅ Complete |
+| **B020** | `UsageChart.tsx`         | Extracted hook and sub-components; improved visual polish                      | ✅ Complete |
 
 ### Deferred (Pass 2+)
 

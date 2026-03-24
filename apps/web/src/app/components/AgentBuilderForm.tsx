@@ -1,230 +1,23 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
 import Link from "next/link";
+import { AgentType, VoiceGender, VOICE_MODELS, PERSONA_TEMPLATES } from "@/types/agent";
 import VoiceAgentWidget from "./VoiceAgentWidget";
 import { VOICE_GATEWAY_URL, API_BASE } from "@/lib/api";
 import { readApiBody } from "@/lib/response-utils";
-
-const VOICE_MODELS = [
-  {
-    id: "aoede",
-    name: "Aoede",
-    description: "Clear and rhythmic female voice, perfect for storytelling",
-    badge: "Versatile",
-    waveform: [4, 8, 3, 9, 5, 7, 4, 8, 6, 9, 3, 7, 5, 8, 4],
-    color: "#14b8a6",
-    gender: "FEMALE",
-  },
-  {
-    id: "autonoe",
-    name: "Autonoe",
-    description: "Precise and crystalline female voice for technical clarity",
-    badge: "Clear",
-    waveform: [5, 4, 7, 3, 8, 4, 6, 5, 8, 4, 7, 3, 5, 4, 6],
-    color: "#0d9488",
-    gender: "FEMALE",
-  },
-  {
-    id: "callirrhoe",
-    name: "Callirrhoe",
-    description: "Flowing and melodic female voice, ideal for creative work",
-    badge: "Creative",
-    waveform: [3, 6, 9, 4, 7, 3, 6, 9, 4, 7, 3, 6, 9, 4, 7],
-    color: "#ec4899",
-    gender: "FEMALE",
-  },
-  {
-    id: "kore",
-    name: "Kore",
-    description: "Calm and professional female voice for business assistants",
-    badge: "Balanced",
-    waveform: [3, 5, 4, 6, 3, 5, 4, 6, 3, 5, 4, 6, 3, 5, 4],
-    color: "#6366f1",
-    gender: "FEMALE",
-  },
-  {
-    id: "leda",
-    name: "Leda",
-    description: "Authoritative yet kind female voice for leadership",
-    badge: "Authority",
-    waveform: [2, 8, 4, 7, 3, 9, 4, 6, 2, 8, 5, 7, 3, 9, 4],
-    color: "#8b5cf6",
-    gender: "FEMALE",
-  },
-  {
-    id: "zephyr",
-    name: "Zephyr",
-    description: "Soft and airy female voice for wellness and meditation",
-    badge: "Breezy",
-    waveform: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    color: "#06b6d4",
-    gender: "FEMALE",
-  },
-  {
-    id: "charon",
-    name: "Charon",
-    description: "Deep and resonant male voice for an authoritative presence",
-    badge: "Premium",
-    waveform: [8, 9, 7, 8, 9, 7, 8, 9, 7, 8, 9, 7, 8, 9, 7],
-    color: "#3b82f6",
-    gender: "MALE",
-  },
-  {
-    id: "enceladus",
-    name: "Enceladus",
-    description: "Giant and booming male voice for maximum impact",
-    badge: "Powerful",
-    waveform: [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
-    color: "#f97316",
-    gender: "MALE",
-  },
-  {
-    id: "fenrir",
-    name: "Fenrir",
-    description: "Strong and energetic male voice with bold personality",
-    badge: "Dynamic",
-    waveform: [9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9, 3, 9],
-    color: "#ef4444",
-    gender: "MALE",
-  },
-  {
-    id: "lapetus",
-    name: "Lapetus",
-    description: "Steady and ancient male voice full of wisdom",
-    badge: "Wise",
-    waveform: [2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2],
-    color: "#71717a",
-    gender: "MALE",
-  },
-  {
-    id: "orus",
-    name: "Orus",
-    description: "Crisp and modern male voice for tech support",
-    badge: "Modern",
-    waveform: [6, 2, 8, 3, 7, 2, 6, 4, 8, 3, 7, 2, 6, 4, 8],
-    color: "#f59e0b",
-    gender: "MALE",
-  },
-  {
-    id: "puck",
-    name: "Puck",
-    description: "Youthful and upbeat male voice for casual contexts",
-    badge: "Friendly",
-    waveform: [6, 4, 8, 5, 7, 4, 6, 5, 8, 4, 7, 5, 6, 4, 8],
-    color: "#10b981",
-    gender: "MALE",
-  },
-  {
-    id: "umbriel",
-    name: "Umbriel",
-    description: "Subtle and sophisticated male voice for high-end hospitality",
-    badge: "Elite",
-    waveform: [4, 5, 6, 5, 4, 5, 6, 5, 4, 5, 6, 5, 4, 5, 6],
-    color: "#64748b",
-    gender: "MALE",
-  },
-];
-
-const AGENT_TYPES = [
-  {
-    id: "WIDGET",
-    name: "Web Widget",
-    description: "Interactive voice widget for your website",
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" />
-      </svg>
-    ),
-  },
-  {
-    id: "INBOUND_TWILIO",
-    name: "Inbound Phone",
-    description: "Agent answers calls to a Twilio phone number",
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
-      </svg>
-    ),
-  },
-  {
-    id: "OUTBOUND_TWILIO",
-    name: "Outbound Phone",
-    description: "Agent places calls to lists of phone numbers",
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path d="M15 3h6v6" />
-        <path d="M21 3l-9 9" />
-        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
-      </svg>
-    ),
-  },
-];
-
-const AVATARS = [
-  { id: "male1", url: "/avatars/male1.png", gender: "MALE" },
-  { id: "male2", url: "/avatars/male2.png", gender: "MALE" },
-  { id: "male3", url: "/avatars/male3.png", gender: "MALE" },
-  { id: "male4", url: "/avatars/male4.png", gender: "MALE" },
-  { id: "male5", url: "/avatars/male5.png", gender: "MALE" },
-  { id: "male6", url: "/avatars/male6.png", gender: "MALE" },
-  { id: "male7", url: "/avatars/male7.png", gender: "MALE" },
-  { id: "male8", url: "/avatars/male8.png", gender: "MALE" },
-  { id: "female1", url: "/avatars/female1.png", gender: "FEMALE" },
-  { id: "female2", url: "/avatars/female2.png", gender: "FEMALE" },
-  { id: "female3", url: "/avatars/female3.png", gender: "FEMALE" },
-  { id: "female4", url: "/avatars/female4.png", gender: "FEMALE" },
-  { id: "female5", url: "/avatars/female5.png", gender: "FEMALE" },
-  { id: "female6", url: "/avatars/female6.png", gender: "FEMALE" },
-  { id: "female7", url: "/avatars/female7.png", gender: "FEMALE" },
-  { id: "female8", url: "/avatars/female8.png", gender: "FEMALE" },
-];
-
-const PERSONA_TEMPLATES = [
-  {
-    id: "sales",
-    emoji: "💼",
-    name: "Sales Assistant",
-    prompt:
-      "You are a professional sales assistant. Your goal is to help potential customers understand our products and services, answer their questions clearly, identify their needs, and guide them toward a purchase decision. Be persuasive yet honest. Ask qualifying questions to understand their budget and timeline. Always end with a clear call to action.",
-  },
-  {
-    id: "support",
-    emoji: "🎧",
-    name: "Support Agent",
-    prompt:
-      "You are a friendly customer support agent. Your goal is to help customers resolve issues quickly and efficiently. Listen carefully to their problems, empathize with their frustration, and provide clear step-by-step solutions. If you cannot resolve an issue, escalate it politely. Always confirm the customer is satisfied before ending the conversation.",
-  },
-  {
-    id: "scheduler",
-    emoji: "📅",
-    name: "Appointment Setter",
-    prompt:
-      "You are an appointment scheduling assistant. Your goal is to help leads and customers book appointments with our team. Collect their name, contact information, preferred date and time, and the purpose of the meeting. Confirm all details before finalizing. Be professional, efficient, and friendly throughout the process.",
-  },
-  {
-    id: "intake",
-    emoji: "📋",
-    name: "Lead Intake",
-    prompt:
-      "You are a lead intake specialist. Your goal is to gather information from potential clients to qualify them for our services. Ask about their business needs, challenges, budget, and timeline. Summarize the information clearly at the end. Be professional and make the prospect feel heard and valued.",
-  },
-  {
-    id: "custom",
-    emoji: "✨",
-    name: "Custom",
-    prompt: "",
-  },
-];
+import AgentIdentitySection from "./agent-builder/AgentIdentitySection";
+import AgentPersonaSection from "./agent-builder/AgentPersonaSection";
+import AgentWidgetSection from "./agent-builder/AgentWidgetSection";
 
 export interface AgentData {
   id?: string;
   name: string;
   systemPrompt: string;
   voiceId: string;
-  type?: "WIDGET" | "INBOUND_TWILIO" | "OUTBOUND_TWILIO";
-  voiceGender?: "MALE" | "FEMALE";
+  type?: AgentType;
+  voiceGender?: VoiceGender;
   avatarUrl?: string | null;
   autoStart?: boolean;
   widgetIsVisible?: boolean;
@@ -248,9 +41,9 @@ export default function AgentBuilderForm({
   const [name, setName] = useState(initialData?.name || "");
   const [systemPrompt, setSystemPrompt] = useState(initialData?.systemPrompt || "");
   const [selectedVoice, setSelectedVoice] = useState(initialData?.voiceId || "aoede");
-  const [agentType, setAgentType] = useState<"WIDGET" | "INBOUND_TWILIO" | "OUTBOUND_TWILIO">(initialData?.type || "WIDGET");
-  const [voiceGender, setVoiceGender] = useState<"MALE" | "FEMALE">(initialData?.voiceGender || "FEMALE");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatarUrl || (initialData?.voiceGender === "MALE" ? "/avatars/male1.png" : "/avatars/female1.png"));
+  const [agentType, setAgentType] = useState<AgentType>(initialData?.type || AgentType.WIDGET);
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>(initialData?.voiceGender || VoiceGender.FEMALE);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialData?.avatarUrl || (initialData?.voiceGender === VoiceGender.MALE ? "/avatars/male1.png" : "/avatars/female1.png"));
   const [autoStart, setAutoStart] = useState<boolean>(initialData?.autoStart ?? true);
   const [widgetIsVisible, setWidgetIsVisible] = useState<boolean>(initialData?.widgetIsVisible ?? true);
   const [widgetPosition, setWidgetPosition] = useState<string>(initialData?.widgetPosition || "bottom-right");
@@ -282,36 +75,33 @@ export default function AgentBuilderForm({
   ];
 
   // Background auto-save triggered when inputs change
-  const triggerAutoSave = async (
-    currentName: string,
-    prompt: string,
-    voice: string,
-    type: string,
-    gender: string,
-    avatar: string | null,
-    autostart: boolean,
-    phoneNum: string
-  ): Promise<boolean> => {
-    if (!currentName.trim()) return false; // Name is required to save
-
-    setAutoSaveStatus("saving");
+  const triggerAutoSave = async (overrides: any = {}) => {
     try {
+      if (autoSaveStatus === "saving") return false; // Prevent multiple saves at once
+
       const token = localStorage.getItem("token");
-      const payload = { 
-        name: currentName, 
-        systemPrompt: prompt, 
-        voiceModel: voice,
-        type: type,
-        voiceGender: gender,
-        avatarUrl: avatar,
-        autoStart: autostart,
-        widgetIsVisible: widgetIsVisible,
-        widgetPosition: widgetPosition,
-        widgetPrimaryColor: widgetPrimaryColor,
-        widgetDefaultOpen: widgetDefaultOpen,
-        phoneNumber: phoneNum
+      if (!token) return false;
+
+      const payload = {
+        name: overrides.name ?? name,
+        systemPrompt: overrides.systemPrompt ?? systemPrompt,
+        voiceModel: overrides.selectedVoice ?? selectedVoice,
+        type: overrides.agentType ?? agentType,
+        voiceGender: overrides.voiceGender ?? voiceGender,
+        avatarUrl: overrides.avatarUrl ?? avatarUrl,
+        autoStart: overrides.autoStart ?? autoStart,
+        widgetIsVisible,
+        widgetPosition,
+        widgetPrimaryColor,
+        widgetDefaultOpen,
+        phoneNumber: overrides.phoneNumber ?? phoneNumber
       };
-      
+
+      // Name is required to save
+      if (!payload.name.trim()) return false;
+
+      setAutoSaveStatus("saving");
+
       if (!agentId) {
         if (isCreatingRef.current) return false;
         isCreatingRef.current = true;
@@ -362,10 +152,10 @@ export default function AgentBuilderForm({
   };
 
   // Debounce the system prompt text-area typing
-  const debouncedAutoSave = (nameVal: string, promptVal: string, voiceVal: string, typeVal: string, genderVal: string, avatarVal: string | null, autostartVal: boolean, phoneNumVal: string) => {
+  const debouncedAutoSave = (overrides: any = {}) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      triggerAutoSave(nameVal, promptVal, voiceVal, typeVal, genderVal, avatarVal, autostartVal, phoneNumVal);
+      triggerAutoSave(overrides);
     }, 1500); // Wait 1.5 seconds after typing stops
   };
 
@@ -373,7 +163,7 @@ export default function AgentBuilderForm({
     setSelectedTemplate(t.id);
     if (t.prompt) {
       setSystemPrompt(t.prompt);
-      debouncedAutoSave(name, t.prompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+      debouncedAutoSave({ systemPrompt: t.prompt });
     }
   };
 
@@ -382,7 +172,7 @@ export default function AgentBuilderForm({
     setSelectedVoice(voiceId);
     setIsVoiceDropdownOpen(false);
     setTimeout(() => setAnimatingVoice(null), 800);
-    triggerAutoSave(name, systemPrompt, voiceId, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+    triggerAutoSave({ selectedVoice: voiceId });
   };
 
   const playVoiceSample = (voiceId: string) => {
@@ -431,7 +221,7 @@ export default function AgentBuilderForm({
     setActiveStep(2);
     // Force an initial save if moving to step 2 for the first time
     if (!agentId) {
-      triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+      triggerAutoSave();
     }
   };
 
@@ -451,7 +241,7 @@ export default function AgentBuilderForm({
       return;
     }
     setSaving(true);
-    triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber).then((ok) => {
+    triggerAutoSave().then((ok) => {
       if (ok) {
         router.push("/dashboard");
       } else {
@@ -469,7 +259,7 @@ export default function AgentBuilderForm({
 
     setError("");
     setSavingDraft(true);
-    const ok = await triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
+    const ok = await triggerAutoSave();
     if (!ok) {
       setError("Could not save right now. Please try again.");
     }
@@ -635,375 +425,53 @@ export default function AgentBuilderForm({
             {/* Left: Form */}
             <div className="lg:col-span-3 space-y-4">
               {/* Step 1: Identity */}
-              <div
-                className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 1 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
-              >
-                <button
-                  onClick={() => setActiveStep(1)}
-                  suppressHydrationWarning
-                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      activeStep === 1
-                        ? "bg-[#14b8a6] text-white"
-                        : isStepComplete(1)
-                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                          : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
-                    }`}
-                  >
-                    1
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-semibold text-white">Agent Identity</div>
-                    <div className="text-xs text-[rgba(240,244,250,0.35)]">
-                      Name and basic information
-                    </div>
-                  </div>
-                  {name && (
-                    <div className="ml-auto text-xs text-[#14b8a6] font-medium truncate max-w-[120px]">
-                      {name}
-                    </div>
-                  )}
-                </button>
-
-                {activeStep === 1 && (
-                  <div className="px-6 pb-6 fade-slide-up">
-                    <div className="border-t border-white/[0.05] pt-5">
-                      <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                        Agent Name
-                      </label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          debouncedAutoSave(e.target.value, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
-                        }}
-                        placeholder="e.g., Sales Pro, Support Ally, Booking Bot..."
-                        className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-[rgba(240,244,250,0.2)] focus:outline-none focus:border-[#14b8a6]/50 focus:ring-1 focus:ring-[#14b8a6]/20 transition text-sm"
-                        autoFocus
-                        suppressHydrationWarning
-                      />
-                      <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.25)]">
-                        Your customers will hear this name when interacting with the agent
-                      </p>
-
-                      <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2 mt-6">
-                        Agent Type
-                      </label>
-                      <div className="grid grid-cols-1 gap-2">
-                        {AGENT_TYPES.map((t) => (
-                          <button
-                            key={t.id}
-                            suppressHydrationWarning
-                            onClick={() => {
-                              setAgentType(t.id as any);
-                              triggerAutoSave(name, systemPrompt, selectedVoice, t.id, voiceGender, avatarUrl, autoStart, phoneNumber);
-                            }}
-                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 ${
-                              agentType === t.id
-                                ? "bg-[#14b8a6]/10 border-[#14b8a6]/50 ring-1 ring-[#14b8a6]/20"
-                                : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.04] hover:border-white/[0.12]"
-                            }`}
-                          >
-                            <div className={`p-2 rounded-lg ${agentType === t.id ? "bg-[#14b8a6]/20 text-[#14b8a6]" : "bg-white/[0.05] text-[rgba(240,244,250,0.4)]"}`}>
-                              {t.icon}
-                            </div>
-                            <div className="text-left">
-                              <div className={`text-sm font-semibold ${agentType === t.id ? "text-white" : "text-[rgba(240,244,250,0.8)]"}`}>{t.name}</div>
-                              <div className="text-[10px] text-[rgba(240,244,250,0.35)]">{t.description}</div>
-                            </div>
-                            {agentType === t.id && (
-                              <div className="ml-auto w-5 h-5 rounded-full bg-[#14b8a6] flex items-center justify-center">
-                                <svg width="12" height="12" fill="white" viewBox="0 0 24 24">
-                                  <path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z" />
-                                </svg>
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                      
-                      { (agentType === "INBOUND_TWILIO" || agentType === "OUTBOUND_TWILIO") && (
-                        <div className="mt-6 fade-slide-up">
-                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                            Twilio Phone Number
-                          </label>
-                          <input
-                            type="tel"
-                            value={phoneNumber || ""}
-                            onChange={(e) => {
-                              setPhoneNumber(e.target.value);
-                              debouncedAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, e.target.value);
-                            }}
-                            placeholder="+1234567890"
-                            className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-[rgba(240,244,250,0.2)] focus:outline-none focus:border-[#14b8a6]/50 focus:ring-1 focus:ring-[#14b8a6]/20 transition text-sm"
-                            suppressHydrationWarning
-                          />
-                          <p className="mt-2 text-[10px] text-[rgba(240,244,250,0.25)]">
-                            The phone number configured in Twilio that points to this agent
-                          </p>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={handleStep1Continue}
-                        className="w-full mt-6 bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
-                        suppressHydrationWarning
-                      >
-                        Continue to Persona →
-                      </button>
-                    </div>
-                  </div>
-                )}
-                    {/* Step 3: Widget & Embed */}
-              {agentType === "WIDGET" && (
-                <div
-                  className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 3 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
-                >
-                  <button
-                    onClick={() => { if (isStepComplete(1) && isStepComplete(2)) setActiveStep(3); }}
-                    suppressHydrationWarning
-                    className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                        activeStep === 3
-                          ? "bg-[#14b8a6] text-white"
-                          : isStepComplete(3)
-                            ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                            : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
-                      }`}
-                    >
-                      3
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm font-semibold text-white">Widget & Embed</div>
-                      <div className="text-xs text-[rgba(240,244,250,0.35)]">
-                        Embed the voice agent on your website
-                      </div>
-                    </div>
-                  </button>
-
-                  {activeStep === 3 && (
-                    <div className="px-6 pb-6 fade-slide-up">
-                      <div className="border-t border-white/[0.05] pt-5 space-y-6">
-                        {/* Embed Code Section */}
-                        <div>
-                          <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-3">
-                            Website Embed Code
-                          </label>
-                          <div className="relative group/copy">
-                            <pre className="bg-[#0a0e1a] border border-white/[0.08] rounded-xl p-4 text-[11px] text-[#14b8a6] font-mono overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
-                              {`<script 
-    src="${typeof window !== 'undefined' ? window.location.origin : 'https://myorbisvoice.com'}/widget.js" 
-    data-agent-id="${agentId || 'save-to-generate'}" 
-    data-theme-color="${widgetPrimaryColor}"
-    defer
-  ></script>`}
-                            </pre>
-                            <button
-                              onClick={() => {
-                                                                 const code = `<script src="${window.location.origin}/widget.js" data-agent-id="${agentId}" data-theme-color="${widgetPrimaryColor}" defer></script>`;
-                                navigator.clipboard.writeText(code);
-                                const btn = document.getElementById('copy-btn');
-                                if (btn) btn.innerText = 'Copied!';
-                                setTimeout(() => { if (btn) btn.innerText = 'Copy Code'; }, 2000);
-                              }}
-                              id="copy-btn"
-                              className="absolute top-2 right-2 px-3 py-1.5 bg-[#14b8a6]/20 hover:bg-[#14b8a6]/30 text-[#14b8a6] text-[10px] font-bold rounded-lg transition-all opacity-0 group-hover/copy:opacity-100"
-                            >
-                              Copy Code
-                            </button>
-                          </div>
-                          <p className="mt-2.5 text-[10px] text-[rgba(240,244,250,0.3)] leading-relaxed">
-                            Paste this code right before the closing <code className="bg-white/5 px-1 rounded">{"</body>"}</code> tag of your website.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Position */}
-                          <div>
-                            <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                              Position
-                            </label>
-                            <select 
-                              value={widgetPosition}
-                              onChange={(e) => {
-                                setWidgetPosition(e.target.value);
-                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
-                              }}
-                              className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#14b8a6]/50"
-                            >
-                              <option value="bottom-right">Bottom Right</option>
-                              <option value="bottom-left">Bottom Left</option>
-                              <option value="top-right">Top Right</option>
-                              <option value="top-left">Top Left</option>
-                            </select>
-                          </div>
-
-                          {/* Theme Color */}
-                          <div>
-                            <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                              Theme Color
-                            </label>
-                            <div className="flex gap-2">
-                              <input 
-                                type="color"
-                                value={widgetPrimaryColor}
-                                onChange={(e) => {
-                                  setWidgetPrimaryColor(e.target.value);
-                                  triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
-                                }}
-                                className="w-10 h-10 bg-transparent border-0 rounded cursor-pointer"
-                              />
-                              <input 
-                                type="text"
-                                value={widgetPrimaryColor}
-                                onChange={(e) => setWidgetPrimaryColor(e.target.value)}
-                                onBlur={() => triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber)}
-                                className="flex-1 bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-3 text-xs text-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Toggles */}
-                        <div className="space-y-4 pt-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="text-sm font-semibold text-white">Visible on site</div>
-                              <div className="text-[10px] text-white/30">Instantly show or hide the widget icon</div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                const val = !widgetIsVisible;
-                                setWidgetIsVisible(val);
-                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
-                              }}
-                              className={`w-11 h-6 rounded-full transition-colors relative ${widgetIsVisible ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
-                            >
-                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetIsVisible ? 'left-6' : 'left-1'}`} />
-                            </button>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="text-sm font-semibold text-white">Default Opened</div>
-                              <div className="text-[10px] text-white/30">Start with the chat window already open</div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                const val = !widgetDefaultOpen;
-                                setWidgetDefaultOpen(val);
-                                triggerAutoSave(name, systemPrompt, selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
-                              }}
-                              className={`w-11 h-6 rounded-full transition-colors relative ${widgetDefaultOpen ? 'bg-[#14b8a6]' : 'bg-white/10'}`}
-                            >
-                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${widgetDefaultOpen ? 'left-6' : 'left-1'}`} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-         </div>
+              <AgentIdentitySection
+                name={name}
+                setNameAction={setName}
+                agentType={agentType}
+                setAgentTypeAction={(type) => setAgentType(type as AgentType)}
+                debouncedAutoSaveAction={debouncedAutoSave}
+                triggerAutoSaveAction={triggerAutoSave}
+                isActive={activeStep === 1}
+                onActivateAction={() => setActiveStep(1)}
+                isStepCompleteAction={isStepComplete}
+                phoneNumber={phoneNumber}
+                setPhoneNumberAction={setPhoneNumber}
+                handleStep1ContinueAction={handleStep1Continue}
+              />
 
               {/* Step 2: Persona */}
-              <div
-                className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${activeStep === 2 ? "ring-1 ring-[#14b8a6]/30" : ""}`}
-              >
-                <button
-                  onClick={() => setActiveStep(2)}
-                  suppressHydrationWarning
-                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-white/[0.02] transition"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      activeStep === 2
-                        ? "bg-[#14b8a6] text-white"
-                        : isStepComplete(2)
-                          ? "bg-[#14b8a6]/20 text-[#14b8a6]"
-                          : "bg-white/[0.06] text-[rgba(240,244,250,0.4)]"
-                    }`}
-                  >
-                    2
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-semibold text-white">Persona & Behavior</div>
-                    <div className="text-xs text-[rgba(240,244,250,0.35)]">
-                      Define how your agent thinks and responds
-                    </div>
-                  </div>
-                  {isStepComplete(2) && activeStep !== 2 && (
-                    <div className="ml-auto text-xs text-[#14b8a6] font-medium">Configured</div>
-                  )}
-                </button>
+              <AgentPersonaSection
+                systemPrompt={systemPrompt}
+                setSystemPromptAction={setSystemPrompt}
+                selectedTemplate={selectedTemplate}
+                handleTemplateSelectAction={handleTemplateSelect}
+                debouncedAutoSaveAction={debouncedAutoSave}
+                isActive={activeStep === 2}
+                onActivateAction={() => setActiveStep(2)}
+                isStepCompleteAction={isStepComplete}
+                handleStep2ContinueAction={handleStep2Continue}
+                maxChars={maxChars}
+              />
 
-                {activeStep === 2 && (
-                  <div className="px-6 pb-6 fade-slide-up">
-                    <div className="border-t border-white/[0.05] pt-5">
-                      {/* Quick Templates */}
-                      <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-3">
-                        Quick Templates
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
-                        {PERSONA_TEMPLATES.map((t) => (
-                          <button
-                            key={t.id}
-                            onClick={() => handleTemplateSelect(t)}
-                            suppressHydrationWarning
-                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-medium transition-all duration-200 ${
-                              selectedTemplate === t.id
-                                ? "bg-[#14b8a6]/15 border border-[#14b8a6]/40 text-[#14b8a6]"
-                                : "bg-white/[0.03] border border-white/[0.06] text-[rgba(240,244,250,0.5)] hover:text-white hover:border-white/[0.12] hover:bg-white/[0.06]"
-                            }`}
-                          >
-                            <span className="text-base">{t.emoji}</span>
-                            <span className="truncate">{t.name}</span>
-                          </button>
-                        ))}
-                      </div>
+              {/* Step 3: Widget (only for Widget type) */}
+              <AgentWidgetSection 
+                agentType={agentType}
+                agentId={agentId || ""}
+                widgetPosition={widgetPosition}
+                setWidgetPositionAction={setWidgetPosition}
+                widgetPrimaryColor={widgetPrimaryColor}
+                setWidgetPrimaryColorAction={setWidgetPrimaryColor}
+                widgetIsVisible={widgetIsVisible}
+                setWidgetIsVisibleAction={setWidgetIsVisible}
+                widgetDefaultOpen={widgetDefaultOpen}
+                setWidgetDefaultOpenAction={setWidgetDefaultOpen}
+                triggerAutoSaveAction={triggerAutoSave}
+                isActive={activeStep === 3}
+                onActivateAction={() => setActiveStep(3)}
+                isStepCompleteAction={isStepComplete}
+              />
 
-                      {/* System Prompt */}
-                      <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
-                        System Prompt
-                      </label>
-                      <textarea
-                        value={systemPrompt}
-                        onChange={(e) => {
-                          setSystemPrompt(e.target.value.slice(0, maxChars));
-                          debouncedAutoSave(name, e.target.value.slice(0, maxChars), selectedVoice, agentType, voiceGender, avatarUrl, autoStart, phoneNumber);
-                        }}
-                        placeholder="Define how your agent should behave, its tone, goals, and how it should handle different scenarios..."
-                        rows={7}
-                        className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-[rgba(240,244,250,0.2)] focus:outline-none focus:border-[#14b8a6]/50 focus:ring-1 focus:ring-[#14b8a6]/20 transition text-sm resize-none leading-relaxed"
-                      />
-                      <div className="flex justify-between mt-1.5 mb-5">
-                        <span className="text-[10px] text-[rgba(240,244,250,0.25)]">
-                          Be specific about goals, tone, and constraints
-                        </span>
-                        <span
-                          className={`text-[10px] font-mono ${systemPrompt.length > maxChars * 0.9 ? "text-orange-400" : "text-[rgba(240,244,250,0.25)]"}`}
-                        >
-                          {systemPrompt.length}/{maxChars}
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={handleStep2Continue}
-                        className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm shadow-lg shadow-[#14b8a6]/20"
-                        suppressHydrationWarning
-                      >
-                        Continue to Widget Settings →
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               {/* Error */}
               {error && (

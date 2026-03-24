@@ -1,8 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { VOICE_GATEWAY_URL } from "@/lib/api";
-import { AudioPlayer, AudioRecorder } from "@/lib/audio-utils";
-import { base64ToArrayBuffer, arrayBufferToBase64 } from "@/lib/base64-utils";
+import { useVoiceSession } from "@/hooks/useVoiceSession";
+import { VOICE_MODELS, VoiceGender, AgentType, AVATARS } from "@/types/agent";
 
 export interface VoiceAgentWidgetProps {
     agentId: string;
@@ -15,27 +14,8 @@ export interface VoiceAgentWidgetProps {
         widgetPrimaryColor?: string | null;
     };
     isWidget?: boolean;
-    agentType?: "WIDGET" | "INBOUND_TWILIO" | "OUTBOUND_TWILIO";
+    agentType?: AgentType;
 }
-
-const VOICE_MODELS = [
-  { id: "aoede", name: "Aoede", gender: "FEMALE", color: "#14b8a6", waveform: [12, 18, 14, 22, 16, 20, 15, 12, 10, 8] },
-  { id: "charon", name: "Charon", gender: "MALE", color: "#6366f1", waveform: [10, 15, 12, 18, 14, 22, 16, 12, 10, 8] },
-  { id: "puck", name: "Puck", gender: "MALE", color: "#f59e0b", waveform: [8, 12, 10, 16, 14, 20, 15, 12, 10, 6] },
-  { id: "kore", name: "Kore", gender: "FEMALE", color: "#ec4899", waveform: [14, 20, 16, 24, 18, 22, 16, 14, 12, 10] },
-  { id: "fenrir", name: "Fenrir", gender: "MALE", color: "#3b82f6", waveform: [12, 18, 14, 22, 16, 20, 15, 12, 10, 8] },
-];
-
-const AVATARS = [
-  { id: "male1", url: "/avatars/male1.png", gender: "MALE" },
-  { id: "male2", url: "/avatars/male2.png", gender: "MALE" },
-  { id: "male3", url: "/avatars/male3.png", gender: "MALE" },
-  { id: "male4", url: "/avatars/male4.png", gender: "MALE" },
-  { id: "female1", url: "/avatars/female1.png", gender: "FEMALE" },
-  { id: "female2", url: "/avatars/female2.png", gender: "FEMALE" },
-  { id: "female3", url: "/avatars/female3.png", gender: "FEMALE" },
-  { id: "female4", url: "/avatars/female4.png", gender: "FEMALE" },
-];
 
 export default function VoiceAgentWidget({ agentId, initialData, isWidget = false, agentType }: VoiceAgentWidgetProps) {
   const [name, setName] = useState(initialData.name || "");
@@ -43,20 +23,27 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
   const [selectedVoice, setSelectedVoice] = useState(initialData.voiceId || "aoede");
   const [voiceGender, setVoiceGender] = useState(initialData.voiceGender || "FEMALE");
   const [avatarUrl, setAvatarUrl] = useState(initialData.avatarUrl || "");
-  const [isTalking, setIsTalking] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState("");
   const [isPlayingSample, setIsPlayingSample] = useState<string | null>(null);
   const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
 
-  // Audio refs
-  const recorderRef = useRef<AudioRecorder | null>(null);
-  const playerRef = useRef<AudioPlayer | null>(null);
-  const sessionRef = useRef<WebSocket | null>(null);
+  // Audio refs for UI samples
   const sampleAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const voiceModel = VOICE_MODELS.find((v) => v.id === selectedVoice) || VOICE_MODELS[0];
   const primaryColor = initialData.widgetPrimaryColor || voiceModel.color;
+
+  const {
+    isTalking,
+    isConnecting,
+    connectionError,
+    startTalking,
+    stopTalking,
+  } = useVoiceSession({
+    agentId,
+    selectedVoice,
+    voiceGender,
+    systemPrompt,
+  });
 
   useEffect(() => {
     setName(initialData.name || "");
@@ -65,79 +52,6 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
     setVoiceGender(initialData.voiceGender || "FEMALE");
     setAvatarUrl(initialData.avatarUrl || "");
   }, [initialData]);
-
-  const stopTalking = () => {
-    setIsTalking(false);
-    setIsConnecting(false);
-    if (recorderRef.current) { recorderRef.current.stop(); recorderRef.current = null; }
-    if (playerRef.current) { playerRef.current.stop(); playerRef.current = null; }
-    if (sessionRef.current) { try { sessionRef.current.close(); } catch (e) {} sessionRef.current = null; }
-  };
-
-  const startTalking = async () => {
-    if (!agentId || agentId === "save-to-generate") {
-      setConnectionError("Please save the agent first.");
-      return;
-    }
-    setConnectionError("");
-    setIsConnecting(true);
-    try {
-      const token = localStorage.getItem("token") || "";
-      playerRef.current = new AudioPlayer();
-      await playerRef.current.init();
-      const socket = new WebSocket(VOICE_GATEWAY_URL);
-      sessionRef.current = socket;
-      socket.onopen = () => {
-        socket.send(JSON.stringify({
-          type: "control",
-          data: JSON.stringify({ 
-            event: "init", 
-            token, 
-            agentId, 
-            voiceId: selectedVoice, 
-            voiceGender,
-            systemPrompt // Pass the current state for live preview support
-          }),
-          timestamp: Date.now(),
-        }));
-      };
-      socket.onmessage = async (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.ok && msg.message === "Session initialized") {
-            setIsConnecting(false);
-            setIsTalking(true);
-            recorderRef.current = new AudioRecorder((audioData: ArrayBuffer) => {
-                if (socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: "audio", data: arrayBufferToBase64(audioData), timestamp: Date.now() }));
-                }
-            });
-            await recorderRef.current.start();
-          }
-          if (msg.type === "audio" && msg.data) {
-            if (playerRef.current) {
-              const audioBuffer = base64ToArrayBuffer(msg.data);
-              playerRef.current.play(audioBuffer);
-            }
-          }
-          if (msg.type === "control" && msg.data === "interrupted") {
-            playerRef.current?.stop();
-            playerRef.current = new AudioPlayer();
-            await playerRef.current.init();
-          }
-          if (msg.error) {
-            setConnectionError(msg.error);
-            stopTalking();
-          }
-        } catch (e) {}
-      };
-      socket.onclose = () => stopTalking();
-      socket.onerror = () => { setConnectionError("Gateway connection failed."); stopTalking(); };
-    } catch (e: any) {
-      setConnectionError("Microphone access denied or error: " + e.message);
-      stopTalking();
-    }
-  };
 
   const playVoiceSample = (voiceId: string) => {
     if (isPlayingSample === voiceId) {

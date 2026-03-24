@@ -8,8 +8,8 @@ export interface GeminiAudioResponse {
 }
 
 class GeminiVoiceClient {
-  private model: string = "gemini-2.0-flash-exp"; 
-  private liveModel: string = "gemini-2.0-flash-exp";
+  private model: string = "gemini-2.0-flash"; 
+  private liveModel: string = "gemini-2.5-flash-native-audio-latest";
 
   constructor() {
     if (!env.GEMINI_API_KEY) {
@@ -31,12 +31,12 @@ class GeminiVoiceClient {
       systemPrompt: string;
       voiceName?: string;
       tools?: Tool[];
-      modalities?: ("audio" | "text" | "image")[];
+      modalities?: ("AUDIO" | "TEXT" | "IMAGE")[];
     },
     callbacks: {
-      onmessage: (message: any) => void;
-      onclose: (event?: any) => void;
-      onerror: (err: any) => void;
+      onMessage: (message: any) => void;
+      onClose: (event?: any) => void;
+      onError: (err: any) => void;
     }
   ) {
     const client = this.getClient(apiKey);
@@ -44,13 +44,13 @@ class GeminiVoiceClient {
     logger.info({ 
         model: this.liveModel, 
         toolsCount: config.tools?.length || 0,
-        modalities: config.modalities || ["audio"] 
+        modalities: config.modalities || ["AUDIO"] 
     }, "Connecting to Gemini Multimodal Live API");
 
     const session = await client.live.connect({
       model: this.liveModel,
       config: {
-        responseModalities: (config.modalities || ["audio"]) as any,
+        responseModalities: (config.modalities || ["AUDIO"]) as any,
         speechConfig: {
            voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voiceName || "Puck" } },
         },
@@ -62,7 +62,11 @@ class GeminiVoiceClient {
         },
         tools: config.tools,
       },
-      callbacks,
+      callbacks: {
+        onmessage: (msg: any) => callbacks.onMessage(msg),
+        onclose: (ev: any) => callbacks.onClose(ev),
+        onerror: (err: any) => callbacks.onError(err),
+      },
     });
 
     return session;

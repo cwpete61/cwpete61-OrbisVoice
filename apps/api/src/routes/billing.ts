@@ -44,24 +44,63 @@ const CheckoutSchema = z.object({
   cancelUrl: z.string().optional(),
 });
 
+// Helper: Resolve effective tenant ID with admin scoping
+async function resolveEffectiveTenantId(request: FastifyRequest) {
+  const { tenantId } = request.user as any;
+  return resolveAdminScopedTenantId(tenantId);
+}
+
+// Helper: Resolve user email for Stripe
+async function resolveUserEmail(request: FastifyRequest, scopedTenantId: string) {
+  let { email } = request.user as any;
+  if (!email) {
+    const dbUser = await prisma.user.findFirst({
+      where: { tenantId: scopedTenantId, isAdmin: true },
+      select: { email: true },
+    });
+    email = dbUser?.email;
+  }
+  return email;
+}
+
+// Helper: Get tier configuration
+async function getTierConfig() {
+  const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
+  return {
+    starter: { conversations: settings?.starterLimit ?? 1000, price: 197 },
+    professional: { conversations: settings?.professionalLimit ?? 10000, price: 497 },
+    enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: 997 },
+    "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 },
+    ltd: { conversations: settings?.ltdLimit ?? 1000, price: 497, monthly: 20 },
+    free: { conversations: 0, price: 0 },
+  };
+}
+
+// Helper: Get or Create Stripe Customer
+async function getOrCreateStripeCustomer(stripe: any, tenant: any, email: string) {
+  if (tenant.stripeCustomerId) return tenant.stripeCustomerId;
+
+  logger.info({ tenantId: tenant.id, email }, "Creating new Stripe customer");
+  const customer = await stripe.createCustomer({
+    email,
+    name: tenant.name,
+    metadata: { tenantId: tenant.id },
+  });
+
+  await prisma.tenant.update({
+    where: { id: tenant.id },
+    data: { stripeCustomerId: customer.id },
+  });
+
+  return customer.id;
+}
+
+
 async function billingRoutes(fastify: FastifyInstance) {
   // Get available tiers
   fastify.get("/billing/tiers", async (request, reply) => {
-    const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-
-    const tiers = {
-      starter: { conversations: settings?.starterLimit ?? 1000, price: 197 },
-      professional: { conversations: settings?.professionalLimit ?? 10000, price: 497 },
-      enterprise: { conversations: settings?.enterpriseLimit ?? 100000, price: 997 },
-      "ai-revenue-infrastructure": { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 },
-      ltd: { conversations: settings?.ltdLimit ?? 1000, price: 497, monthly: 20 },
-      free: { conversations: 0, price: 0 },
-    };
-
-    return {
-      ok: true,
-      data: tiers,
-    };
+    const tiers = await getTierConfig();
+    return { ok: true, data: tiers };
   });
 
   // Verify if session can start (used by Voice Gateway)
@@ -69,22 +108,14 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/can-start-session",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
-      
+      const scopedTenantId = await resolveEffectiveTenantId(request);
       const check = await UsageService.canStartSession(scopedTenantId);
       
       if (!check.allowed) {
-        return reply.code(403).send({
-          ok: false,
-          message: check.reason,
-        });
+        return reply.code(403).send({ ok: false, message: check.reason });
       }
 
-      return {
-        ok: true,
-        message: "Session allowed",
-      };
+      return { ok: true, message: "Session allowed" };
     }
   );
 
@@ -93,41 +124,24 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/subscription",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
-
+      const scopedTenantId = await resolveEffectiveTenantId(request);
       const tenant = await UsageService.getEffectiveUsage(scopedTenantId);
 
       if (!tenant) {
         return reply.status(404).send({ error: "Tenant not found" });
       }
 
-      const settings = await prisma.platformSettings.findUnique({ where: { id: "global" } });
-      let tierInfo = { conversations: 1000, price: 197 };
-      if (tenant.subscriptionTier === "professional")
-        tierInfo = { conversations: settings?.professionalLimit ?? 10000, price: 497 };
-      else if (tenant.subscriptionTier === "enterprise")
-        tierInfo = { conversations: settings?.enterpriseLimit ?? 100000, price: 997 };
-      else if (tenant.subscriptionTier === "ai-revenue-infrastructure")
-        tierInfo = { conversations: settings?.aiInfraLimit ?? 250000, price: 1997 };
-      else if (tenant.subscriptionTier === "ltd")
-        tierInfo = { conversations: settings?.ltdLimit ?? 1000, price: 497 };
-      else if (tenant.subscriptionTier === "free") tierInfo = { conversations: 0, price: 0 };
+      const tiers = await getTierConfig();
+      const tierInfo = (tiers as any)[tenant.subscriptionTier] || tiers.starter;
 
       const usagePercent =
         tenant.usageLimit > 0
           ? Math.min(100, (tenant.usageCount / tenant.usageLimit) * 100)
-          : tenant.usageCount > 0
-            ? 100
-            : 0;
+          : tenant.usageCount > 0 ? 100 : 0;
 
       return {
         ok: true,
-        data: {
-          ...tenant,
-          usagePercent,
-          tierInfo,
-        },
+        data: { ...tenant, usagePercent, tierInfo },
       };
     }
   );
@@ -137,78 +151,20 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/checkout",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
-      let { email } = request.user as any;
+      const scopedTenantId = await resolveEffectiveTenantId(request);
+      const email = await resolveUserEmail(request, scopedTenantId);
       const { tier, successUrl, cancelUrl } = CheckoutSchema.parse(request.body);
 
+      const tenant = await prisma.tenant.findUnique({ where: { id: scopedTenantId } });
+      if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
+
+      if (!email) {
+        logger.error({ tenantId: scopedTenantId, tier }, "Cannot create checkout: missing user email");
+        return reply.status(400).send({ error: "Your account is missing an email address. Please update your profile." });
+      }
+
       const stripe = await StripeClient.getPlatformClient(prisma, env);
-
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: scopedTenantId },
-      });
-
-      if (!tenant) {
-        return reply.status(404).send({ error: "Tenant not found" });
-      }
-
-      // Fallback: If email is missing from JWT, find it in the DB
-      if (!email) {
-        const dbUser = await prisma.user.findFirst({
-          where: { tenantId: scopedTenantId, isAdmin: true },
-          select: { email: true },
-        });
-        email = dbUser?.email;
-      }
-
-      if (!email) {
-        logger.error(
-          { tenantId: scopedTenantId, tier },
-          "Cannot create checkout: missing user email"
-        );
-        return reply
-          .status(400)
-          .send({ error: "Your account is missing an email address. Please update your profile." });
-      }
-
-      let customerId = tenant.stripeCustomerId;
-
-      // Create Stripe customer if doesn't exist
-      if (!customerId) {
-        try {
-          logger.info({ tenantId: scopedTenantId, email }, "Creating new Stripe customer");
-          const customer = await stripe.createCustomer({
-            email,
-            name: tenant.name,
-            metadata: { tenantId: scopedTenantId },
-          });
-          customerId = customer.id;
-
-          await prisma.tenant.update({
-            where: { id: scopedTenantId },
-            data: { stripeCustomerId: customerId },
-          });
-          logger.info(
-            { tenantId: scopedTenantId, customerId },
-            "Stripe customer associated with tenant"
-          );
-        } catch (err: any) {
-          logger.error(
-            {
-              err: err.message,
-              type: err.type,
-              code: err.code,
-              tenantId: scopedTenantId,
-              email,
-            },
-            "Failed to create Stripe customer"
-          );
-          return reply.status(500).send({
-            error: "Stripe customer creation failed",
-            details: process.env.NODE_ENV === "development" ? err.message : undefined,
-          });
-        }
-      }
+      const customerId = await getOrCreateStripeCustomer(stripe, tenant, email);
 
       const priceIds = await getPriceIdsFromConfig();
       const priceId = (priceIds as any)[tier];
@@ -217,49 +173,24 @@ async function billingRoutes(fastify: FastifyInstance) {
 
       if (!priceId || priceId.includes("placeholder")) {
         logger.error({ tier, priceId }, "Invalid price ID configuration");
-        return reply.status(400).send({
-          error: `Price ID not configured for tier: ${tier}. Please contact support or update Stripe settings.`,
-        });
+        return reply.status(400).send({ error: `Price ID not configured for tier: ${tier}.` });
       }
 
       try {
         const session = await stripe.createCheckoutSession({
-          customerId: customerId!,
+          customerId,
           priceId,
           successUrl: successUrl || `${env.WEB_URL}/billing?success=true`,
           cancelUrl: cancelUrl || `${env.WEB_URL}/billing?canceled=true`,
           metadata: { tenantId: scopedTenantId, tier },
           mode: tier === "ltd" ? "payment" : "subscription",
-          description:
-            tier === "ltd"
-              ? "Lifetime deal for AI engine. A $20/month charge for token costs begins next month."
-              : undefined,
-          customText:
-            tier === "ltd"
-              ? "By paying $497 now, you agree to a recurring $20/month fee for token costs starting next month."
-              : undefined,
+          description: tier === "ltd" ? "Lifetime deal for AI engine. Monthly token fee applies." : undefined,
         });
 
-        return {
-          ok: true,
-          url: session.url,
-          sessionId: session.id,
-        };
+        return { ok: true, url: session.url, sessionId: session.id };
       } catch (err: any) {
-        logger.error(
-          {
-            err: err.message,
-            type: err.type,
-            code: err.code,
-            tenantId: scopedTenantId,
-            tier,
-          },
-          "Failed to create checkout session"
-        );
-        return reply.status(500).send({
-          error: "Checkout session creation failed",
-          details: process.env.NODE_ENV === "development" ? err.message : undefined,
-        });
+        logger.error({ err: err.message, tenantId: scopedTenantId, tier }, "Failed to create checkout session");
+        return reply.status(500).send({ error: "Checkout session creation failed" });
       }
     }
   );
@@ -269,16 +200,10 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/subscription",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
+      const scopedTenantId = await resolveEffectiveTenantId(request);
+      const tenant = await prisma.tenant.findUnique({ where: { id: scopedTenantId } });
 
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: scopedTenantId },
-      });
-
-      if (!tenant) {
-        return reply.status(404).send({ error: "Tenant not found" });
-      }
+      if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
 
       // If they are on a paid tier but no sub ID (e.g. legacy or manual), just reset them
       if (!tenant.stripeSubscriptionId) {
@@ -332,61 +257,32 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/purchase-package",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
-      let { email } = request.user as any;
+      const scopedTenantId = await resolveEffectiveTenantId(request);
+      const email = await resolveUserEmail(request, scopedTenantId);
       const { packageId } = request.body as { packageId: string };
 
-      if (!packageId) {
-        return reply.status(400).send({ error: "packageId is required" });
-      }
+      if (!packageId) return reply.status(400).send({ error: "packageId is required" });
 
       const pkg = await prisma.conversationPackage.findUnique({ where: { id: packageId } });
-      if (!pkg || !pkg.active) {
-        return reply.status(404).send({ error: "Package not found or inactive" });
-      }
+      if (!pkg || !pkg.active) return reply.status(404).send({ error: "Package not found" });
 
       const tenant = await prisma.tenant.findUnique({ where: { id: scopedTenantId } });
-      if (!tenant) {
-        return reply.status(404).send({ error: "Tenant not found" });
-      }
-
-      if (!email) {
-        const dbUser = await prisma.user.findFirst({
-          where: { tenantId: scopedTenantId, isAdmin: true },
-          select: { email: true },
-        });
-        email = dbUser?.email;
-      }
+      if (!tenant) return reply.status(404).send({ error: "Tenant not found" });
 
       const stripe = await StripeClient.getPlatformClient(prisma, env);
-
-      let customerId = tenant.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.createCustomer({
-          email,
-          name: tenant.name,
-          metadata: { tenantId: scopedTenantId },
-        });
-        customerId = customer.id;
-        await prisma.tenant.update({
-          where: { id: scopedTenantId },
-          data: { stripeCustomerId: customerId },
-        });
-      }
+      const customerId = await getOrCreateStripeCustomer(stripe, tenant, email || "");
 
       try {
-        // Use raw Stripe API to support dynamic price_data (price not pre-created in Stripe)
         const priceInCents = Math.round(pkg.price * 100);
         const params = new URLSearchParams({
-          customer: customerId!,
+          customer: customerId,
           mode: "payment",
           success_url: `${env.WEB_URL}/billing?package_success=true`,
           cancel_url: `${env.WEB_URL}/billing?canceled=true`,
           "line_items[0][price_data][currency]": "usd",
           "line_items[0][price_data][unit_amount]": String(priceInCents),
           "line_items[0][price_data][product_data][name]": pkg.name,
-          "line_items[0][price_data][product_data][description]": `${pkg.credits.toLocaleString()} conversation credits (rolls over monthly)`,
+          "line_items[0][price_data][product_data][description]": `${pkg.credits.toLocaleString()} credits`,
           "line_items[0][quantity]": "1",
           "metadata[tenantId]": scopedTenantId,
           "metadata[type]": "package",
@@ -403,26 +299,13 @@ async function billingRoutes(fastify: FastifyInstance) {
           body: params.toString(),
         });
 
-        if (!stripeRes.ok) {
-          const errBody = await stripeRes.text();
-          logger.error(
-            { tenantId: scopedTenantId, packageId, errBody },
-            "Stripe session creation failed for package"
-          );
-          return reply.status(500).send({ error: "Checkout session creation failed" });
-        }
+        if (!stripeRes.ok) throw new Error(await stripeRes.text());
 
         const session = (await stripeRes.json()) as any;
         return { ok: true, url: session.url, sessionId: session.id };
       } catch (err: any) {
-        logger.error(
-          { err: err.message, tenantId: scopedTenantId, packageId },
-          "Failed to create package checkout session"
-        );
-        return reply.status(500).send({
-          error: "Checkout session creation failed",
-          details: process.env.NODE_ENV === "development" ? err.message : undefined,
-        });
+        logger.error({ err: err.message, tenantId: scopedTenantId, packageId }, "Failed to create package checkout session");
+        return reply.status(500).send({ error: "Checkout session creation failed" });
       }
     }
   );
@@ -432,33 +315,20 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/portal",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
+      const scopedTenantId = await resolveEffectiveTenantId(request);
       const { returnUrl } = request.body as { returnUrl: string };
       const stripe = await StripeClient.getPlatformClient(prisma, env);
 
-      if (!returnUrl) {
-        return reply.status(400).send({ error: "returnUrl is required" });
-      }
+      if (!returnUrl) return reply.status(400).send({ error: "returnUrl is required" });
 
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: scopedTenantId },
-      });
-
+      const tenant = await prisma.tenant.findUnique({ where: { id: scopedTenantId } });
       if (!tenant || !tenant.stripeCustomerId) {
         return reply.status(400).send({ error: "Active billing account not found" });
       }
 
       try {
-        const session = await stripe.createPortalSession({
-          customerId: tenant.stripeCustomerId,
-          returnUrl,
-        });
-
-        return {
-          ok: true,
-          url: session.url,
-        };
+        const session = await stripe.createPortalSession({ customerId: tenant.stripeCustomerId, returnUrl });
+        return { ok: true, url: session.url };
       } catch (err) {
         logger.error({ err, tenantId: scopedTenantId }, "Failed to create portal session");
         return reply.status(500).send({ error: "Portal session creation failed" });
@@ -471,13 +341,9 @@ async function billingRoutes(fastify: FastifyInstance) {
     "/billing/sync",
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply) => {
-      const { tenantId } = request.user as any;
-      const scopedTenantId = await resolveAdminScopedTenantId(tenantId);
+      const scopedTenantId = await resolveEffectiveTenantId(request);
       const stripe = await StripeClient.getPlatformClient(prisma, env);
-
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: scopedTenantId },
-      });
+      const tenant = await prisma.tenant.findUnique({ where: { id: scopedTenantId } });
 
       if (!tenant || !tenant.stripeCustomerId) {
         return reply.status(400).send({ error: "No billing account to sync" });

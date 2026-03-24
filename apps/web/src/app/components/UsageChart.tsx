@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -12,85 +12,108 @@ import {
 } from "recharts";
 import { apiFetch } from "@/lib/api";
 
+// --- Types ---
+
 interface ChartData {
   date: string;
   count: number;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#1a1f2e]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
-        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">
-          {label}
-        </p>
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-[#14b8a6] shadow-[0_0_8px_rgba(20,184,166,0.8)]" />
-          <p className="text-lg font-black text-white">
-            {payload[0].value}{" "}
-            <span className="text-[10px] text-gray-500 font-medium lowercase">Convs</span>
-          </p>
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
+// --- Helpers ---
 
-export default function UsageChart() {
+/**
+ * Ensures we have at least 5 points for a nice looking graph.
+ */
+function padUsageData(data: ChartData[]): ChartData[] {
+  if (data.length === 0 || data.length >= 5) return data;
+
+  const result = [...data];
+  const firstDate = new Date(data[0].date);
+
+  for (let i = 1; i <= 5 - data.length; i++) {
+    const prev = new Date(firstDate);
+    prev.setDate(prev.getDate() - i);
+    result.unshift({ date: prev.toLocaleDateString(), count: 0 });
+  }
+
+  return result;
+}
+
+// --- Hooks ---
+
+function useUsageTrend() {
   const [data, setData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchData() {
       try {
-        const { data } = await apiFetch<ChartData[]>("/stats/usage-trend");
-        if (data?.data) {
-          // Pad data if too short for a nice graph
-          let chartData = data.data || [];
-          if (chartData.length < 5 && chartData.length > 0) {
-            // Add some zero points for visual flow if it's very new data
-            const firstDate = new Date(chartData[0].date);
-            for (let i = 1; i <= 5; i++) {
-              const prev = new Date(firstDate);
-              prev.setDate(prev.getDate() - i);
-              chartData.unshift({ date: prev.toLocaleDateString(), count: 0 });
-            }
-          }
-          setData(chartData);
+        const { data: res } = await apiFetch<ChartData[]>("/stats/usage-trend");
+        if (res?.data) {
+          setData(padUsageData(res.data));
         }
       } catch (err) {
         console.error("Failed to fetch usage trend:", err);
       } finally {
         setLoading(false);
       }
-    };
-
+    }
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="h-[250px] w-full bg-white/[0.01] border border-white/[0.05] rounded-3xl flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#14b8a6]/20 border-t-[#14b8a6] rounded-full animate-spin" />
-          <div className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
-            Analyzing Traffic...
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const stats = useMemo(() => ({
+    total: data.reduce((acc, curr) => acc + curr.count, 0),
+    max: Math.max(...data.map((d) => d.count), 0),
+    startDate: data[0]?.date || "History Start",
+  }), [data]);
 
-  const maxVal = Math.max(...data.map((d) => d.count), 0);
-  const totalConvs = data.reduce((acc, curr) => acc + curr.count, 0);
+  return { data, loading, stats };
+}
+
+// --- Components ---
+
+const LoadingSkeleton = () => (
+  <div className="h-[250px] w-full bg-white/[0.01] border border-white/[0.05] rounded-3xl flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-2 border-[#14b8a6]/20 border-t-[#14b8a6] rounded-full animate-spin" />
+      <div className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
+        Analyzing Traffic...
+      </div>
+    </div>
+  </div>
+);
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  return (
+    <div className="bg-[#1a1f2e]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
+      <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1">
+        {label}
+      </p>
+      <div className="flex items-center gap-2">
+        <div className="h-2 w-2 rounded-full bg-[#14b8a6] shadow-[0_0_8px_rgba(20,184,166,0.8)]" />
+        <p className="text-lg font-black text-white">
+          {payload[0].value}{" "}
+          <span className="text-[10px] text-gray-500 font-medium lowercase">Convs</span>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default function UsageChart() {
+  const { data, loading, stats } = useUsageTrend();
+
+  if (loading) return <LoadingSkeleton />;
 
   return (
     <div className="h-[300px] w-full bg-[#0c111d] border border-white/[0.05] rounded-3xl p-6 shadow-2xl relative overflow-hidden group/chart mb-8">
-      {/* Background Decorative Elements */}
-      <div className="absolute -right-20 -top-20 w-64 h-64 bg-[#14b8a6]/5 rounded-full blur-[80px] group-hover/chart:bg-[#14b8a6]/10 transition-colors duration-700" />
-      <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-purple-500/5 rounded-full blur-[80px]" />
+      {/* Background Decorative Accents */}
+      <div className="absolute -right-20 -top-20 w-64 h-64 bg-[#14b8a6]/5 rounded-full blur-[80px] group-hover/chart:bg-[#14b8a6]/10 transition-colors duration-700 pointer-events-none" />
+      <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/5 rounded-full blur-[80px] pointer-events-none" />
 
+      {/* Header Info */}
       <div className="flex items-start justify-between mb-8 relative z-10">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -110,14 +133,15 @@ export default function UsageChart() {
             Total Payload
           </p>
           <p className="text-xl font-black text-white tracking-tighter">
-            {totalConvs.toLocaleString()}
+            {stats.total.toLocaleString()}
           </p>
         </div>
       </div>
 
+      {/* Chart Section */}
       <div className="h-40 w-full relative z-10">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2} />
@@ -131,10 +155,13 @@ export default function UsageChart() {
               fontSize={9}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(val) => `${val}`}
+              tickFormatter={(val) => String(val)}
               width={25}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#ffffff10", strokeWidth: 1 }} />
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ stroke: "#ffffff10", strokeWidth: 1 }}
+            />
             <Area
               type="monotone"
               dataKey="count"
@@ -150,14 +177,15 @@ export default function UsageChart() {
         </ResponsiveContainer>
       </div>
 
+      {/* Footer Meta */}
       <div className="mt-4 flex justify-between items-center text-[9px] text-gray-600 font-black uppercase tracking-[0.2em] px-1 relative z-10">
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-white/10" />
-          <span>{data[0]?.date || "History Start"}</span>
+          <span>{stats.startDate}</span>
         </div>
         <div className="flex items-center gap-2">
           <span>Today</span>
-          <div className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse" />
+          <div className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] animate-pulse shadow-[0_0_8px_rgba(20,184,166,0.5)]" />
         </div>
       </div>
     </div>
