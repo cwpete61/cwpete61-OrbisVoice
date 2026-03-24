@@ -2487,21 +2487,50 @@ function SettingsContent() {
                     <label className="mb-1.5 block text-xs font-medium text-[rgba(240,244,250,0.6)]">
                       Gemini API Key
                     </label>
-                    <PasswordInput
-                      value={tenantGoogleConfig.geminiApiKey}
-                      onChange={(e) =>
-                        setTenantGoogleConfig({
-                          ...tenantGoogleConfig,
-                          geminiApiKey: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-                      placeholder={
-                        tenantGoogleConfig.hasConfig && !tenantGoogleConfig.geminiApiKey
-                          ? "********"
-                          : "Your Gemini API Key (AI Studio)"
-                      }
-                    />
+                    <div className="flex gap-2">
+                        <PasswordInput
+                          value={tenantGoogleConfig.geminiApiKey}
+                          onChange={(e) =>
+                            setTenantGoogleConfig({
+                              ...tenantGoogleConfig,
+                              geminiApiKey: e.target.value,
+                            })
+                          }
+                          className="flex-1 rounded-lg border border-white/[0.08] bg-[#05080f] px-4 py-2.5 text-sm text-[#f0f4fa] placeholder-[rgba(240,244,250,0.25)] outline-none focus:border-[#14b8a6]/60 focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                          placeholder={
+                            tenantGoogleConfig.hasConfig && !tenantGoogleConfig.geminiApiKey
+                              ? "********"
+                              : "Your Gemini API Key (AI Studio)"
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!tenantGoogleConfig.geminiApiKey) return;
+                            setTenantConfigLoading(true);
+                            setTenantConfigMessage(null);
+                            try {
+                              const token = localStorage.getItem("token");
+                              const res = await fetch(`${API_BASE}/settings/gemini-api/test`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ geminiApiKey: tenantGoogleConfig.geminiApiKey }),
+                              });
+                              const data = await res.json();
+                              setTenantConfigMessage({ type: data.ok ? "success" : "error", text: data.message });
+                            } catch (err: any) {
+                              setTenantConfigMessage({ type: "error", text: "Verification failed: " + err.message });
+                            } finally {
+                              setTenantConfigLoading(false);
+                            }
+                          }}
+                          disabled={!tenantGoogleConfig.geminiApiKey || tenantConfigLoading}
+                          className="px-4 bg-white/5 border border-white/10 rounded-lg text-xs font-bold hover:bg-white/10 transition disabled:opacity-20 translate-y-[2px]"
+                        >
+                          {tenantConfigLoading ? "..." : "Verify"}
+                        </button>
+                    </div>
+                  </div>
                     <p className="mt-1 text-xs text-[rgba(240,244,250,0.35)]">
                       Required for the Voice Agent. Get one at{" "}
                       <a
@@ -2512,11 +2541,9 @@ function SettingsContent() {
                       >
                         Google AI Studio
                       </a>
-                      .
-                    </p>
+                      </p>
                   </div>
                 </div>
-              </div>
 
               {tenantConfigMessage && (
                 <div

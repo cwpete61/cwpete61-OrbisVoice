@@ -78,14 +78,15 @@ export default function AgentWidgetSection({
               <div className="relative group">
                 <pre className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.5)] font-mono overflow-x-auto">
                   {`<script 
-  src="${API_BASE}/widget.js" 
+  src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget.js" 
   data-agent-id="${agentId || "YOUR_AGENT_ID"}"
   async
 ></script>`}
                 </pre>
                 <button
                   onClick={() => {
-                    const code = `<script src="${API_BASE}/widget.js" data-agent-id="${agentId || "YOUR_AGENT_ID"}" async></script>`;
+                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                    const code = `<script src="${origin}/widget.js" data-agent-id="${agentId || "YOUR_AGENT_ID"}" async></script>`;
                     navigator.clipboard.writeText(code);
                   }}
                   className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white opacity-0 group-hover:opacity-100 transition"

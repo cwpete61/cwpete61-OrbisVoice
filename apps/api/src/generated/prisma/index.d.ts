@@ -19472,8 +19472,8 @@ export namespace Prisma {
   export type TenantGoogleConfigGroupByOutputType = {
     id: string
     tenantId: string
-    clientId: string
-    clientSecret: string
+    clientId: string | null
+    clientSecret: string | null
     geminiApiKey: string | null
     createdAt: Date
     updatedAt: Date
@@ -19558,8 +19558,8 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       tenantId: string
-      clientId: string
-      clientSecret: string
+      clientId: string | null
+      clientSecret: string | null
       geminiApiKey: string | null
       createdAt: Date
       updatedAt: Date
@@ -38634,8 +38634,8 @@ export namespace Prisma {
     NOT?: TenantGoogleConfigWhereInput | TenantGoogleConfigWhereInput[]
     id?: StringFilter<"TenantGoogleConfig"> | string
     tenantId?: StringFilter<"TenantGoogleConfig"> | string
-    clientId?: StringFilter<"TenantGoogleConfig"> | string
-    clientSecret?: StringFilter<"TenantGoogleConfig"> | string
+    clientId?: StringNullableFilter<"TenantGoogleConfig"> | string | null
+    clientSecret?: StringNullableFilter<"TenantGoogleConfig"> | string | null
     geminiApiKey?: StringNullableFilter<"TenantGoogleConfig"> | string | null
     createdAt?: DateTimeFilter<"TenantGoogleConfig"> | Date | string
     updatedAt?: DateTimeFilter<"TenantGoogleConfig"> | Date | string
@@ -38645,8 +38645,8 @@ export namespace Prisma {
   export type TenantGoogleConfigOrderByWithRelationInput = {
     id?: SortOrder
     tenantId?: SortOrder
-    clientId?: SortOrder
-    clientSecret?: SortOrder
+    clientId?: SortOrderInput | SortOrder
+    clientSecret?: SortOrderInput | SortOrder
     geminiApiKey?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -38659,8 +38659,8 @@ export namespace Prisma {
     AND?: TenantGoogleConfigWhereInput | TenantGoogleConfigWhereInput[]
     OR?: TenantGoogleConfigWhereInput[]
     NOT?: TenantGoogleConfigWhereInput | TenantGoogleConfigWhereInput[]
-    clientId?: StringFilter<"TenantGoogleConfig"> | string
-    clientSecret?: StringFilter<"TenantGoogleConfig"> | string
+    clientId?: StringNullableFilter<"TenantGoogleConfig"> | string | null
+    clientSecret?: StringNullableFilter<"TenantGoogleConfig"> | string | null
     geminiApiKey?: StringNullableFilter<"TenantGoogleConfig"> | string | null
     createdAt?: DateTimeFilter<"TenantGoogleConfig"> | Date | string
     updatedAt?: DateTimeFilter<"TenantGoogleConfig"> | Date | string
@@ -38670,8 +38670,8 @@ export namespace Prisma {
   export type TenantGoogleConfigOrderByWithAggregationInput = {
     id?: SortOrder
     tenantId?: SortOrder
-    clientId?: SortOrder
-    clientSecret?: SortOrder
+    clientId?: SortOrderInput | SortOrder
+    clientSecret?: SortOrderInput | SortOrder
     geminiApiKey?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -38686,8 +38686,8 @@ export namespace Prisma {
     NOT?: TenantGoogleConfigScalarWhereWithAggregatesInput | TenantGoogleConfigScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"TenantGoogleConfig"> | string
     tenantId?: StringWithAggregatesFilter<"TenantGoogleConfig"> | string
-    clientId?: StringWithAggregatesFilter<"TenantGoogleConfig"> | string
-    clientSecret?: StringWithAggregatesFilter<"TenantGoogleConfig"> | string
+    clientId?: StringNullableWithAggregatesFilter<"TenantGoogleConfig"> | string | null
+    clientSecret?: StringNullableWithAggregatesFilter<"TenantGoogleConfig"> | string | null
     geminiApiKey?: StringNullableWithAggregatesFilter<"TenantGoogleConfig"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"TenantGoogleConfig"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"TenantGoogleConfig"> | Date | string
@@ -41473,8 +41473,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigCreateInput = {
     id?: string
-    clientId: string
-    clientSecret: string
+    clientId?: string | null
+    clientSecret?: string | null
     geminiApiKey?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -41484,8 +41484,8 @@ export namespace Prisma {
   export type TenantGoogleConfigUncheckedCreateInput = {
     id?: string
     tenantId: string
-    clientId: string
-    clientSecret: string
+    clientId?: string | null
+    clientSecret?: string | null
     geminiApiKey?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -41493,8 +41493,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    clientId?: StringFieldUpdateOperationsInput | string
-    clientSecret?: StringFieldUpdateOperationsInput | string
+    clientId?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSecret?: NullableStringFieldUpdateOperationsInput | string | null
     geminiApiKey?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -41504,8 +41504,8 @@ export namespace Prisma {
   export type TenantGoogleConfigUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     tenantId?: StringFieldUpdateOperationsInput | string
-    clientId?: StringFieldUpdateOperationsInput | string
-    clientSecret?: StringFieldUpdateOperationsInput | string
+    clientId?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSecret?: NullableStringFieldUpdateOperationsInput | string | null
     geminiApiKey?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -41514,8 +41514,8 @@ export namespace Prisma {
   export type TenantGoogleConfigCreateManyInput = {
     id?: string
     tenantId: string
-    clientId: string
-    clientSecret: string
+    clientId?: string | null
+    clientSecret?: string | null
     geminiApiKey?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -41523,8 +41523,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
-    clientId?: StringFieldUpdateOperationsInput | string
-    clientSecret?: StringFieldUpdateOperationsInput | string
+    clientId?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSecret?: NullableStringFieldUpdateOperationsInput | string | null
     geminiApiKey?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -41533,8 +41533,8 @@ export namespace Prisma {
   export type TenantGoogleConfigUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     tenantId?: StringFieldUpdateOperationsInput | string
-    clientId?: StringFieldUpdateOperationsInput | string
-    clientSecret?: StringFieldUpdateOperationsInput | string
+    clientId?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSecret?: NullableStringFieldUpdateOperationsInput | string | null
     geminiApiKey?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -46731,8 +46731,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigCreateWithoutTenantInput = {
     id?: string
-    clientId: string
-    clientSecret: string
+    clientId?: string | null
+    clientSecret?: string | null
     geminiApiKey?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -46740,8 +46740,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigUncheckedCreateWithoutTenantInput = {
     id?: string
-    clientId: string
-    clientSecret: string
+    clientId?: string | null
+    clientSecret?: string | null
     geminiApiKey?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -47018,8 +47018,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigUpdateWithoutTenantInput = {
     id?: StringFieldUpdateOperationsInput | string
-    clientId?: StringFieldUpdateOperationsInput | string
-    clientSecret?: StringFieldUpdateOperationsInput | string
+    clientId?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSecret?: NullableStringFieldUpdateOperationsInput | string | null
     geminiApiKey?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -47027,8 +47027,8 @@ export namespace Prisma {
 
   export type TenantGoogleConfigUncheckedUpdateWithoutTenantInput = {
     id?: StringFieldUpdateOperationsInput | string
-    clientId?: StringFieldUpdateOperationsInput | string
-    clientSecret?: StringFieldUpdateOperationsInput | string
+    clientId?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSecret?: NullableStringFieldUpdateOperationsInput | string | null
     geminiApiKey?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string

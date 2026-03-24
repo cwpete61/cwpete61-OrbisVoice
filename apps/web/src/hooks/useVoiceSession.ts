@@ -121,8 +121,9 @@ export function useVoiceSession({ agentId, selectedVoice, voiceGender, systemPro
         setConnectionError("Gateway connection failed.");
         stopTalking();
       };
-    } catch (e: any) {
-      setConnectionError("Microphone access denied or error: " + e.message);
+    } catch (err: any) {
+      setIsConnecting(false);
+      setConnectionError("Microphone access denied or error: " + (err.message || String(err)));
       stopTalking();
     }
   }, [agentId, selectedVoice, voiceGender, systemPrompt, stopTalking]);

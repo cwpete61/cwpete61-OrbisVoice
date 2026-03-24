@@ -6,8 +6,8 @@ import { ApiResponse } from "../types";
 import { logger } from "../logger";
 
 const GoogleConfigSchema = z.object({
-  clientId: z.string().min(1),
-  clientSecret: z.string().min(1),
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
   geminiApiKey: z.string().optional(),
 });
 
@@ -422,6 +422,46 @@ export async function settingsRoutes(fastify: FastifyInstance) {
           return reply.code(400).send({ ok: false, message: "Validation error", data: err.errors });
         }
         logger.error({ err }, "Failed to update Google config");
+        return reply.code(500).send({ ok: false, message: "Internal server error" });
+      }
+    }
+  );
+
+  // Verify tenant's Gemini API key
+  fastify.post<{ Body: { geminiApiKey: string } }>(
+    "/settings/gemini-api/test",
+    { onRequest: [authenticate, requireAdmin] },
+    async (request, reply) => {
+      try {
+        const { geminiApiKey } = request.body;
+        if (!geminiApiKey) {
+          return reply.code(400).send({ ok: false, message: "API Key is required" });
+        }
+
+        // Test the key by calling a safe Gemini endpoint (e.g. list models or a simple generateContent)
+        const axios = require("axios");
+        try {
+          // Use a very simple, fast request
+          const testRes = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+            {
+              contents: [{ parts: [{ text: "ping" }] }],
+              generationConfig: { maxOutputTokens: 1 }
+            },
+            { timeout: 10000 }
+          );
+
+          if (testRes.status === 200) {
+            return reply.send({ ok: true, message: "API Key verified successfully" });
+          }
+        } catch (apiErr: any) {
+          const errorMsg = apiErr.response?.data?.error?.message || apiErr.message || "Invalid API Key";
+          return reply.code(400).send({ ok: false, message: `Verification failed: ${errorMsg}` });
+        }
+
+        return reply.code(400).send({ ok: false, message: "Verification failed" });
+      } catch (err) {
+        logger.error({ err }, "Failed to test Gemini API key");
         return reply.code(500).send({ ok: false, message: "Internal server error" });
       }
     }

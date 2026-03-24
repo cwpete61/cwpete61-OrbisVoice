@@ -162,7 +162,7 @@ class VoiceGateway {
 
     try {
       const decoded: any = jwt.verify(token, env.JWT_SECRET);
-      const apiKey = await this.fetchGoogleConfig(token);
+      const apiKey = await this.fetchGoogleConfig(agentId, token);
 
       // Fetch configs like in normal session
       const { systemPrompt, voiceName } = await this.fetchAgentConfig(token, agentId, customParameters);
@@ -257,7 +257,7 @@ class VoiceGateway {
       const userId = decoded?.userId || "anonymous";
 
       // 2. Fetch Google Config (Secrets)
-      const apiKey = await this.fetchGoogleConfig(token);
+      const apiKey = await this.fetchGoogleConfig(agentId, token);
 
       // 3. Verify Usage Allowance (Only if token is provided and valid)
       if (token && decoded) {
@@ -324,8 +324,9 @@ class VoiceGateway {
     }
   }
 
-  private async fetchGoogleConfig(token: string): Promise<string | undefined> {
+  private async fetchGoogleConfig(agentId: string, token?: string): Promise<string | undefined> {
     try {
+      // 1. If we have a token (authenticated user), get config directly
       if (token) {
         const response = await fetch(`${env.API_URL}/settings/google-config?include_secrets=true`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -338,8 +339,21 @@ class VoiceGateway {
           }
         }
       }
+
+      // 2. Fallback to public/proxy route with gateway secret (for widget users)
+      const gatewaySecret = "orbis-voice-gateway-secret-2025"; 
+      const response = await fetch(`${env.API_URL}/public/gateway/config/${agentId}`, {
+        headers: { "x-gateway-secret": gatewaySecret },
+      });
+
+      if (response.ok) {
+        const configResponse = (await response.json()) as any;
+        if (configResponse.data?.geminiApiKey) {
+          return configResponse.data.geminiApiKey;
+        }
+      }
     } catch (err) {
-      logger.error({ err }, "Failed to fetch google config");
+      logger.error({ err, agentId }, "Failed to fetch google config");
     }
     return env.GEMINI_API_KEY;
   }
