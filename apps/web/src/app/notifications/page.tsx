@@ -11,7 +11,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string; emoji: string 
   PAYOUT_SCHEDULED: { label: "Payout", color: "text-blue-400", emoji: "📆" },
   TAX_HOLD_TRIGGERED: { label: "Tax Hold", color: "text-orange-400", emoji: "⚠️" },
   TAX_HOLD_LIFTED: { label: "Hold Lifted", color: "text-green-400", emoji: "🟢" },
-  LEAD_CAPTURED: { label: "Lead", color: "text-purple-400", emoji: "🎯" },
+  LEAD_CAPTURED: { label: "Lead", color: "text-teal-400", emoji: "🎯" },
   REFERRAL_CONVERTED: { label: "Referral", color: "text-[#14b8a6]", emoji: "🎉" },
   USAGE_WARNING: { label: "Usage", color: "text-yellow-400", emoji: "⚡" },
   SUBSCRIPTION_EXPIRING: { label: "Subscription", color: "text-orange-400", emoji: "🔔" },

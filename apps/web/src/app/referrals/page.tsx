@@ -25,14 +25,14 @@ function Badge({
   color = "teal",
 }: {
   children: React.ReactNode;
-  color?: "teal" | "green" | "red" | "orange" | "purple";
+  color?: "teal" | "green" | "red" | "orange" | "cyan";
 }) {
   const styles = {
     teal: "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20",
     green: "bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20",
     red: "bg-[#ef4444]/10 text-[#ef4444] border-[#ef4444]/20",
     orange: "bg-[#f59e0b]/10 text-[#f59e0b] border-[#f59e0b]/20",
-    purple: "bg-[#a78bfa]/10 text-[#a78bfa] border-[#a78bfa]/20",
+    cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
   };
   return (
     <span
@@ -79,7 +79,7 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
       label: "Converted",
       value: stats?.completed ?? 0,
       desc: "Paid customers",
-      color: "text-[#a78bfa]",
+      color: "text-[#14b8a6]",
     },
     {
       label: "Total Earned",
@@ -272,7 +272,7 @@ function OverviewTab({ referralData, stats, copied, onCopy }: any) {
                         </div>
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <Badge color={ref.plan === "free" ? "teal" : "purple"}>{ref.plan}</Badge>
+                        <Badge color={ref.plan === "free" ? "teal" : "cyan"}>{ref.plan}</Badge>
                       </td>
                       <td className="px-6 py-5 text-center">
                         <Badge color={ref.status === "completed" ? "green" : "orange"}>

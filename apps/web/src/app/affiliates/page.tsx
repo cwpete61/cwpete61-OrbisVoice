@@ -17,14 +17,14 @@ function Badge({
   color = "teal",
 }: {
   children: React.ReactNode;
-  color?: "teal" | "green" | "red" | "orange" | "purple";
+  color?: "teal" | "green" | "red" | "orange" | "cyan";
 }) {
   const colors: Record<string, string> = {
     teal: "bg-[#14b8a6]/10 text-[#14b8a6] border-[#14b8a6]/20",
     green: "bg-green-500/10 text-green-400 border-green-500/20",
     red: "bg-red-500/10 text-red-400 border-red-500/20",
     orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
   };
   return (
     <span
@@ -160,7 +160,7 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
                 label: "Customer Pays",
                 icon: "💳",
                 desc: "Referral commission created",
-                color: "border-purple-500/30 bg-purple-500/5 text-purple-400",
+                color: "border-cyan-500/30 bg-cyan-500/5 text-cyan-400",
               },
               {
                 label: "30-Day Hold",
@@ -266,7 +266,7 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-[10px] font-bold text-teal-400">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-[10px] font-bold text-teal-400">
                             {(ref.name || "U").charAt(0)}
                           </div>
                           <div>
@@ -283,7 +283,7 @@ function OverviewTab({ stats, commissionRate, profile }: any) {
                         <Badge
                           color={
                             ref.plan === "enterprise"
-                              ? "purple"
+                              ? "cyan"
                               : ref.plan === "professional"
                                 ? "teal"
                                 : "teal"

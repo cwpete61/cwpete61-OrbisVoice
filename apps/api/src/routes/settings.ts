@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import axios from "axios";
 import { z } from "zod";
 import { prisma } from "../db";
 import { authenticate, requireAdmin } from "../middleware/auth";
@@ -439,7 +440,6 @@ export async function settingsRoutes(fastify: FastifyInstance) {
         }
 
         // Test the key by calling a safe Gemini endpoint (e.g. list models or a simple generateContent)
-        const axios = require("axios");
         try {
           // Use a very simple, fast request
           const testRes = await axios.post(

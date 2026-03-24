@@ -38,7 +38,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string; emoji: string 
   PAYOUT_SCHEDULED: { label: "Payout", color: "text-blue-400", emoji: "📆" },
   TAX_HOLD_TRIGGERED: { label: "Tax Hold", color: "text-orange-400", emoji: "⚠️" },
   TAX_HOLD_LIFTED: { label: "Hold Lifted", color: "text-green-400", emoji: "🟢" },
-  LEAD_CAPTURED: { label: "Lead", color: "text-purple-400", emoji: "🎯" },
+  LEAD_CAPTURED: { label: "Lead", color: "text-teal-400", emoji: "🎯" },
   REFERRAL_CONVERTED: { label: "Referral", color: "text-[#14b8a6]", emoji: "🎉" },
   USAGE_WARNING: { label: "Usage", color: "text-yellow-400", emoji: "⚡" },
   SUBSCRIPTION_EXPIRING: { label: "Subscription", color: "text-orange-400", emoji: "🔔" },
@@ -644,7 +644,7 @@ export default function DashboardShell({
 
         {/* User / Footer */}
         <div className="border-t border-white/[0.06] p-4 bg-[#05080f]/30" suppressHydrationWarning>
-          <UserInfoCard onProfileClick={() => setShowProfileMenu(true)} tokenLoaded={tokenLoaded} />
+          <UserInfoCard onProfileClickAction={() => setShowProfileMenu(true)} tokenLoaded={tokenLoaded} />
           <button
             onClick={handleLogout}
             className="mt-4 flex items-center gap-3 rounded-lg px-3 py-2.5 w-full text-xs text-[rgba(240,244,250,0.4)] hover:text-[rgba(240,244,250,0.7)] hover:bg-white/[0.02] transition"

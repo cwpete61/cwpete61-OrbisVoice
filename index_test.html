@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newsletter Subscription</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-gradient-animate {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        /* Floating Particles */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            animation: float 20s infinite linear;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Custom Input Styling to match GetResponse injection */
+        getresponse-form input[type="email"] {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            padding: 1rem 1.5rem !important;
+            border-radius: 9999px !important;
+            width: 100% !important;
+            outline: none !important;
+            color: #1f2937 !important;
+            font-size: 1rem !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        getresponse-form input[type="email"]:focus {
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3) !important;
+            transform: scale(1.02) !important;
+        }
+
+        /* Style the GetResponse Submit Button */
+        getresponse-form button[type="submit"],
+        getresponse-form input[type="submit"] {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+            color: white !important;
+            border: none !important;
+            padding: 1rem 2rem !important;
+            border-radius: 9999px !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+            width: 100% !important;
+            margin-top: 1rem !important;
+            transition: all 0.3s ease !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        getresponse-form button[type="submit"]:hover,
+        getresponse-form input[type="submit"]:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4) !important;
+            filter: brightness(1.1) !important;
+        }
+
+        /* Loading Animation for Form */
+        .loading-shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center relative">
+
+
+
+<script src="http://localhost:3000/widget.js" data-agent-id="cmn1mf6480005cvr87wostzz1" data-theme-color="#3b82f6" defer></script>
+
+
+</body>
+</html>
+</html>

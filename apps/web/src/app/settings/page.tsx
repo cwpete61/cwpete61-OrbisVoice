@@ -3210,7 +3210,7 @@ function SettingsContent() {
                           <span
                             className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
                               u.role === "SYSTEM_ADMIN"
-                                ? "bg-purple-500/10 text-purple-400"
+                                ? "bg-cyan-500/10 text-cyan-400"
                                 : u.role === "ADMIN"
                                   ? "bg-[#14b8a6]/10 text-[#14b8a6]"
                                   : "bg-blue-500/10 text-blue-400"
@@ -3308,7 +3308,7 @@ function SettingsContent() {
                         <span
                           className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
                             u.role === "SYSTEM_ADMIN"
-                              ? "bg-purple-500/10 text-purple-400"
+                              ? "bg-cyan-500/10 text-cyan-400"
                               : u.role === "ADMIN"
                                 ? "bg-[#14b8a6]/10 text-[#14b8a6]"
                                 : "bg-blue-500/10 text-blue-400"

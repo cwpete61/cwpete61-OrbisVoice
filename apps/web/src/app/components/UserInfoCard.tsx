@@ -5,11 +5,11 @@ import { apiFetch, User } from "@/lib/api";
 import Image from "next/image";
 
 interface UserInfoCardProps {
-  onProfileClick: () => void;
+  onProfileClickAction: () => void;
   tokenLoaded?: boolean;
 }
 
-export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: UserInfoCardProps) {
+export default function UserInfoCard({ onProfileClickAction, tokenLoaded = true }: UserInfoCardProps) {
   const [profile, setProfile] = useState<User | null>(null);
   const [avatar, setAvatar] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -22,8 +22,8 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
       .toUpperCase()
       .slice(0, 2);
 
-    const colors = ["#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#ec4899"];
-    const colorIndex = name.charCodeAt(0) % colors.length;
+      const colors = ["#14b8a6", "#f59e0b", "#06b6d4", "#0ea5e9", "#6366f1"];
+    const colorIndex = (name.length + name.charCodeAt(0)) % colors.length;
     const bgColor = colors[colorIndex];
 
     const svg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='${bgColor.replace("#", "%23")}' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' font-size='16' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'%3E${initials}%3C/text%3E%3C/svg%3E`;
@@ -67,9 +67,10 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
   return (
     <div className="border-t border-white/[0.07] px-4 py-4 mt-auto">
       <button
-        onClick={onProfileClick}
+        onClick={onProfileClickAction}
         suppressHydrationWarning
-        className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/[0.05] transition group"
+        aria-label="View Profile Menu"
+        className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/[0.05] transition group focus:ring-1 focus:ring-teal-500/50 outline-none"
       >
         {/* Avatar */}
         {avatar && (
@@ -87,7 +88,7 @@ export default function UserInfoCard({ onProfileClick, tokenLoaded = true }: Use
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold text-[#f0f4fa] truncate">{profile?.name}</div>
             {profile?.role === "SYSTEM_ADMIN" && (
-              <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[9px] font-bold border border-purple-500/20 uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-500/20 uppercase tracking-wider">
                 System Admin
               </span>
             )}

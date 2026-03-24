@@ -75,17 +75,18 @@ class VoiceGateway {
             Math.floor((Date.now() - client.startTime) / 1000)
           );
 
-          if (client.transcript && client.token) {
-            logger.info({ sessionId, duration }, "Saving transcript to API");
+          if (client.transcript) {
+            logger.info({ sessionId, duration }, "Saving transcript to API via Gateway Proxy");
             try {
-              await fetch(`${env.API_URL}/transcripts`, {
+              await fetch(`${env.API_URL}/public/gateway/transcripts`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${client.token}`,
+                  "x-gateway-secret": env.GATEWAY_SECRET,
                 },
                 body: JSON.stringify({
                   agentId: client.agentId,
+                  userId: client.userId,
                   content: client.transcript,
                   duration: duration,
                   inputTokens: client.inputTokens,
@@ -94,7 +95,7 @@ class VoiceGateway {
                 }),
               });
             } catch (err) {
-              logger.error({ err, sessionId }, "Failed to save transcript to API");
+              logger.error({ err, sessionId }, "Failed to save transcript via Gateway Proxy");
             }
           }
 
@@ -254,13 +255,15 @@ class VoiceGateway {
         }
       }
 
+      const agentId = payload.agentId || decoded?.agentId || "default-agent";
       const userId = decoded?.userId || "anonymous";
 
       // 2. Fetch Google Config (Secrets)
       const apiKey = await this.fetchGoogleConfig(agentId, token);
 
-      // 3. Verify Usage Allowance (Only if token is provided and valid)
+      // 3. Verify Usage Allowance
       if (token && decoded) {
+        // Dashboard user with JWT
         try {
           const canStartRes = await fetch(`${env.API_URL}/billing/can-start-session`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -272,11 +275,24 @@ class VoiceGateway {
             return;
           }
         } catch (err) {
-          logger.error({ err, sessionId }, "Failed to verify usage allowance");
+          logger.error({ err, sessionId }, "Failed to verify dashboard user usage");
+        }
+      } else {
+        // Widget/Anonymous user
+        try {
+          const usageCheckRes = await fetch(`${env.API_URL}/public/gateway/usage-check/${agentId}`, {
+            headers: { "x-gateway-secret": env.GATEWAY_SECRET }
+          });
+          const usageData = await usageCheckRes.json() as any;
+          if (!usageCheckRes.ok) {
+            this.sendError(ws, "Usage Restricted", usageData.message || "The agent owner has reached their limit.", sessionId);
+            ws.close();
+            return;
+          }
+        } catch (err) {
+          logger.error({ err, sessionId, agentId }, "Failed to verify widget/public usage allowance");
         }
       }
-
-      const agentId = payload.agentId || decoded?.agentId || "default-agent";
 
       // 3. Fetch Agent Configuration
       const { systemPrompt, voiceName } = await this.fetchAgentConfig(token, agentId, payload);
@@ -341,9 +357,8 @@ class VoiceGateway {
       }
 
       // 2. Fallback to public/proxy route with gateway secret (for widget users)
-      const gatewaySecret = "orbis-voice-gateway-secret-2025"; 
       const response = await fetch(`${env.API_URL}/public/gateway/config/${agentId}`, {
-        headers: { "x-gateway-secret": gatewaySecret },
+        headers: { "x-gateway-secret": env.GATEWAY_SECRET },
       });
 
       if (response.ok) {

@@ -44,8 +44,8 @@ export default function ProfileMenu({ onClose }: ProfileMenuProps) {
       .toUpperCase()
       .slice(0, 2);
 
-    const colors = ["#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#ec4899"];
-    const colorIndex = name.charCodeAt(0) % colors.length;
+      const colors = ["#14b8a6", "#f59e0b", "#06b6d4", "#0ea5e9", "#6366f1"];
+    const colorIndex = (name.length + name.charCodeAt(0)) % colors.length;
     const bgColor = colors[colorIndex];
 
     const svg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect fill='${bgColor.replace("#", "%23")}' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' font-size='16' font-weight='bold' fill='white' text-anchor='middle' dy='.3em' font-family='system-ui'%3E${initials}%3C/text%3E%3C/svg%3E`;

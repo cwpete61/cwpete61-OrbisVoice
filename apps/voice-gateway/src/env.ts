@@ -1,7 +1,8 @@
 import { config } from "dotenv";
+import { resolve } from "path";
 import { z } from "zod";
 
-config();
+config({ path: resolve(__dirname, "../.env"), override: true });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -12,6 +13,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1),
   APP_ENVIRONMENT: z.enum(["development", "staging", "production"]).default("development"),
   RUNTIME_POLICY_ENABLED: z.string().transform((v) => v === "true").default(false),
+  GATEWAY_SECRET: z.string().default("orbis-voice-gateway-secret-2025"),
 });
 
 const parsed = envSchema.safeParse(process.env);

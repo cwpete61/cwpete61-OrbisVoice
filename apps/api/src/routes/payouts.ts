@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { requireAdmin, requireSystemAdmin } from "../middleware/auth";
+import { requireSystemAdmin } from "../middleware/auth";
 import { affiliateManager } from "../services/affiliate";
 import { ApiResponse } from "../types";
 import { z } from "zod";

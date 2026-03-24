@@ -140,7 +140,7 @@ export default function TenantManagement() {
                         <span
                           className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
                             tenant.subscriptionTier === "enterprise"
-                              ? "bg-purple-500/10 text-purple-400"
+                              ? "bg-indigo-500/10 text-indigo-400"
                               : tenant.subscriptionTier === "professional"
                                 ? "bg-blue-500/10 text-blue-400"
                                 : "bg-slate-500/10 text-slate-400"
