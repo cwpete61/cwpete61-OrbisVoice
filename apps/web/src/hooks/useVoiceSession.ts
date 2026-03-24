@@ -19,10 +19,12 @@ export function useVoiceSession({ agentId, selectedVoice, voiceGender, systemPro
   const recorderRef = useRef<AudioRecorder | null>(null);
   const playerRef = useRef<AudioPlayer | null>(null);
   const sessionRef = useRef<WebSocket | null>(null);
+  const sessionReadyRef = useRef(false);
 
   const stopTalking = useCallback(() => {
     setIsTalking(false);
     setIsConnecting(false);
+    sessionReadyRef.current = false;
     if (recorderRef.current) {
       recorderRef.current.stop();
       recorderRef.current = null;
@@ -47,12 +49,31 @@ export function useVoiceSession({ agentId, selectedVoice, voiceGender, systemPro
 
     setConnectionError("");
     setIsConnecting(true);
+    sessionReadyRef.current = false;
 
     try {
+      // Step 1: Request microphone IMMEDIATELY to preserve user gesture
+      // This is the most sensitive call and must happen as early as possible in the click handler.
+      recorderRef.current = new AudioRecorder((audioData: ArrayBuffer) => {
+        const sock = sessionRef.current;
+        if (sock && sock.readyState === WebSocket.OPEN && sessionReadyRef.current) {
+          sock.send(
+            JSON.stringify({
+              type: "audio",
+              data: arrayBufferToBase64(audioData),
+              timestamp: Date.now(),
+            })
+          );
+        }
+      });
+      await recorderRef.current.start();
+
+      // Step 2: Initialize player context (less sensitive than mic)
       const token = localStorage.getItem("token") || "";
       playerRef.current = new AudioPlayer();
       await playerRef.current.init();
 
+      // Step 3: Open WebSocket
       const socket = new WebSocket(VOICE_GATEWAY_URL);
       sessionRef.current = socket;
 
@@ -80,18 +101,7 @@ export function useVoiceSession({ agentId, selectedVoice, voiceGender, systemPro
           if (msg.ok && msg.message === "Session initialized") {
             setIsConnecting(false);
             setIsTalking(true);
-            recorderRef.current = new AudioRecorder((audioData: ArrayBuffer) => {
-              if (socket.readyState === WebSocket.OPEN) {
-                socket.send(
-                  JSON.stringify({
-                    type: "audio",
-                    data: arrayBufferToBase64(audioData),
-                    timestamp: Date.now(),
-                  })
-                );
-              }
-            });
-            await recorderRef.current.start();
+            sessionReadyRef.current = true;
           }
 
           if (msg.type === "audio" && msg.data) {
@@ -122,8 +132,17 @@ export function useVoiceSession({ agentId, selectedVoice, voiceGender, systemPro
         stopTalking();
       };
     } catch (err: any) {
+      console.error(err);
       setIsConnecting(false);
-      setConnectionError("Microphone access denied or error: " + (err.message || String(err)));
+      
+      const isNotAllowed = err.name === "NotAllowedError" || err.message?.includes("denied");
+      const inIframe = typeof window !== "undefined" && window.self !== window.top;
+
+      if (isNotAllowed && inIframe) {
+        setConnectionError("MICROPHONE_BLOCKED_IN_IFRAME");
+      } else {
+        setConnectionError("Microphone access denied or error: " + (err.message || String(err)));
+      }
       stopTalking();
     }
   }, [agentId, selectedVoice, voiceGender, systemPrompt, stopTalking]);

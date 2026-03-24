@@ -4,6 +4,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import VoiceAgentWidget from "@/app/components/VoiceAgentWidget";
 import { API_BASE } from "@/lib/api";
 
+export const dynamic = "force-dynamic";
+
 export default function WidgetPage() {
     const params = useParams();
     const searchParams = useSearchParams();

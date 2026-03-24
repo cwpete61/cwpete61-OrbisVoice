@@ -13,6 +13,7 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001"),
   GEMINI_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  VOICE_GATEWAY_URL: z.string().optional(),
   // Gmail API
   GMAIL_CLIENT_ID: z.string().optional(),
   GMAIL_CLIENT_SECRET: z.string().optional(),

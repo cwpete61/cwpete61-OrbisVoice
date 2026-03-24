@@ -134,10 +134,11 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
                     </svg>
                 </div>
             </div>
-            <div className="flex-1">
-                <h3 className="text-xl font-black text-white leading-tight tracking-tight uppercase">
-                  {name || "Unnamed Agent"}
-                </h3>
+                {!isWidget && (
+                  <h3 className="text-xl font-black text-white leading-tight tracking-tight uppercase">
+                    {name || "Unnamed Agent"}
+                  </h3>
+                )}
                 <div className="mt-1 flex items-center">
                     <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider" style={{ background: `${primaryColor}20`, color: primaryColor }}>
                       {voiceModel.name}
@@ -147,73 +148,77 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
         </div>
 
         {/* Section 1: Voice Select */}
-        <div>
-            <div className="flex items-center justify-between mb-3 px-1">
-                <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Voice Model</label>
-                <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 scale-90">
-                    {(["MALE", "FEMALE"] as const).map((g) => (
-                      <button
-                        key={g}
-                        onClick={() => {
-                          setVoiceGender(g);
-                          const defaultAvatar = g === "MALE" ? "/avatars/male1.png" : "/avatars/female1.png";
-                          setAvatarUrl(defaultAvatar);
-                          setSelectedVoice(g === "MALE" ? "charon" : "aoede");
-                        }}
-                        className={`px-3 py-1.5 text-[9px] font-black rounded-lg transition-all ${voiceGender === g ? "bg-[#14b8a6] text-white shadow-lg" : "text-white/30 hover:text-white/60"}`}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="relative">
-                <button
-                  onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
-                  className="w-full h-14 bg-white/[0.03] border border-white/[0.08] rounded-2xl px-5 flex items-center justify-between hover:bg-white/[0.05] hover:border-[#14b8a6]/40 transition group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: voiceModel.color }} />
-                    <span className="text-sm font-bold text-white tracking-wide">{voiceModel.name}</span>
-                  </div>
-                  <svg className={`transition-transform duration-300 ${isVoiceDropdownOpen ? "rotate-180 text-[#14b8a6]" : "text-white/20"}`} width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </button>
-                {isVoiceDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-3 z-50 bg-[#0d121f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl py-2 max-h-[220px] overflow-y-auto">
-                      {VOICE_MODELS.filter(v => v.gender === voiceGender).map((v) => (
-                        <div key={v.id} className="flex items-center group/item hover:bg-white/5 px-2">
-                           <button onClick={() => { setSelectedVoice(v.id); setIsVoiceDropdownOpen(false); }} className="flex-1 flex items-center gap-3 px-4 py-3 text-left">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: v.color }} />
-                              <span className="text-sm font-bold text-white/80 group-hover/item:text-white">{v.name}</span>
-                           </button>
-                           <button onClick={() => playVoiceSample(v.id)} className="p-2.5 rounded-xl hover:bg-[#14b8a6]/20 text-[#14b8a6]/60 hover:text-[#14b8a6] transition">
-                              {isPlayingSample === v.id ? <div className="w-5 h-5 border-2 border-[#14b8a6]/30 border-t-[#14b8a6] rounded-full animate-spin" /> : <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M3 22v-20l18 10-18 10z" /></svg>}
-                           </button>
-                        </div>
+        {!isWidget && (
+          <div>
+              <div className="flex items-center justify-between mb-3 px-1">
+                  <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Voice Model</label>
+                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 scale-90">
+                      {(["MALE", "FEMALE"] as const).map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => {
+                            setVoiceGender(g);
+                            const defaultAvatar = g === "MALE" ? "/avatars/male1.png" : "/avatars/female1.png";
+                            setAvatarUrl(defaultAvatar);
+                            setSelectedVoice(g === "MALE" ? "charon" : "aoede");
+                          }}
+                          className={`px-3 py-1.5 text-[9px] font-black rounded-lg transition-all ${voiceGender === g ? "bg-[#14b8a6] text-white shadow-lg" : "text-white/30 hover:text-white/60"}`}
+                        >
+                          {g}
+                        </button>
                       ))}
                   </div>
-                )}
-            </div>
-        </div>
+              </div>
+
+              <div className="relative">
+                  <button
+                    onClick={() => setIsVoiceDropdownOpen(!isVoiceDropdownOpen)}
+                    className="w-full h-14 bg-white/[0.03] border border-white/[0.08] rounded-2xl px-5 flex items-center justify-between hover:bg-white/[0.05] hover:border-[#14b8a6]/40 transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: voiceModel.color }} />
+                      <span className="text-sm font-bold text-white tracking-wide">{voiceModel.name}</span>
+                    </div>
+                    <svg className={`transition-transform duration-300 ${isVoiceDropdownOpen ? "rotate-180 text-[#14b8a6]" : "text-white/20"}`} width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {isVoiceDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-3 z-50 bg-[#0d121f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl py-2 max-h-[220px] overflow-y-auto">
+                        {VOICE_MODELS.filter(v => v.gender === voiceGender).map((v) => (
+                          <div key={v.id} className="flex items-center group/item hover:bg-white/5 px-2">
+                             <button onClick={() => { setSelectedVoice(v.id); setIsVoiceDropdownOpen(false); }} className="flex-1 flex items-center gap-3 px-4 py-3 text-left">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: v.color }} />
+                                <span className="text-sm font-bold text-white/80 group-hover/item:text-white">{v.name}</span>
+                             </button>
+                             <button onClick={() => playVoiceSample(v.id)} className="p-2.5 rounded-xl hover:bg-[#14b8a6]/20 text-[#14b8a6]/60 hover:text-[#14b8a6] transition">
+                                {isPlayingSample === v.id ? <div className="w-5 h-5 border-2 border-[#14b8a6]/30 border-t-[#14b8a6] rounded-full animate-spin" /> : <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M3 22v-20l18 10-18 10z" /></svg>}
+                             </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+              </div>
+          </div>
+        )}
 
         {/* Section 2: Avatar Swap */}
-        <div>
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4 block px-1">Quick Avatar Swap</label>
-            <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-                {AVATARS.filter(a => a.gender === voiceGender).map((avatar) => (
-                    <button
-                      key={avatar.id}
-                      onClick={() => setAvatarUrl(avatar.url)}
-                      className={`relative w-12 h-12 rounded-2xl border-2 transition-all shrink-0 ${avatarUrl === avatar.url ? "border-[#14b8a6] scale-105 shadow-xl shadow-[#14b8a6]/20" : "border-white/5 opacity-40 hover:opacity-100 hover:border-white/20"}`}
-                    >
-                        <img src={avatar.url} alt="Avatar Option" className="w-full h-full object-cover rounded-xl" />
-                    </button>
-                ))}
-            </div>
-        </div>
+        {!isWidget && (
+          <div>
+              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4 block px-1">Quick Avatar Swap</label>
+              <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                  {AVATARS.filter(a => a.gender === voiceGender).map((avatar) => (
+                      <button
+                        key={avatar.id}
+                        onClick={() => setAvatarUrl(avatar.url)}
+                        className={`relative w-12 h-12 rounded-2xl border-2 transition-all shrink-0 ${avatarUrl === avatar.url ? "border-[#14b8a6] scale-105 shadow-xl shadow-[#14b8a6]/20" : "border-white/5 opacity-40 hover:opacity-100 hover:border-white/20"}`}
+                      >
+                          <img src={avatar.url} alt="Avatar Option" className="w-full h-full object-cover rounded-xl" />
+                      </button>
+                  ))}
+              </div>
+          </div>
+        )}
 
         {/* Waveform Section */}
         <div className="flex-1 flex flex-col justify-center">
@@ -273,17 +278,33 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
 
             {connectionError && (
               <div className="space-y-3 fade-slide-up">
-                <div className="text-red-400 text-[10px] font-black uppercase tracking-widest text-center bg-red-500/10 px-4 py-3 rounded-2xl border border-red-500/20">
-                  {connectionError.includes("NotAllowedError") || connectionError.includes("denied") 
-                    ? "Microphone access denied. Please check your browser settings." 
-                    : connectionError}
-                </div>
+                {connectionError === "MICROPHONE_BLOCKED_IN_IFRAME" ? (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-center">
+                    <div className="text-amber-400 text-xs font-black uppercase tracking-widest mb-2">Microphone Restricted</div>
+                    <p className="text-[10px] text-white/50 leading-relaxed mb-4">
+                      This website's security policy prevents the voice agent from accessing your microphone within this window.
+                    </p>
+                    <button 
+                      onClick={() => window.open(window.location.href, '_blank')}
+                      className="w-full py-2.5 rounded-xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
+                    >
+                      Open in New Window to Talk
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-red-400 text-[10px] font-black uppercase tracking-widest text-center bg-red-500/10 px-4 py-3 rounded-2xl border border-red-500/20">
+                    {connectionError.includes("NotAllowedError") || connectionError.includes("denied") 
+                      ? "Microphone access denied. Please check your browser settings." 
+                      : connectionError}
+                  </div>
+                )}
+                
                 {!window.isSecureContext && (
                   <div className="text-amber-400 text-[9px] font-bold text-center bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20">
                     ⚠️ SECURE CONTEXT REQUIRED: Voice features only work over HTTPS or localhost.
                   </div>
                 )}
-                {(connectionError.includes("NotAllowedError") || connectionError.includes("denied")) && (
+                {(connectionError.includes("NotAllowedError") || connectionError.includes("denied")) && connectionError !== "MICROPHONE_BLOCKED_IN_IFRAME" && (
                   <p className="text-[9px] text-white/30 text-center px-4 leading-relaxed">
                     Click the camera/mic icon in your browser address bar to reset permissions.
                   </p>
@@ -297,6 +318,5 @@ export default function VoiceAgentWidget({ agentId, initialData, isWidget = fals
            <span className="text-[10px] font-black tracking-[0.3em] text-[#14b8a6]">POWERED BY ORBISVOICE</span>
         </div>
       </div>
-    </div>
-  );
+    );
 }

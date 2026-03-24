@@ -550,6 +550,7 @@ export default function AgentBuilderForm({
                 <VoiceAgentWidget 
                   agentId={(agentId as string) || "save-to-generate"}
                   agentType={agentType}
+                  isWidget={true}
                   initialData={{
                     name,
                     systemPrompt,
