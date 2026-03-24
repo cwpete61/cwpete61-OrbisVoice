@@ -75,29 +75,59 @@ export default function AgentWidgetSection({
               <label className="block text-xs font-semibold text-[rgba(240,244,250,0.5)] uppercase tracking-wider mb-2">
                 Embed Code
               </label>
-              <div className="relative group">
-                <pre className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.5)] font-mono overflow-x-auto">
-                  {`<script 
-  src="${typeof window !== 'undefined' ? window.location.origin : ''}/widget.js?v=3" 
+              <div className="space-y-4">
+                {/* Script Option */}
+                <div className="relative group">
+                  <div className="absolute -top-2 left-3 px-2 bg-[#05080f] text-[9px] font-bold text-[#14b8a6] uppercase tracking-tighter z-10">Standard Script</div>
+                  <pre className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.5)] font-mono overflow-x-auto">
+                    {`<script
+  src="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : ''}/widget.js"
   data-agent-id="${agentId || "YOUR_AGENT_ID"}"
   async
 ></script>`}
-                </pre>
-                <button
-                  onClick={() => {
-                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                    const code = `<script src="${origin}/widget.js?v=3" data-agent-id="${agentId || "YOUR_AGENT_ID"}" async></script>`;
-                    navigator.clipboard.writeText(code);
-                  }}
-                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white opacity-0 group-hover:opacity-100 transition"
-                >
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                </button>
+                  </pre>
+                  <button
+                    onClick={() => {
+                      const origin = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : '';
+                      const code = `<script src="${origin}/widget.js" data-agent-id="${agentId || "YOUR_AGENT_ID"}" async></script>`;
+                      navigator.clipboard.writeText(code);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white opacity-0 group-hover:opacity-100 transition"
+                  >
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Iframe Option (The Bypass) */}
+                <div className="relative group">
+                  <div className="absolute -top-2 left-3 px-2 bg-[#05080f] text-[9px] font-bold text-[#6366f1] uppercase tracking-tighter z-10">Iframe (Microphone Bypass)</div>
+                  <pre className="w-full bg-[#0a0e1a] border border-6366f1/20 rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.4)] font-mono overflow-x-auto">
+                    {`<iframe
+  src="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : ''}/widget/${agentId || "YOUR_AGENT_ID"}"
+  allow="microphone"
+  style="width: 400px; height: 600px; border: none; position: fixed; bottom: 0; right: 0; z-index: 9999;"
+></iframe>`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      const origin = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : '';
+                      const code = `<iframe src="${origin}/widget/${agentId || "YOUR_AGENT_ID"}" allow="microphone" style="width: 400px; height: 600px; border: none; position: fixed; bottom: 0; right: 0; z-index: 9999;"></iframe>`;
+                      navigator.clipboard.writeText(code);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white opacity-0 group-hover:opacity-100 transition"
+                  >
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <p className="mt-2.5 text-[10px] text-[rgba(240,244,250,0.3)] leading-relaxed">
-                Paste this code right before the closing <code className="bg-white/5 px-1 rounded">{"</body>"}</code> tag of your website.
+
+              <p className="mt-4 text-[10px] text-[rgba(240,244,250,0.3)] leading-relaxed">
+                <span className="text-[#14b8a6] font-bold">Standard Script:</span> Best for standard websites. Injects the bubble directly.<br/>
+                <span className="text-[#6366f1] font-bold">Iframe:</span> Best for platforms that restrict custom scripts. **Requirement:** Must include <code className="bg-white/5 px-1 rounded">allow=&quot;microphone&quot;</code>.
               </p>
             </div>
 
