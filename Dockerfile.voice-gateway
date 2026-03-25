@@ -26,6 +26,7 @@ COPY apps/voice-gateway ./apps/voice-gateway
 
 # Build the app
 WORKDIR /app/apps/voice-gateway
+RUN npx prisma generate
 RUN npm run build
 
 # Production Stage
