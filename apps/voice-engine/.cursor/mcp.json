@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "firebase-dev": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@gannonh/firebase-mcp"
+      ],
+      "env": {
+        "SERVICE_ACCOUNT_KEY_PATH": "./secrets/firebase-dev-key.json",
+        "FIREBASE_STORAGE_BUCKET": "orbislocal-c8a01.firebasestorage.app"
+      }
+    },
+    "firebase-prod": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@gannonh/firebase-mcp"
+      ],
+      "env": {
+        "SERVICE_ACCOUNT_KEY_PATH": "./secrets/firebase-prod-key.json",
+        "FIREBASE_STORAGE_BUCKET": "orbislocal-c8a01.firebasestorage.app"
+      }
+    }
+  }
+}

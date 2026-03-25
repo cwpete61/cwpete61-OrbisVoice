@@ -249,8 +249,8 @@ model StripeConnectConfig {
 model TenantGoogleConfig {
   id           String   @id @default(cuid())
   tenantId     String   @unique
-  clientId     String
-  clientSecret String
+  clientId     String?
+  clientSecret String?
   geminiApiKey String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -431,17 +431,17 @@ model NotificationTemplate {
 }
 
 model FaqEntry {
-  id         String                 @id @default(cuid())
+  id         String        @id @default(cuid())
   question   String
   answer     String
-  category   String                 @default("general")
-  helpful    Int                    @default(0)
-  notHelpful Int                    @default(0)
-  published  Boolean                @default(true)
-  source     String                 @default("admin")
-  createdAt  DateTime               @default(now())
-  updatedAt  DateTime               @updatedAt
-  embedding  Unsupported("vector")?
+  category   String        @default("general")
+  helpful    Int           @default(0)
+  notHelpful Int           @default(0)
+  published  Boolean       @default(true)
+  source     String        @default("admin")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  // embedding  Unsupported("vector")?
   questions  FaqQuestion[]
 }
 
