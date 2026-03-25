@@ -3,7 +3,7 @@
 
 (function () {
   'use strict';
-  console.log('[OrbisVoice] Widget v3.3 Loaded (320x480 Compact UI)');
+  console.log('[OrbisVoice] Widget v3.4 Loaded (Avatar -20px)');
 
   // ── Better script detection for WordPress/deferred/concatenated environments ──
   const script = document.currentScript || (function() {
@@ -98,7 +98,7 @@
     ._ov_close { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.3); padding: 6px; border-radius: 8px; line-height: 0; transition: background .2s, color .2s; }
     ._ov_close:hover { background: rgba(255,255,255,.1); color: #fff; }
     ._ov_body { padding: 30px 0 0 0; display: flex; flex-direction: column; gap: 32px; flex: 1; }
-    ._ov_profile { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    ._ov_profile { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 20px; }
     ._ov_avatar {
       width: 66px; height: 66px; border-radius: 18px; overflow: visible;
       display: flex; align-items: center; justify-content: center;
