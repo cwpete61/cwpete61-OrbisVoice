@@ -3,7 +3,7 @@
 
 (function () {
   'use strict';
-  console.log('[OrbisVoice] Widget v3.1 Loaded (UI: 540px Height + Bottom Button)');
+  console.log('[OrbisVoice] Widget v3.2 Loaded (Global 25px Padding)');
 
   // ── Better script detection for WordPress/deferred/concatenated environments ──
   const script = document.currentScript || (function() {
@@ -74,11 +74,12 @@
     }
     #_ov_bubble:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(20,184,166,.5); }
     #_ov_panel {
-      width: 360px;
-      height: 540px;
+      width: 400px;
+      height: 600px;
+      padding: 25px;
       background: #05080f;
-      border-radius: 24px;
-      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 32px;
+      border: 1px solid rgba(255,255,255,.12);
       box-shadow: 0 28px 80px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.04);
       display: none; flex-direction: column; overflow: hidden;
       animation: _ov_fadein .28s ease;
@@ -88,16 +89,15 @@
       to   { opacity:1; transform: translateY(0)   scale(1);   }
     }
     ._ov_hdr {
-      padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 20px; display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid rgba(255,255,255,.05);
-      background: rgba(255,255,255,.02);
     }
     ._ov_hdr_l { display: flex; align-items: center; gap: 8px; }
     ._ov_dot { width: 8px; height: 8px; border-radius: 50%; }
     ._ov_lbl { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.45); letter-spacing: .18em; text-transform: uppercase; }
     ._ov_close { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.3); padding: 6px; border-radius: 8px; line-height: 0; transition: background .2s, color .2s; }
     ._ov_close:hover { background: rgba(255,255,255,.1); color: #fff; }
-    ._ov_body { padding: 50px 45px; display: flex; flex-direction: column; gap: 28px; }
+    ._ov_body { padding: 30px 0 0 0; display: flex; flex-direction: column; gap: 32px; flex: 1; }
     ._ov_profile { display: flex; flex-direction: column; align-items: center; gap: 0; }
     ._ov_avatar {
       width: 66px; height: 66px; border-radius: 18px; overflow: visible;
