@@ -3,7 +3,7 @@
 
 (function () {
   'use strict';
-  console.log('[OrbisVoice] Widget v3.2 Loaded (Global 25px Padding)');
+  console.log('[OrbisVoice] Widget v3.3 Loaded (320x480 Compact UI)');
 
   // ── Better script detection for WordPress/deferred/concatenated environments ──
   const script = document.currentScript || (function() {
@@ -74,8 +74,8 @@
     }
     #_ov_bubble:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(20,184,166,.5); }
     #_ov_panel {
-      width: 400px;
-      height: 600px;
+      width: 320px;
+      height: 480px;
       padding: 25px;
       background: #05080f;
       border-radius: 32px;
