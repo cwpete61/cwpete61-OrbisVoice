@@ -3,6 +3,7 @@
 
 (function () {
   'use strict';
+  console.log('[OrbisVoice] Widget v3.1 Loaded (UI: 540px Height + Bottom Button)');
 
   // ── Better script detection for WordPress/deferred/concatenated environments ──
   const script = document.currentScript || (function() {
