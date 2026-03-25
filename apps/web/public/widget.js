@@ -74,6 +74,7 @@
     #_ov_bubble:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(20,184,166,.5); }
     #_ov_panel {
       width: 360px;
+      min-height: 540px;
       background: #05080f;
       border-radius: 24px;
       border: 1px solid rgba(255,255,255,.1);
@@ -95,7 +96,7 @@
     ._ov_lbl { font-size: 10px; font-weight: 800; color: rgba(255,255,255,.45); letter-spacing: .18em; text-transform: uppercase; }
     ._ov_close { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.3); padding: 6px; border-radius: 8px; line-height: 0; transition: background .2s, color .2s; }
     ._ov_close:hover { background: rgba(255,255,255,.1); color: #fff; }
-    ._ov_body { padding: 26px 22px; display: flex; flex-direction: column; gap: 18px; }
+    ._ov_body { padding: 50px 45px; display: flex; flex-direction: column; gap: 28px; }
     ._ov_profile { display: flex; align-items: center; gap: 16px; }
     ._ov_avatar {
       width: 66px; height: 66px; border-radius: 18px; overflow: visible;
@@ -120,7 +121,7 @@
       font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;
     }
     ._ov_wave {
-      height: 78px; background: rgba(255,255,255,.02);
+      height: 120px; background: rgba(255,255,255,.02);
       border: 1px solid rgba(255,255,255,.05); border-radius: 14px;
       display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 18px;
     }
@@ -128,7 +129,7 @@
     ._ov_bar._ov_active { animation: _ov_wave 1.2s ease-in-out infinite; }
     @keyframes _ov_wave { 0%,100%{transform:scaleY(.35)} 50%{transform:scaleY(1)} }
     ._ov_btn {
-      width: 100%; height: 64px; border-radius: 16px; border: none;
+      width: 100%; height: 96px; border-radius: 16px; border: none;
       font-weight: 900; font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
       color: #fff; transition: opacity .2s, transform .12s; position: relative; overflow: hidden;
