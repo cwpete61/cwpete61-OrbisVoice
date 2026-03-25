@@ -444,11 +444,13 @@ class VoiceGateway {
         if (msg.setupComplete) {
           logger.info({ sessionId }, "Gemini setup complete");
           
-          if (!client.isTwilio) {
-            ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
-          } else if (client.liveSession) {
-            // For Twilio, we send the initial greeting NOW after setup is confirmed
-            (client.liveSession as any).send([{ parts: [{ text: "Introduce yourself and ask how you can help." }] }]);
+          if (client.liveSession) {
+            // Send initial greeting to Gemini for prompt response
+            (client.liveSession as any).send([{ parts: [{ text: "Introduce yourself naturally as OrbisVoice AI and ask how you can help." }] }]);
+            
+            if (!client.isTwilio) {
+              ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
+            }
           }
           return;
         }

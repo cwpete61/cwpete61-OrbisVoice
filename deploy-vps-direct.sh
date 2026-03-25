@@ -46,6 +46,6 @@ scp -i $SSH_KEY docker-compose.prod.yml root@$VPS_IP:$PROJECT_DIR/docker-compose
 
 # 4. Trigger the deploy script on the VPS
 echo "Triggering build on VPS..."
-ssh -i $SSH_KEY root@$VPS_IP "cd $PROJECT_DIR && bash deploy.sh"
+ssh -i $SSH_KEY root@$VPS_IP "cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml build --no-cache web && bash deploy.sh"
 
 echo "=== Direct Deployment Complete ==="
