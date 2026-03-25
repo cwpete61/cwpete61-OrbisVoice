@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import { API_BASE } from "@/lib/api";
 
 interface AgentWidgetSectionProps {
   agentType: string;
@@ -80,16 +79,18 @@ export default function AgentWidgetSection({
                 <div className="relative group">
                   <div className="absolute -top-2 left-3 px-2 bg-[#05080f] text-[9px] font-bold text-[#14b8a6] uppercase tracking-tighter z-10">Standard Script</div>
                   <pre className="w-full bg-[#0a0e1a] border border-white/[0.08] rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.5)] font-mono overflow-x-auto">
-                    {`<script
-  src="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : ''}/widget.js"
+                    {`<script 
+  src="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'https://myorbisvoice.com' : window.location.origin) : ''}/widget.js" 
   data-agent-id="${agentId || "YOUR_AGENT_ID"}"
+  data-api-base="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'https://myorbisvoice.com' : window.location.origin) : ''}/api"
+  data-app-base="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'https://myorbisvoice.com' : window.location.origin) : ''}"
   async
 ></script>`}
                   </pre>
                   <button
                     onClick={() => {
-                      const origin = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : '';
-                      const code = `<script src="${origin}/widget.js" data-agent-id="${agentId || "YOUR_AGENT_ID"}" async></script>`;
+                      const origin = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'https://myorbisvoice.com' : window.location.origin) : '';
+                      const code = `<script src="${origin}/widget.js" data-agent-id="${agentId || "YOUR_AGENT_ID"}" data-api-base="${origin}/api" data-app-base="${origin}" async></script>`;
                       navigator.clipboard.writeText(code);
                     }}
                     className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white opacity-0 group-hover:opacity-100 transition"
@@ -100,19 +101,19 @@ export default function AgentWidgetSection({
                   </button>
                 </div>
 
-                {/* Iframe Option (The Bypass) */}
+                {/* Iframe Option */}
                 <div className="relative group">
-                  <div className="absolute -top-2 left-3 px-2 bg-[#05080f] text-[9px] font-bold text-[#6366f1] uppercase tracking-tighter z-10">Iframe (Microphone Bypass)</div>
-                  <pre className="w-full bg-[#0a0e1a] border border-6366f1/20 rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.4)] font-mono overflow-x-auto">
+                  <div className="absolute -top-2 left-3 px-2 bg-[#05080f] text-[9px] font-bold text-[#6366f1] uppercase tracking-tighter z-10">Iframe (Direct)</div>
+                  <pre className="w-full bg-[#0a0e1a] border border-[#6366f1]/20 rounded-xl px-4 py-3 text-[10px] text-[rgba(240,244,250,0.4)] font-mono overflow-x-auto">
                     {`<iframe
-  src="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : ''}/widget/${agentId || "YOUR_AGENT_ID"}"
+  src="${typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'https://myorbisvoice.com' : window.location.origin) : ''}/widget/${agentId || "YOUR_AGENT_ID"}"
   allow="microphone"
   style="width: 400px; height: 600px; border: none; position: fixed; bottom: 0; right: 0; z-index: 9999;"
 ></iframe>`}
                   </pre>
                   <button
                     onClick={() => {
-                      const origin = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? window.location.origin : 'https://myorbisvoice.com') : '';
+                      const origin = typeof window !== 'undefined' ? (window.location.origin.includes('localhost') ? 'https://myorbisvoice.com' : window.location.origin) : '';
                       const code = `<iframe src="${origin}/widget/${agentId || "YOUR_AGENT_ID"}" allow="microphone" style="width: 400px; height: 600px; border: none; position: fixed; bottom: 0; right: 0; z-index: 9999;"></iframe>`;
                       navigator.clipboard.writeText(code);
                     }}
@@ -180,7 +181,7 @@ export default function AgentWidgetSection({
 
             {/* Toggles */}
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between">
+              <div className="items-center justify-between flex">
                 <div>
                   <div className="text-sm font-semibold text-white">Visible on site</div>
                   <div className="text-[10px] text-white/30">Instantly show or hide the widget icon</div>
@@ -197,7 +198,7 @@ export default function AgentWidgetSection({
                 </button>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="items-center justify-between flex">
                 <div>
                   <div className="text-sm font-semibold text-white">Default Opened</div>
                   <div className="text-[10px] text-white/30">Start with the chat window already open</div>

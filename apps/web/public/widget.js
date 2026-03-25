@@ -4,22 +4,46 @@
 (function () {
   'use strict';
 
-  // ── Config ─────────────────────────────────────────────────────────────────
-  const script = document.currentScript;
+  // ── Better script detection for WordPress/deferred/concatenated environments ──
+  const script = document.currentScript || (function() {
+    const scripts = document.getElementsByTagName('script');
+    for (let i = scripts.length - 1; i >= 0; i--) {
+      // Look for the script by filename or by the presence of our unique data attribute
+      if (scripts[i].src && (scripts[i].src.includes('widget.js') || scripts[i].getAttribute('data-agent-id'))) {
+        return scripts[i];
+      }
+    }
+    return null;
+  })();
+
   const agentId = script?.getAttribute('data-agent-id');
+  const DEFAULT_API_BASE = "https://myorbisvoice.com/api";
+  const DEFAULT_APP_BASE = "https://myorbisvoice.com";
 
   if (!agentId) {
-    console.warn('[OrbisVoice] data-agent-id is required');
+    console.warn('[OrbisVoice] data-agent-id attribute is required. Script detection may have failed.');
     return;
   }
 
-  const origin = (() => {
-    try { return new URL(script.src).origin; } catch (_) { return window.location.origin; }
-  })();
+  // Derive bases from script source as fallback
+  const deriveBase = () => {
+    const src = script?.src;
+    if (src) {
+      try {
+        const url = new URL(src, window.location.origin);
+        return url.origin;
+      } catch (err) {
+        console.warn("[OrbisVoice] Failed to parse script src for base URL", err);
+      }
+    }
+    return DEFAULT_APP_BASE;
+  };
 
-  const apiBase   = script?.getAttribute('data-api-base') || `${origin}/api`;
+  const appOrigin = deriveBase();
+  const apiBase   = script?.getAttribute('data-api-base') || `${appOrigin}/api`;
+  const appBase   = script?.getAttribute('data-app-base') || appOrigin;
   const position  = script?.getAttribute('data-position')  || 'bottom-right';
-  const wsUrl     = origin.replace(/^http/, 'ws') + '/voice';
+  const wsUrl     = appOrigin.replace(/^http/, 'ws') + '/voice';
   const DEFAULT_COLOR = '#14b8a6';
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -377,10 +401,7 @@
     phase = 'connecting';
 
     try {
-      // Step 2: init AudioContext
       const ctx = await getAudioCtx();
-
-      // Step 3: Open WebSocket
       const sock = new WebSocket(wsUrl);
       ws = sock;
 
@@ -403,7 +424,6 @@
         let msg;
         try { msg = JSON.parse(evt.data); } catch (_) { return; }
 
-        // Session confirmed — wire up microphone pipeline
         if (msg.ok && msg.message === 'Session initialized') {
           phase = 'talking';
           setTalking();
@@ -481,12 +501,12 @@
       agentNameEl.textContent = agentConfig.name || 'AI Assistant';
 
       if (agentConfig.avatarUrl) {
-        const src = agentConfig.avatarUrl.startsWith('/') 
-          ? `${origin}${agentConfig.avatarUrl}` 
-          : agentConfig.avatarUrl;
-        avatarInner.innerHTML = `<img src="${src}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;"/>`;
-        // Mirror on bubble
-        bubble.innerHTML = `<img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+        const avatarUrl = agentConfig.avatarUrl.startsWith("http") 
+          ? agentConfig.avatarUrl 
+          : `${appBase}${agentConfig.avatarUrl.startsWith("/") ? "" : "/"}${agentConfig.avatarUrl}`;
+        
+        avatarInner.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;"/>`;
+        bubble.innerHTML = `<img src="${avatarUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
       }
 
       if (agentConfig.widgetDefaultOpen) openPanel();
@@ -496,5 +516,5 @@
   }
 
   fetchConfig();
-  console.log('[OrbisVoice] Widget v3 initialized — agent:', agentId);
+  console.log('[OrbisVoice] Widget v3.0 initialized — agent:', agentId);
 })();
