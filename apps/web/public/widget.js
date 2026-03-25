@@ -74,7 +74,7 @@
     #_ov_bubble:hover { transform: scale(1.1); box-shadow: 0 6px 30px rgba(20,184,166,.5); }
     #_ov_panel {
       width: 360px;
-      min-height: 540px;
+      height: 540px;
       background: #05080f;
       border-radius: 24px;
       border: 1px solid rgba(255,255,255,.1);
@@ -97,7 +97,7 @@
     ._ov_close { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.3); padding: 6px; border-radius: 8px; line-height: 0; transition: background .2s, color .2s; }
     ._ov_close:hover { background: rgba(255,255,255,.1); color: #fff; }
     ._ov_body { padding: 50px 45px; display: flex; flex-direction: column; gap: 28px; }
-    ._ov_profile { display: flex; align-items: center; gap: 16px; }
+    ._ov_profile { display: flex; flex-direction: column; align-items: center; gap: 0; }
     ._ov_avatar {
       width: 66px; height: 66px; border-radius: 18px; overflow: visible;
       display: flex; align-items: center; justify-content: center;
@@ -146,7 +146,7 @@
     ._ov_footer {
       display: flex; justify-content: center;
       font-size: 9px; font-weight: 800; letter-spacing: .28em;
-      color: #14b8a6; text-transform: uppercase; opacity: .22; padding-top: 2px;
+      color: #14b8a6; text-transform: uppercase; opacity: .22; padding-bottom: 2px;
     }
     ._ov_spin {
       width: 18px; height: 18px; border-radius: 50%;
@@ -195,12 +195,7 @@
   const badge = el('div', { class: '_ov_badge', style: `background:${color}`,
     html: `<svg width="10" height="10" fill="white" viewBox="0 0 24 24"><path d="M12 2a3 3 0 013 3v7a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v3M8 22h8"/></svg>` });
   avatar.append(avatarInner, badge);
-  const profileInfo = el('div');
-  const agentNameEl = el('div', { class: '_ov_name', text: 'Loading...' });
-  const vbadge = el('div', { class: '_ov_vbadge',
-    style: `background:${color}20;color:${color}`, text: 'AI VOICE' });
-  profileInfo.append(agentNameEl, vbadge);
-  profile.append(avatar, profileInfo);
+  profile.append(avatar);
 
   // Waveform
   const waveEl = el('div', { class: '_ov_wave' });
@@ -222,7 +217,8 @@
   // Footer
   const footer = el('div', { class: '_ov_footer', text: 'POWERED BY ORBISVOICE' });
 
-  body.append(profile, waveEl, btn, errEl, footer);
+  body.append(profile, waveEl, errEl, btn, footer);
+  btn.style.marginTop = 'auto';
   panel.append(hdr, body);
   root.append(bubble, panel);
   document.body.appendChild(root);
@@ -270,8 +266,6 @@
     avatarInner.style.background = `linear-gradient(135deg,${color}20,${color}05)`;
     avatarInner.style.border = `1px solid ${color}30`;
     badge.style.background = color;
-    vbadge.style.background = `${color}20`;
-    vbadge.style.color = color;
     bars.forEach(b => b.style.background = color);
     if (phase === 'idle') rebuildIdleBtn();
   }
@@ -499,7 +493,7 @@
       applyPos(agentConfig.widgetPosition);
       if (agentConfig.widgetPrimaryColor) applyColor(agentConfig.widgetPrimaryColor);
 
-      agentNameEl.textContent = agentConfig.name || 'AI Assistant';
+      // agentNameEl removed
 
       if (agentConfig.avatarUrl) {
         const avatarUrl = agentConfig.avatarUrl.startsWith("http") 
