@@ -32,6 +32,11 @@ export async function requireAdmin(request: FastifyRequest, reply: FastifyReply)
     return;
   }
 
+  // Allow internal Twilio system user to bypass DB user check (used for fetching configs)
+  if (user.userId === "twilio-system") {
+    return;
+  }
+
   try {
     const dbUser = await prisma.user.findUnique({
       where: { id: user.userId },

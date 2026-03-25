@@ -267,7 +267,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
   // Admin GET for tool config
   fastify.get(
     "/settings/agent-tool-config/admin",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request, reply) => {
       try {
         const tenantId = (request as any).user?.tenantId;
@@ -296,7 +296,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
   // Admin PUT for tool config
   fastify.put<{ Body: unknown }>(
     "/settings/agent-tool-config/admin",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request, reply) => {
       try {
         const tenantId = (request as any).user?.tenantId;
@@ -337,7 +337,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
   // Get tenant's Google config
   fastify.get(
     "/settings/google-config",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request, reply) => {
       try {
         const tenantId = (request as any).user?.tenantId;
@@ -387,7 +387,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
   // Update tenant's Google config
   fastify.post<{ Body: z.infer<typeof GoogleConfigSchema> }>(
     "/settings/google-config",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request, reply) => {
       try {
         const tenantId = (request as any).user?.tenantId;
@@ -431,7 +431,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
   // Verify tenant's Gemini API key
   fastify.post<{ Body: { geminiApiKey: string } }>(
     "/settings/gemini-api/test",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request, reply) => {
       try {
         const { geminiApiKey } = request.body;
@@ -470,7 +470,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
   // Delete tenant's Google config
   fastify.delete(
     "/settings/google-config",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request, reply) => {
       try {
         const tenantId = (request as any).user?.tenantId;

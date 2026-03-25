@@ -3,7 +3,7 @@
 
 (function () {
   'use strict';
-  console.log('[OrbisVoice] Widget v3.5 Loaded (Button 30px Height)');
+  console.log('[OrbisVoice] Widget v3.6 Loaded (16kHz, Low Latency)');
 
   // ── Better script detection for WordPress/deferred/concatenated environments ──
   const script = document.currentScript || (function() {
@@ -347,7 +347,7 @@
 
   async function getAudioCtx() {
     if (!audioCtx || audioCtx.state === 'closed') {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
     }
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     return audioCtx;
@@ -385,7 +385,13 @@
     // Step 1: Request mic IMMEDIATELY (must be first in click handler)
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true },
+        audio: { 
+          sampleRate: 16000, 
+          channelCount: 1, 
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true 
+        },
         video: false,
       });
     } catch (e) {
@@ -426,7 +432,7 @@
           setTalking();
 
           const micSource = ctx.createMediaStreamSource(mediaStream);
-          processor = ctx.createScriptProcessor(4096, 1, 1);
+          processor = ctx.createScriptProcessor(2048, 1, 1);
           processor.onaudioprocess = (e) => {
             if (sock.readyState !== WebSocket.OPEN || phase !== 'talking') return;
             const f32  = e.inputBuffer.getChannelData(0);

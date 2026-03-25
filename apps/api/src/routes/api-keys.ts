@@ -15,7 +15,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // List API keys for tenant
   fastify.get(
     "/api-keys",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
         const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
@@ -47,7 +47,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // Create new API key
   fastify.post<{ Body: z.infer<typeof CreateApiKeySchema> }>(
     "/api-keys",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
         const body = CreateApiKeySchema.parse(request.body);
@@ -95,7 +95,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // Revoke API key
   fastify.delete<{ Params: { id: string } }>(
     "/api-keys/:id",
-    { onRequest: [authenticate, requireAdmin] },
+    { onRequest: [authenticate] },
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };

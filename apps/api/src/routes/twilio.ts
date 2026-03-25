@@ -14,7 +14,7 @@ export default async function twilioRoutes(fastify: FastifyInstance) {
     // Get Twilio config for tenant
     fastify.get(
         "/twilio/config",
-        { onRequest: [authenticate, requireAdmin] },
+        { onRequest: [authenticate] },
         async (request: FastifyRequest, reply) => {
             try {
                 const tenantId = (request as any).user.tenantId;
@@ -44,7 +44,7 @@ export default async function twilioRoutes(fastify: FastifyInstance) {
     // Update Twilio config for tenant
     fastify.put<{ Body: z.infer<typeof TwilioConfigSchema> }>(
         "/twilio/config",
-        { onRequest: [authenticate, requireAdmin] },
+        { onRequest: [authenticate] },
         async (request, reply) => {
             try {
                 const tenantId = (request as any).user.tenantId;

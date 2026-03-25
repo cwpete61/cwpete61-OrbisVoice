@@ -1379,12 +1379,12 @@ function SettingsContent() {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-2">
-          {isAdmin && (
-            <>
+              {/* Tenant / Workspace Settings - Exposed to all users */}
               <button
                 onClick={() => {
                   setActiveTab("api");
                   router.replace("/settings?tab=api");
+                  fetchApiKeys();
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   activeTab === "api"
@@ -1464,48 +1464,52 @@ function SettingsContent() {
               >
                 Twilio
               </button>
-              <button
-                onClick={() => {
-                  setActiveTab("system-email");
-                  router.replace("/settings?tab=system-email");
-                  fetchSystemEmailConfig();
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  activeTab === "system-email"
-                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                }`}
-              >
-                System Email
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("affiliates");
-                  router.replace("/settings?tab=affiliates");
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  activeTab === "affiliates"
-                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                }`}
-              >
-                Affiliates
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("referrals");
-                  router.replace("/settings?tab=referrals");
-                }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                  activeTab === "referrals"
-                    ? "bg-[#14b8a6]/15 text-[#14b8a6]"
-                    : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
-                }`}
-              >
-                Referrals
-              </button>
-            </>
-          )}
+              
+              {/* Platform and Restricted Settings - Admin/System Only */}
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveTab("system-email");
+                      router.replace("/settings?tab=system-email");
+                      fetchSystemEmailConfig();
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                      activeTab === "system-email"
+                        ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    System Email
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("affiliates");
+                      router.replace("/settings?tab=affiliates");
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                      activeTab === "affiliates"
+                        ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    Affiliates
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("referrals");
+                      router.replace("/settings?tab=referrals");
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                      activeTab === "referrals"
+                        ? "bg-[#14b8a6]/15 text-[#14b8a6]"
+                        : "text-[rgba(240,244,250,0.55)] hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    Referrals
+                  </button>
+                </>
+              )}
 
           <button
             onClick={() => {
@@ -1673,7 +1677,7 @@ function SettingsContent() {
         )}
 
         {/* API Keys Section */}
-        {activeTab === "api" && isAdmin && (
+        {activeTab === "api" && (
           <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-5 text-sm font-semibold text-[#f0f4fa]">API Keys</h2>
 
@@ -2044,7 +2048,7 @@ function SettingsContent() {
         )}
 
         {/* Google Config Section */}
-        {activeTab === "google" && isAdmin && (
+        {activeTab === "google" && (
           <div className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Google Auth Configuration</h2>
             <p className="mb-5 text-sm text-[rgba(240,244,250,0.45)]">
@@ -2283,7 +2287,7 @@ function SettingsContent() {
         )}
 
         {/* Widget embed */}
-        {activeTab === "calendar" && isAdmin && (
+        {activeTab === "calendar" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Calendar Connection</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
@@ -2350,7 +2354,7 @@ function SettingsContent() {
         )}
 
         {/* Gmail Connection */}
-        {activeTab === "gmail" && isAdmin && (
+        {activeTab === "gmail" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Gmail Account</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
@@ -2423,7 +2427,7 @@ function SettingsContent() {
         )}
 
         {/* Integrations Section */}
-        {activeTab === "integrations" && isAdmin && (
+        {activeTab === "integrations" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">
               Google Cloud & Gemini Integration
@@ -2627,7 +2631,7 @@ function SettingsContent() {
         )}
 
         {/* Twilio Section */}
-        {activeTab === "twilio" && isAdmin && (
+        {activeTab === "twilio" && (
           <div className="rounded-2xl border border-white/[0.07] bg-[#0c111d] p-6">
             <h2 className="mb-2 text-sm font-semibold text-[#f0f4fa]">Twilio Configuration</h2>
             <p className="mb-6 text-sm text-[rgba(240,244,250,0.45)]">
