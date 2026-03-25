@@ -3,7 +3,7 @@
 
 (function () {
   'use strict';
-  console.log('[OrbisVoice] Widget v3.4 Loaded (Avatar -20px)');
+  console.log('[OrbisVoice] Widget v3.5 Loaded (Button 30px Height)');
 
   // ── Better script detection for WordPress/deferred/concatenated environments ──
   const script = document.currentScript || (function() {
@@ -130,10 +130,11 @@
     ._ov_bar._ov_active { animation: _ov_wave 1.2s ease-in-out infinite; }
     @keyframes _ov_wave { 0%,100%{transform:scaleY(.35)} 50%{transform:scaleY(1)} }
     ._ov_btn {
-      width: 100%; height: 96px; border-radius: 16px; border: none;
-      font-weight: 900; font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
-      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; height: 35px; border-radius: 10px; border: none;
+      font-weight: 900; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
       color: #fff; transition: opacity .2s, transform .12s; position: relative; overflow: hidden;
+      margin-top: auto;
     }
     ._ov_btn:active:not(:disabled) { transform: scale(.98); }
     ._ov_btn:disabled { opacity: .45; cursor: not-allowed; }
