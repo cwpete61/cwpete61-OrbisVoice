@@ -20,6 +20,7 @@ export interface GatewayClient {
   toolsCalled: number;
   isTwilio?: boolean;
   streamSid?: string;
+  inbound?: boolean | string;
 }
 
 export interface GeminiResponse {

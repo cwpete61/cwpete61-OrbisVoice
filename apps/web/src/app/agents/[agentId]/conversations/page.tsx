@@ -160,6 +160,8 @@ export default function AgentConversationsPage() {
                     content={transcript.content}
                     duration={transcript.duration}
                     createdAt={transcript.createdAt}
+                    estimatedCost={transcript.estimatedCost}
+                    revenue={transcript.revenue}
                     onView={handleViewTranscript}
                     onDelete={handleDeleteTranscript}
                   />

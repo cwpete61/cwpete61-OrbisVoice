@@ -11,10 +11,20 @@ import { ToolExecutor } from "./services/tool-executor";
 class VoiceGateway {
   private wss: WebSocket.Server;
   private clients: Map<string, GatewayClient> = new Map();
+  private heartbeatInterval: NodeJS.Timeout;
 
   constructor(port: number) {
     this.wss = new WebSocket.Server({ port, host: "0.0.0.0" });
     this.setupListeners();
+    
+    // Setup Heartbeat to prevent timeouts
+    this.heartbeatInterval = setInterval(() => {
+      this.wss.clients.forEach((ws: any) => {
+        if (ws.isAlive === false) return ws.terminate();
+        ws.isAlive = false;
+        ws.ping();
+      });
+    }, 30000);
   }
 
   private sendError(ws: WebSocket.WebSocket, error: string, details?: any, sessionId?: string) {
@@ -35,8 +45,11 @@ class VoiceGateway {
   }
 
   private setupListeners() {
-    this.wss.on("connection", (ws) => {
+    this.wss.on("connection", (ws: any) => {
       const sessionId = uuidv4();
+      ws.isAlive = true;
+      ws.on("pong", () => { ws.isAlive = true; });
+
       logger.info({ sessionId }, "Client connected");
 
       ws.on("message", (data) => {
@@ -185,6 +198,7 @@ class VoiceGateway {
         toolsCalled: 0,
         isTwilio: true,
         streamSid: callSid,
+        inbound: customParameters.inbound
       };
 
       const liveSession = await geminiVoiceClient.connectLive(
@@ -197,14 +211,6 @@ class VoiceGateway {
       this.clients.set(sessionId, client);
 
       logger.info({ sessionId, callSid, agentId }, "Twilio ConversationRelay Session Initialized");
-
-      // Start the conversation immediately for inbound calls
-      if (customParameters.inbound === "true" || customParameters.inbound === true) {
-        logger.info({ sessionId }, "Sending initial greeting prompt to Gemini");
-        (liveSession as any).send([{ parts: [{
-          text: "Please greet the caller warmly and introduce yourself as their virtual assistant."
-        }] }]);
-      }
     } catch (err) {
       this.sendError(ws, "Twilio session initialization failed", err, sessionId);
       ws.close();
@@ -453,9 +459,22 @@ class VoiceGateway {
           logger.info({ sessionId }, "Gemini setup complete");
           
           if (client.liveSession) {
-            // OPTIONAL: Send initial greeting to Gemini if you want the agent to speak first
-            // (client.liveSession as any).send([{ parts: [{ text: "Introduce yourself naturally as OrbisVoice AI." }] }]);
+            // Check if we need to send an initial greeting (for inbound calls or explicit config)
+            // We do this AFTER setupComplete to ensure Gemini is ready to process.
+            const isInbound = (client as any).inbound === true || (client as any).inbound === "true";
             
+            if (isInbound) {
+              logger.info({ sessionId }, "Sending initial greeting prompt to Gemini (Post-Setup)");
+              try {
+                // Use a simpler send format or sendRealtimeInput if needed
+                (client.liveSession as any).send([{ parts: [{ 
+                  text: "Please greet the caller warmly and introduce yourself as their virtual assistant." 
+                }] }]);
+              } catch (greetErr) {
+                logger.error({ greetErr, sessionId }, "Failed to send initial greeting");
+              }
+            }
+
             if (!client.isTwilio) {
               ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
             }
@@ -577,10 +596,15 @@ class VoiceGateway {
         }
       },
       onClose: (event?: any) => {
-        logger.info({ sessionId: client.sessionId, code: event?.code, reason: event?.reason }, "Gemini session closed");
-        ws.send(JSON.stringify({ type: "control", data: "closed" }));
+        logger.info({ 
+          sessionId: client.sessionId, 
+          code: event?.code || "unknown", 
+          reason: event?.reason || "no reason" 
+        }, "Gemini session closed");
+        ws.send(JSON.stringify({ type: "control", data: "closed", code: event?.code, reason: event?.reason }));
       },
       onError: (err: any) => {
+        logger.error({ err, sessionId: client.sessionId }, "Gemini session error occurred");
         this.sendError(ws, "Gemini session error", err, client.sessionId);
       },
     };
