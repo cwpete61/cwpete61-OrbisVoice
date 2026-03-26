@@ -530,11 +530,10 @@ class VoiceGateway {
             logger.info({ sessionId, text: part.text }, "Received text from Gemini");
             client.transcript += `AI: ${part.text}\n`;
             
-            // For Twilio, we ONLY send text if there is NO audio in this message
-            // This prevents double-speaking (Google TTS + Gemini Audio)
-            const hasAudio = modelParts.some(p => p.inlineData?.data);
-            if (client.isTwilio && !hasAudio) {
-              logger.debug({ sessionId }, "Forwarding transcription to Twilio (No Audio part)");
+            if (client.isTwilio) {
+              // For Twilio ConversationRelay, we use its built-in TTS (Google)
+              // Sending raw audio from Gemini requires transcoding (MULAW 8kHz) which we avoid here
+              logger.debug({ sessionId }, "Forwarding text to Twilio for TTS");
               ws.send(JSON.stringify({ type: "text", token: part.text, last: false }));
             }
           }
@@ -558,8 +557,9 @@ class VoiceGateway {
             const base64Audio = part.inlineData?.data;
             if (base64Audio) {
               if (client.isTwilio) {
-                // For Twilio ConversationRelay, we MUST forward audio for best quality and zero latency
-                ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+                // DO NOT send raw Gemini PCM audio to Twilio ConversationRelay
+                // It expects MULAW 8kHz and will result in silence or distortion
+                logger.debug({ sessionId }, "Skipping raw audio forwarding for Twilio (favors TTS)");
               } else {
                 logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk to web client");
                 ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
