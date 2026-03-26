@@ -46,9 +46,10 @@ const CheckoutSchema = z.object({
 
 // Helper: Resolve effective tenant ID with admin scoping
 async function resolveEffectiveTenantId(request: FastifyRequest) {
-  const { tenantId } = request.user as any;
-  return resolveAdminScopedTenantId(tenantId);
+  const user = request.user as any;
+  return resolveAdminScopedTenantId(user);
 }
+
 
 // Helper: Resolve user email for Stripe
 async function resolveUserEmail(request: FastifyRequest, scopedTenantId: string) {

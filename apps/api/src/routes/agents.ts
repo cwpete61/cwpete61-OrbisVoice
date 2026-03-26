@@ -1,5 +1,4 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { logger } from "../logger";
@@ -15,8 +14,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
     { onRequest: [requireNotBlocked] },
     async (request: FastifyRequest, reply) => {
       try {
-        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as unknown as { user: AuthPayload }).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
 
         const agents = await prisma.agent.findMany({
           where: { tenantId: effectiveTenantId },
@@ -51,7 +50,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
         const user = (request as unknown as { user: AuthPayload }).user;
         const tenantId = user.tenantId;
         const userId = user.userId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
 
         // Create the agent directly without checking usage counts or limits
         // This allows all users to save drafts freely. Live usage is guarded by the Voice Gateway.
@@ -97,8 +96,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
-        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as unknown as { user: AuthPayload }).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
 
         const agent = await prisma.agent.findFirst({
           where: { id, tenantId: effectiveTenantId },
@@ -133,11 +132,11 @@ export async function agentRoutes(fastify: FastifyInstance) {
       // Corrected scope for production stability
       const { id } = request.params as { id: string };
       const body = UpdateAgentSchema.parse(request.body);
-      const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
+      const user = (request as unknown as { user: AuthPayload }).user;
 
       let updateData: Record<string, any> | undefined;
       try {
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
         updateData = mapAgentData(body);
 
         logger.info({ agentId: id, updateData, body }, "Updating agent - DEBUG");
@@ -220,8 +219,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { id } = request.params as { id: string };
-        const tenantId = (request as unknown as { user: AuthPayload }).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as unknown as { user: AuthPayload }).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
 
         const result = await prisma.agent.deleteMany({
           where: { id, tenantId: effectiveTenantId },

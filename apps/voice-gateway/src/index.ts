@@ -445,8 +445,8 @@ class VoiceGateway {
           logger.info({ sessionId }, "Gemini setup complete");
           
           if (client.liveSession) {
-            // Send initial greeting to Gemini for prompt response
-            (client.liveSession as any).send([{ parts: [{ text: "Introduce yourself naturally as OrbisVoice AI and ask how you can help." }] }]);
+            // OPTIONAL: Send initial greeting to Gemini if you want the agent to speak first
+            // (client.liveSession as any).send([{ parts: [{ text: "Introduce yourself naturally as OrbisVoice AI." }] }]);
             
             if (!client.isTwilio) {
               ws.send(JSON.stringify({ ok: true, message: "Session initialized", sessionId }));
@@ -540,13 +540,18 @@ class VoiceGateway {
           }
         }
 
-        // Forward Audio Parts to client (only if not Twilio CR!)
+        // Forward Audio Parts to client correctly handled for both Web and Twilio
         if (msg.serverContent?.modelTurn?.parts) {
           for (const part of msg.serverContent.modelTurn.parts) {
             const base64Audio = part.inlineData?.data;
-            if (base64Audio && !client.isTwilio) {
-              logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk to web client");
-              ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+            if (base64Audio) {
+              if (client.isTwilio) {
+                // For Twilio ConversationRelay, we MUST forward audio for best quality and zero latency
+                ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+              } else {
+                logger.debug({ sessionId, audioLength: base64Audio.length }, "Forwarding audio chunk to web client");
+                ws.send(JSON.stringify({ type: "audio", data: base64Audio }));
+              }
             }
           }
         }

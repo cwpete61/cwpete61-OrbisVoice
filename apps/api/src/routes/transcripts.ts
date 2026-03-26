@@ -16,8 +16,8 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { agentId } = request.params as { agentId: string };
-        const tenantId = (request as any).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as any).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
         const limit = parseInt((request.query as any).limit || "50");
         const offset = parseInt((request.query as any).offset || "0");
 
@@ -71,8 +71,8 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { transcriptId } = request.params as { transcriptId: string };
-        const tenantId = (request as any).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as any).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
 
         // Get transcript with agent details
         const transcript = await prisma.transcript.findFirst({
@@ -115,8 +115,8 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const body = request.body as any;
-        const tenantId = (request as any).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as any).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
         const userId = (request as any).user.userId;
 
         // Verify agent belongs to tenant
@@ -185,8 +185,8 @@ export async function transcriptRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply) => {
       try {
         const { transcriptId } = request.params as { transcriptId: string };
-        const tenantId = (request as any).user.tenantId;
-        const effectiveTenantId = await resolveAdminScopedTenantId(tenantId);
+        const user = (request as any).user;
+        const effectiveTenantId = await resolveAdminScopedTenantId(user);
 
         // Verify transcript belongs to tenant
         const transcript = await prisma.transcript.findFirst({

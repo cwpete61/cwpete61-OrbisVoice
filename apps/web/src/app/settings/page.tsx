@@ -6,7 +6,7 @@ import DashboardShell from "../components/DashboardShell";
 import Toggle from "../components/Toggle";
 import PasswordInput from "../components/PasswordInput";
 import { useTokenFromUrl } from "../../hooks/useTokenFromUrl";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 
 const TOOL_CONFIG_OPTIONS = [
   { key: "freeToolGetCartEnabled", label: "get_cart", description: "Read cart contents" },
@@ -84,12 +84,9 @@ function NotificationPrefsPanel({
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token || loaded) return;
-    fetch(`${API_BASE}/notifications/preferences`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        const p = d.data;
+    apiFetch("/notifications/preferences")
+      .then(({ data: d }) => {
+        const p = d.data as any;
         if (p) {
           setMasterEmail(p.emailNotifications ?? true);
           setNotifPrefs({
@@ -411,12 +408,8 @@ function SettingsContent() {
 
   const fetchGmailCredentials = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me/gmail/credentials`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/users/me/gmail/credentials");
       if (res.ok) {
-        const data = await res.json();
         if (data.data?.gmailClientId) {
           setGmailClientId(data.data.gmailClientId);
           setGmailClientSecret(data.data.gmailClientSecret || "");
@@ -429,55 +422,51 @@ function SettingsContent() {
 
   const fetchPlatformSettings = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/settings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/admin/settings");
       if (res.ok) {
-        const data = await res.json();
         setPlatformSettings(data.data);
         if (data.data) {
+          // ... (settings mapping)
+          const s = data.data;
           setSettingsForm({
-            lowCommission: data.data.lowCommission,
-            medCommission: data.data.medCommission,
-            highCommission: data.data.highCommission,
-            commissionDurationMonths: data.data.commissionDurationMonths,
-            defaultCommissionLevel: data.data.defaultCommissionLevel,
-            payoutMinimum: data.data.payoutMinimum,
-            refundHoldDays: data.data.refundHoldDays,
-            payoutCycleDelayMonths: data.data.payoutCycleDelayMonths,
-            freeTierLimit: data.data.freeTierLimit ?? 100,
-            freeToStarterEnabled: data.data.freeToStarterEnabled ?? false,
-            freeToProfessionalEnabled: data.data.freeToProfessionalEnabled ?? false,
-            freeToEnterpriseEnabled: data.data.freeToEnterpriseEnabled ?? false,
-            freeToLtdEnabled: data.data.freeToLtdEnabled ?? false,
-            freeToAiInfraEnabled: data.data.freeToAiInfraEnabled ?? false,
-            freeToolGetCartEnabled:
-              data.data.freeToolGetCartEnabled ?? settingsForm.freeToolGetCartEnabled,
+            lowCommission: s.lowCommission,
+            medCommission: s.medCommission,
+            highCommission: s.highCommission,
+            commissionDurationMonths: s.commissionDurationMonths,
+            defaultCommissionLevel: s.defaultCommissionLevel,
+            payoutMinimum: s.payoutMinimum,
+            refundHoldDays: s.refundHoldDays,
+            payoutCycleDelayMonths: s.payoutCycleDelayMonths,
+            freeTierLimit: s.freeTierLimit ?? 100,
+            freeToStarterEnabled: s.freeToStarterEnabled ?? false,
+            freeToProfessionalEnabled: s.freeToProfessionalEnabled ?? false,
+            freeToEnterpriseEnabled: s.freeToEnterpriseEnabled ?? false,
+            freeToLtdEnabled: s.freeToLtdEnabled ?? false,
+            freeToAiInfraEnabled: s.freeToAiInfraEnabled ?? false,
+            freeToolGetCartEnabled: s.freeToolGetCartEnabled ?? settingsForm.freeToolGetCartEnabled,
             freeToolAddToCartEnabled:
-              data.data.freeToolAddToCartEnabled ?? settingsForm.freeToolAddToCartEnabled,
+              s.freeToolAddToCartEnabled ?? settingsForm.freeToolAddToCartEnabled,
             freeToolClearCartEnabled:
-              data.data.freeToolClearCartEnabled ?? settingsForm.freeToolClearCartEnabled,
+              s.freeToolClearCartEnabled ?? settingsForm.freeToolClearCartEnabled,
             freeToolListProductsEnabled:
-              data.data.freeToolListProductsEnabled ?? settingsForm.freeToolListProductsEnabled,
+              s.freeToolListProductsEnabled ?? settingsForm.freeToolListProductsEnabled,
             freeToolSearchProductsEnabled:
-              data.data.freeToolSearchProductsEnabled ?? settingsForm.freeToolSearchProductsEnabled,
+              s.freeToolSearchProductsEnabled ?? settingsForm.freeToolSearchProductsEnabled,
             freeToolRemoveFromCartEnabled:
-              data.data.freeToolRemoveFromCartEnabled ?? settingsForm.freeToolRemoveFromCartEnabled,
+              s.freeToolRemoveFromCartEnabled ?? settingsForm.freeToolRemoveFromCartEnabled,
             freeToolCreateCheckoutSessionEnabled:
-              data.data.freeToolCreateCheckoutSessionEnabled ??
+              s.freeToolCreateCheckoutSessionEnabled ??
               settingsForm.freeToolCreateCheckoutSessionEnabled,
-            freeToolSendSmsEnabled:
-              data.data.freeToolSendSmsEnabled ?? settingsForm.freeToolSendSmsEnabled,
+            freeToolSendSmsEnabled: s.freeToolSendSmsEnabled ?? settingsForm.freeToolSendSmsEnabled,
             freeToolMakeCallEnabled:
-              data.data.freeToolMakeCallEnabled ?? settingsForm.freeToolMakeCallEnabled,
-            starterLimit: data.data.starterLimit,
-            professionalLimit: data.data.professionalLimit,
-            enterpriseLimit: data.data.enterpriseLimit,
-            ltdLimit: data.data.ltdLimit,
-            aiInfraLimit: data.data.aiInfraLimit,
-            emailVerificationEnabled: data.data.emailVerificationEnabled ?? false,
-            globalEmailEnabled: data.data.globalEmailEnabled ?? true,
+              s.freeToolMakeCallEnabled ?? settingsForm.freeToolMakeCallEnabled,
+            starterLimit: s.starterLimit,
+            professionalLimit: s.professionalLimit,
+            enterpriseLimit: s.enterpriseLimit,
+            ltdLimit: s.ltdLimit,
+            aiInfraLimit: s.aiInfraLimit,
+            emailVerificationEnabled: s.emailVerificationEnabled ?? false,
+            globalEmailEnabled: s.globalEmailEnabled ?? true,
           });
         }
       }
@@ -489,30 +478,18 @@ function SettingsContent() {
   const handleSaveSettings = async () => {
     setSaveSettingsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/settings`, {
+      const { res, data: result } = await apiFetch<any>("/admin/settings", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(settingsForm),
       });
-      const raw = await res.text();
-      let data: any = null;
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch {
-        data = { message: raw || "Failed to save settings" };
-      }
 
       if (!res.ok) {
-        throw new Error(data?.message || `Failed to save settings (HTTP ${res.status})`);
+        throw new Error(result?.message || `Failed to save settings (HTTP ${res.status})`);
       }
 
       await fetchPlatformSettings();
-      setPlatformSettings(data?.data ?? null);
-      setNotifMsg(data?.message || "Settings updated successfully");
+      setPlatformSettings(result?.data ?? null);
+      setNotifMsg(result?.message || "Settings updated successfully");
       setTimeout(() => setNotifMsg(null), 3000);
     } catch (err) {
       console.error("Failed to save settings:", err);
@@ -526,12 +503,8 @@ function SettingsContent() {
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/admin/users");
       if (res.ok) {
-        const data = await res.json();
         setAllUsers(data.data || []);
       }
     } catch (err) {
@@ -544,20 +517,14 @@ function SettingsContent() {
   const handleUpdateRole = async (userId: string, newRole: string) => {
     if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+      const { res, data: result } = await apiFetch<any>(`/admin/users/${userId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ role: newRole, isAdmin: newRole !== "USER" }),
       });
       if (res.ok) {
         await fetchUsers();
       } else {
-        const data = await res.json();
-        alert(data.message || "Failed to update role");
+        alert(result?.message || "Failed to update role");
       }
     } catch (err) {
       console.error("Failed to update role:", err);
@@ -567,12 +534,8 @@ function SettingsContent() {
   const fetchPackages = async () => {
     try {
       setPackagesLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/packages`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/admin/packages");
       if (res.ok) {
-        const data = await res.json();
         setPackages(data.data || []);
       }
     } catch (err) {
@@ -585,13 +548,8 @@ function SettingsContent() {
   const handlePackageUpdate = async (id: string, updates: any) => {
     try {
       setPackagesSaving(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/packages/${id}`, {
+      const { res, data } = await apiFetch<any>(`/admin/packages/${id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(updates),
       });
       if (res.ok) {
@@ -608,12 +566,8 @@ function SettingsContent() {
 
   const fetchApiKeys = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api-keys`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/api-keys");
       if (res.ok) {
-        const data = await res.json();
         setApiKeys(data.data || []);
       }
     } catch (err) {
@@ -623,13 +577,10 @@ function SettingsContent() {
 
   const fetchAgentToolConfig = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/settings/agent-tool-config/admin`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const { res, data } = await apiFetch<any>("/settings/agent-tool-config/admin", {
         cache: "no-store",
       });
       if (!res.ok) return null;
-      const data = await res.json();
       const next = normalizeTierToolAccess(data?.data);
       if (next) {
         setAgentToolForm(next);
@@ -692,18 +643,14 @@ function SettingsContent() {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data } = await apiFetch<any>("/users/me");
       if (res.status === 401 || res.status === 404) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
-
+ 
       if (res.ok) {
-        const data = await res.json();
         setProfile(data.data);
       }
     } catch (err) {
@@ -855,22 +802,16 @@ function SettingsContent() {
     setTwilioSaving(true);
     setTwilioMessage(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/twilio/config`, {
+      const { res, data: result } = await apiFetch<any>("/twilio/config", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(twilioConfig),
       });
-
+ 
       if (res.ok) {
         setTwilioMessage({ type: "success", text: "Twilio configuration saved successfully" });
         setTimeout(() => setTwilioMessage(null), 3000);
       } else {
-        const data = await res.json();
-        setTwilioMessage({ type: "error", text: data.message || "Failed to save configuration" });
+        setTwilioMessage({ type: "error", text: result?.message || "Failed to save configuration" });
       }
     } catch (err) {
       console.error("Failed to save Twilio config:", err);
@@ -883,25 +824,22 @@ function SettingsContent() {
   const fetchSystemEmailConfig = async () => {
     try {
       setSystemEmailLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/system-email`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data: result } = await apiFetch<any>("/admin/system-email");
       if (res.ok) {
-        const data = await res.json();
-        if (data.data) {
+        if (result.data) {
+          const d = result.data;
           setSystemEmailConfig({
-            username: data.data.username || "",
-            password: data.data.password || "",
-            imapServer: data.data.imapServer || "",
-            imapPort: data.data.imapPort || "",
-            imapSecurity: data.data.imapSecurity || "SSL",
-            smtpServer: data.data.smtpServer || "",
-            smtpPort: data.data.smtpPort || "",
-            smtpSecurity: data.data.smtpSecurity || "SSL",
-            pop3Server: data.data.pop3Server || "",
-            pop3Port: data.data.pop3Port || "",
-            pop3Security: data.data.pop3Security || "SSL",
+            username: d.username || "",
+            password: d.password || "",
+            imapServer: d.imapServer || "",
+            imapPort: d.imapPort || "",
+            imapSecurity: d.imapSecurity || "SSL",
+            smtpServer: d.smtpServer || "",
+            smtpPort: d.smtpPort || "",
+            smtpSecurity: d.smtpSecurity || "SSL",
+            pop3Server: d.pop3Server || "",
+            pop3Port: d.pop3Port || "",
+            pop3Security: d.pop3Security || "SSL",
           });
         }
       }
@@ -917,16 +855,11 @@ function SettingsContent() {
     setSystemEmailSaving(true);
     setSystemEmailMessage(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/system-email`, {
+      const { res, data: result } = await apiFetch<any>("/admin/system-email", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(systemEmailConfig),
       });
-
+ 
       if (res.ok) {
         setSystemEmailMessage({
           type: "success",
@@ -934,10 +867,9 @@ function SettingsContent() {
         });
         setTimeout(() => setSystemEmailMessage(null), 3000);
       } else {
-        const data = await res.json();
         setSystemEmailMessage({
           type: "error",
-          text: data.message || "Failed to save configuration",
+          text: result?.message || "Failed to save configuration",
         });
       }
     } catch (err) {
@@ -953,30 +885,24 @@ function SettingsContent() {
       setSystemEmailTestResult({ success: false, message: "Please enter a test email address" });
       return;
     }
-
+ 
     setSystemEmailTesting(true);
     setSystemEmailTestResult(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/system-email/test`, {
+      const { res, data: result } = await apiFetch<any>("/admin/system-email/test", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ testEmail: systemTestEmailTarget, forceDevMode }),
       });
-
-      const data = await res.json();
+ 
       if (res.ok) {
         setSystemEmailTestResult({
           success: true,
-          message: data.message || "Test email sent successfully!",
+          message: result.message || "Test email sent successfully!",
         });
       } else {
         setSystemEmailTestResult({
           success: false,
-          message: data.message || "Failed to send test email",
+          message: result.message || "Failed to send test email",
         });
       }
     } catch (err: any) {
@@ -992,14 +918,10 @@ function SettingsContent() {
 
   const fetchStripeConnectConfig = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/stripe-connect`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data: result } = await apiFetch<any>("/admin/stripe-connect");
       if (res.ok) {
-        const data = await res.json();
-        if (data.data) {
-          setStripeConnectConfig(data.data);
+        if (result.data) {
+          setStripeConnectConfig(result.data);
         }
       }
     } catch (err) {
@@ -1012,19 +934,14 @@ function SettingsContent() {
     setStripeConnectSaving(true);
     setStripeConnectMessage(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/stripe-connect`, {
+      const { res, data: result } = await apiFetch<any>("/admin/stripe-connect", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           ...stripeConnectConfig,
           minimumPayout: Number(stripeConnectConfig.minimumPayout) || 100,
         }),
       });
-
+ 
       if (res.ok) {
         setStripeConnectMessage({
           type: "success",
@@ -1032,10 +949,9 @@ function SettingsContent() {
         });
         setTimeout(() => setStripeConnectMessage(null), 3000);
       } else {
-        const data = await res.json();
         setStripeConnectMessage({
           type: "error",
-          text: data.message || "Failed to save configuration",
+          text: result?.message || "Failed to save configuration",
         });
       }
     } catch (err) {
@@ -1050,13 +966,8 @@ function SettingsContent() {
     setStripeConnectTesting(true);
     setStripeConnectTestResult(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/stripe-connect/test`, {
+      const { res, data: result } = await apiFetch<any>("/admin/stripe-connect/test", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           accountId: stripeConnectConfig.accountId,
           publishableKey: stripeConnectConfig.publishableKey,
@@ -1064,18 +975,17 @@ function SettingsContent() {
           clientId: stripeConnectConfig.clientId,
         }),
       });
-      const data = await res.json();
-
+ 
       if (res.ok) {
         setStripeConnectTestResult({
           success: true,
-          message: data.message,
-          data: data.data,
+          message: result.message || "Connection successful",
+          data: result.data,
         });
       } else {
         setStripeConnectTestResult({
           success: false,
-          message: data.message || "Failed to connect to Stripe",
+          message: result?.message || "Failed to connect to Stripe",
         });
       }
     } catch (err) {
@@ -1095,13 +1005,8 @@ function SettingsContent() {
     setGoogleTestResult(null);
     setGoogleSaveSuccess(false);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/google-auth/config`, {
+      const { res, data: result } = await apiFetch<any>("/admin/google-auth/config", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(googleConfig),
       });
       if (res.ok) {
@@ -1109,10 +1014,9 @@ function SettingsContent() {
         setGoogleSaveSuccess(true);
         setTimeout(() => setGoogleSaveSuccess(false), 3000);
       } else {
-        const errorData = await res.json().catch(() => ({}));
         setGoogleTestResult({
           success: false,
-          message: errorData.message || `Failed to save configuration (HTTP ${res.status})`,
+          message: result?.message || `Failed to save configuration (HTTP ${res.status})`,
         });
       }
     } catch (err: any) {
@@ -1130,16 +1034,10 @@ function SettingsContent() {
     setGoogleTesting(true);
     setGoogleTestResult(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/auth/google/url`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const { res, data: result } = await apiFetch<any>("/auth/google/url");
+ 
       if (res.ok) {
-        const data = await res.json();
-        if (data.ok && data.data?.url) {
+        if (result.ok && result.data?.url) {
           setGoogleTestResult({
             success: true,
             message: "Configuration is valid! Google OAuth URL generated successfully.",
@@ -1151,10 +1049,9 @@ function SettingsContent() {
           });
         }
       } else {
-        const errorData = await res.json().catch(() => ({}));
         setGoogleTestResult({
           success: false,
-          message: errorData.message || `Error: ${res.status} ${res.statusText}`,
+          message: result?.message || `Error: ${res.status} ${res.statusText}`,
         });
       }
     } catch (err: any) {
@@ -1169,13 +1066,9 @@ function SettingsContent() {
 
   const checkCalendarConnection = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me/calendar`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { res, data: result } = await apiFetch<any>("/users/me/calendar");
       if (res.ok) {
-        const data = await res.json();
-        setCalendarConnected(!!data.data?.connected);
+        setCalendarConnected(!!result.data?.connected);
       }
     } catch (err) {
       console.error("Failed to check calendar connection:", err);
@@ -1185,17 +1078,13 @@ function SettingsContent() {
   const handleConnectCalendar = async () => {
     try {
       setCalendarLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/auth/google/calendar-url`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      const { res, data: result } = await apiFetch<any>("/auth/google/calendar-url");
+ 
       if (res.ok) {
-        const data = await res.json();
-        if (data.data?.url) {
-          setCalendarConnectUrl(data.data.url);
+        if (result.data?.url) {
+          setCalendarConnectUrl(result.data.url);
           // Redirect to Google OAuth for calendar access
-          window.location.href = data.data.url;
+          window.location.href = result.data.url;
         }
       }
     } catch (err) {
@@ -1270,25 +1159,21 @@ function SettingsContent() {
     setGmailTesting(true);
     setGmailTestResult(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me/gmail/verify`, {
+      const { res, data: result } = await apiFetch<any>("/users/me/gmail/verify", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
-
+ 
       if (res.ok) {
-        const data = await res.json();
         setGmailTestResult({
           success: true,
-          message: `Gmail connection verified! Email: ${data.data?.gmailEmail}`,
+          message: `Gmail connection verified! Email: ${result.data?.gmailEmail}`,
         });
         setGmailVerified(true);
-        setGmailEmail(data.data?.gmailEmail);
+        setGmailEmail(result.data?.gmailEmail);
       } else {
-        const errorData = await res.json().catch(() => ({}));
         setGmailTestResult({
           success: false,
-          message: errorData.message || "Verification failed",
+          message: result?.message || "Verification failed",
         });
       }
     } catch (err: any) {
@@ -1303,15 +1188,13 @@ function SettingsContent() {
 
   const handleDisconnectGmail = async () => {
     if (!confirm("Are you sure you want to disconnect your Gmail account?")) return;
-
+ 
     try {
       setGmailLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/users/me/gmail/disconnect`, {
+      const { res } = await apiFetch<any>("/users/me/gmail/disconnect", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
-
+ 
       if (res.ok) {
         setGmailConnected(false);
         setGmailEmail(null);
@@ -1327,19 +1210,16 @@ function SettingsContent() {
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKeyName) return;
-
+ 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api-keys`, {
+      const { res, data: result } = await apiFetch<any>("/api-keys", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: newKeyName }),
       });
-
+ 
       if (res.ok) {
-        const data = await res.json();
-        setShowNewKey(data.data.key);
+        setShowNewKey(result.data.key);
         setNewKeyName("");
         await fetchApiKeys();
       }
@@ -1352,14 +1232,12 @@ function SettingsContent() {
 
   const handleRevokeKey = async (keyId: string) => {
     if (!confirm("Are you sure? This cannot be undone.")) return;
-
+ 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api-keys/${keyId}`, {
+      const { res } = await apiFetch<any>(`/api-keys/${keyId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
       });
-
+ 
       if (res.ok) {
         await fetchApiKeys();
       }
@@ -1655,10 +1533,8 @@ function SettingsContent() {
               setSavingNotif(true);
               setNotifMsg(null);
               try {
-                const token = localStorage.getItem("token");
-                await fetch(`${API_BASE}/notifications/preferences`, {
+                await apiFetch("/notifications/preferences", {
                   method: "PUT",
-                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                   body: JSON.stringify({
                     emailNotifications: updatedEmail,
                     ...(updatedPrefs || {}),
@@ -1859,14 +1735,9 @@ function SettingsContent() {
                         setStripeConnectConfig(updated);
 
                         // Immediate save
-                        try {
-                          const token = localStorage.getItem("token");
-                          await fetch(`${API_BASE}/admin/stripe-connect`, {
+                         try {
+                          await apiFetch("/admin/stripe-connect", {
                             method: "PUT",
-                            headers: {
-                              "Content-Type": "application/json",
-                              Authorization: `Bearer ${token}`,
-                            },
                             body: JSON.stringify({
                               ...updated,
                               minimumPayout: Number(updated.minimumPayout) || 100,
@@ -2111,14 +1982,9 @@ function SettingsContent() {
                     setGoogleSaveSuccess(false);
 
                     // Immediate save
-                    try {
-                      const token = localStorage.getItem("token");
-                      await fetch(`${API_BASE}/admin/google-auth/config`, {
+                     try {
+                      await apiFetch(`${API_BASE}/admin/google-auth/config`, {
                         method: "PUT",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${token}`,
-                        },
                         body: JSON.stringify(updated),
                       });
                       setGoogleSaveSuccess(true);
@@ -2513,15 +2379,12 @@ function SettingsContent() {
                             if (!tenantGoogleConfig.geminiApiKey) return;
                             setTenantConfigLoading(true);
                             setTenantConfigMessage(null);
-                            try {
-                              const token = localStorage.getItem("token");
-                              const res = await fetch(`${API_BASE}/settings/gemini-api/test`, {
+                             try {
+                              const { res, data } = await apiFetch<any>("/settings/gemini-api/test", {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                                 body: JSON.stringify({ geminiApiKey: tenantGoogleConfig.geminiApiKey }),
                               });
-                              const data = await res.json();
-                              setTenantConfigMessage({ type: data.ok ? "success" : "error", text: data.message });
+                              setTenantConfigMessage({ type: res.ok ? "success" : "error", text: data.message });
                             } catch (err: any) {
                               setTenantConfigMessage({ type: "error", text: "Verification failed: " + err.message });
                             } finally {

@@ -430,11 +430,15 @@
         if (msg.ok && msg.message === 'Session initialized') {
           phase = 'talking';
           setTalking();
+        }
 
+        // Start processing audio AS SOON AS WS is open, don't wait for 'Session initialized'
+        // This allows Gemini to hear the VERY FIRST words (like "Hello?")
+        if (sock.readyState === WebSocket.OPEN && !processor) {
           const micSource = ctx.createMediaStreamSource(mediaStream);
           processor = ctx.createScriptProcessor(2048, 1, 1);
           processor.onaudioprocess = (e) => {
-            if (sock.readyState !== WebSocket.OPEN || phase !== 'talking') return;
+            if (sock.readyState !== WebSocket.OPEN) return;
             const f32  = e.inputBuffer.getChannelData(0);
             const i16  = new Int16Array(f32.length);
             for (let i = 0; i < f32.length; i++) {

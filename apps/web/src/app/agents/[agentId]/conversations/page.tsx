@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import TranscriptCard from "@/components/TranscriptCard";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, apiFetch } from "@/lib/api";
 
 export default function AgentConversationsPage() {
   const params = useParams();
@@ -21,9 +21,8 @@ export default function AgentConversationsPage() {
 
   const fetchAgent = async () => {
     try {
-      const res = await fetch(`${API_BASE}/agents/${agentId}`);
+      const { res, data } = await apiFetch<any>(`/agents/${agentId}`);
       if (res.ok) {
-        const data = await res.json();
         setAgent(data.data);
       }
     } catch (err) {
@@ -33,11 +32,10 @@ export default function AgentConversationsPage() {
 
   const fetchTranscripts = async () => {
     try {
-      const res = await fetch(
-        `${API_BASE}/agents/${agentId}/transcripts?limit=50`
+      const { res, data } = await apiFetch<any>(
+        `/agents/${agentId}/transcripts?limit=50`
       );
       if (res.ok) {
-        const data = await res.json();
         setTranscripts(data.data?.transcripts || []);
       }
     } catch (err) {
@@ -49,12 +47,12 @@ export default function AgentConversationsPage() {
 
   const handleDeleteTranscript = async (transcriptId: string) => {
     if (!confirm("Delete this transcript?")) return;
-
+ 
     try {
-      const res = await fetch(`${API_BASE}/transcripts/${transcriptId}`, {
+      const { res } = await apiFetch(`/transcripts/${transcriptId}`, {
         method: "DELETE",
       });
-
+ 
       if (res.ok) {
         await fetchTranscripts();
       }
@@ -65,9 +63,8 @@ export default function AgentConversationsPage() {
 
   const handleViewTranscript = async (transcriptId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/transcripts/${transcriptId}`);
+      const { res, data } = await apiFetch<any>(`/transcripts/${transcriptId}`);
       if (res.ok) {
-        const data = await res.json();
         setSelectedTranscript(data.data);
       }
     } catch (err) {

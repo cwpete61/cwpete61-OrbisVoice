@@ -5,8 +5,7 @@ import DashboardShell from "@/app/components/DashboardShell";
 import Link from "next/link";
 import { AgentType, VoiceGender, VOICE_MODELS, PERSONA_TEMPLATES } from "@/types/agent";
 import VoiceAgentWidget from "./VoiceAgentWidget";
-import { VOICE_GATEWAY_URL, API_BASE } from "@/lib/api";
-import { readApiBody } from "@/lib/response-utils";
+import { VOICE_GATEWAY_URL, API_BASE, apiFetch } from "@/lib/api";
 import AgentIdentitySection from "./agent-builder/AgentIdentitySection";
 import AgentPersonaSection from "./agent-builder/AgentPersonaSection";
 import AgentWidgetSection from "./agent-builder/AgentWidgetSection";
@@ -106,13 +105,12 @@ export default function AgentBuilderForm({
         if (isCreatingRef.current) return false;
         isCreatingRef.current = true;
         
-        // Initial POST
-        const res = await fetch(`${API_BASE}/agents`, {
+        // Initial POST using apiFetch for auto-auth and 401 handling
+        const { res, data } = await apiFetch<{ id?: string; data?: { id: string } }>("/agents", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload),
         });
-        const data = await readApiBody<{ id?: string, data?: any }>(res);
+
         if (!res.ok) {
           isCreatingRef.current = false;
           console.error("Agent creation failed:", data);
@@ -129,13 +127,12 @@ export default function AgentBuilderForm({
         // Push the new ID to the URL to make it persistent on refresh
         router.push(`/agents/${newId}/edit`);
       } else {
-        // Update PUT
-        const res = await fetch(`${API_BASE}/agents/${agentId}`, {
+        // Update PUT using apiFetch
+        const { res, data } = await apiFetch<any>(`/agents/${agentId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload),
         });
-        const data = await readApiBody<any>(res);
+
         if (!res.ok) {
           console.error("Agent update failed:", data);
           throw new Error(data.message || `Failed to auto-save (HTTP ${res.status})`);

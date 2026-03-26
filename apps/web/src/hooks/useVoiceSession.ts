@@ -104,6 +104,12 @@ export function useVoiceSession({ agentId, selectedVoice, voiceGender, systemPro
             sessionReadyRef.current = true;
           }
 
+          // Optimized: Start sending audio as soon as we get ANY message (indicating handshake started)
+          // or just on connection open. Currently we wait for FIRST message to ensure session exists on gateway.
+          if (socket.readyState === WebSocket.OPEN && !sessionReadyRef.current) {
+             sessionReadyRef.current = true; // Optimistic start
+          }
+
           if (msg.type === "audio" && msg.data) {
             if (playerRef.current) {
               const audioBuffer = base64ToArrayBuffer(msg.data);

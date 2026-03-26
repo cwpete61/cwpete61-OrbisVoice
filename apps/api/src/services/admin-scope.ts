@@ -39,7 +39,12 @@ export async function getSystemAdminTenantId(): Promise<string | null> {
   return adminUser.tenantId;
 }
 
-export async function resolveAdminScopedTenantId(fallbackTenantId: string): Promise<string> {
-  const adminTenantId = await getSystemAdminTenantId();
-  return pickEffectiveTenantId(adminTenantId, fallbackTenantId);
+export async function resolveAdminScopedTenantId(user: { tenantId: string, isAdmin?: boolean, role?: string }): Promise<string> {
+  // Only override if the user is an admin AND we have a system admin tenant to scope to
+  if (user.isAdmin || user.role === "ADMIN" || user.role === "SYSTEM_ADMIN") {
+    const adminTenantId = await getSystemAdminTenantId();
+    return adminTenantId || user.tenantId;
+  }
+  return user.tenantId;
 }
+
