@@ -98,6 +98,9 @@ export async function requireNotBlocked(request: FastifyRequest, reply: FastifyR
   }
 
   // Optimization: Check JWT payload first
+  if (user.userId === "twilio-system") {
+    return;
+  }
   if ((user as AuthPayload & { isBlocked?: boolean }).isBlocked) {
     reply.code(403).send({ ok: false, message: "Account is blocked from accessing agents" });
     return;

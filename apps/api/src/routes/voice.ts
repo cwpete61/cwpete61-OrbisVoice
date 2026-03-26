@@ -76,7 +76,7 @@ export async function voiceRoutes(fastify: FastifyInstance) {
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
         <Response>
           <Connect>
-            <ConversationRelay url="${gatewayUrl}" ttsProvider="google" voice="en-US-Journey-F">
+            <ConversationRelay url="${gatewayUrl}" ttsProvider="google" voice="en-US-Journey-F" dtmf="true">
               <Parameter name="token" value="${sessionToken}" />
               <Parameter name="agentId" value="${agent.id}" />
               <Parameter name="inbound" value="true" />

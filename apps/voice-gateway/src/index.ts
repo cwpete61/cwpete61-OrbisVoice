@@ -197,6 +197,14 @@ class VoiceGateway {
       this.clients.set(sessionId, client);
 
       logger.info({ sessionId, callSid, agentId }, "Twilio ConversationRelay Session Initialized");
+
+      // Start the conversation immediately for inbound calls
+      if (customParameters.inbound === "true" || customParameters.inbound === true) {
+        logger.info({ sessionId }, "Sending initial greeting prompt to Gemini");
+        (liveSession as any).send([{ parts: [{
+          text: "Please greet the caller warmly and introduce yourself as their virtual assistant."
+        }] }]);
+      }
     } catch (err) {
       this.sendError(ws, "Twilio session initialization failed", err, sessionId);
       ws.close();
@@ -521,8 +529,12 @@ class VoiceGateway {
           if (part.text) {
             logger.info({ sessionId, text: part.text }, "Received text from Gemini");
             client.transcript += `AI: ${part.text}\n`;
-            if (client.isTwilio) {
-              // Standard ConversationRelay text forwarding
+            
+            // For Twilio, we ONLY send text if there is NO audio in this message
+            // This prevents double-speaking (Google TTS + Gemini Audio)
+            const hasAudio = modelParts.some(p => p.inlineData?.data);
+            if (client.isTwilio && !hasAudio) {
+              logger.debug({ sessionId }, "Forwarding transcription to Twilio (No Audio part)");
               ws.send(JSON.stringify({ type: "text", token: part.text, last: false }));
             }
           }
