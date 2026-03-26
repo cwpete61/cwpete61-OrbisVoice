@@ -335,7 +335,7 @@ class VoiceGateway {
 
       const liveSession = await geminiVoiceClient.connectLive(
         apiKey,
-        { systemPrompt, voiceName, tools: sessionTools, modalities: ["AUDIO"] },
+        { systemPrompt, voiceName, tools: sessionTools, modalities: ["AUDIO", "TEXT"] },
         this.createGeminiHandlers(ws, client)
       );
 
@@ -534,6 +534,9 @@ class VoiceGateway {
               // For Twilio ConversationRelay, we use its built-in TTS (Google)
               // Sending raw audio from Gemini requires transcoding (MULAW 8kHz) which we avoid here
               logger.debug({ sessionId }, "Forwarding text to Twilio for TTS");
+              ws.send(JSON.stringify({ type: "text", token: part.text, last: false }));
+            } else {
+              // For Web clients, we send text parts for transcription display in UI
               ws.send(JSON.stringify({ type: "text", token: part.text, last: false }));
             }
           }
